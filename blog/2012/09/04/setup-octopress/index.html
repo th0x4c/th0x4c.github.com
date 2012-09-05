@@ -11,7 +11,7 @@
   
   <meta name="description" content="Jekyll + Octopress を使って Github Pages にブログを開設してみた。
 Octopress の Documentation のページ に従えばよい。
-ruby 1.9.3 が必要だが、今回は Jruby を使用した。 使用マシン MacBook Pro Retina &hellip;">
+ruby 1.9.3 が必要だが、今回は JRuby を使用した。 使用マシン MacBook Pro Retina &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -92,7 +92,7 @@ ruby 1.9.3 が必要だが、今回は Jruby を使用した。 使用マシン 
 
 <div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
 <a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
-ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">Jruby</a> を使用した。</p>
+ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
 
 <h2>使用マシン</h2>
 
@@ -102,7 +102,7 @@ ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">Jruby</a> を�
 </ul>
 
 
-<h2>Jruby のインストール</h2>
+<h2>JRuby のインストール</h2>
 
 <p>~/local 配下に zip を解凍してインストール</p>
 
@@ -151,7 +151,7 @@ $ jruby -S rake install
 </code></pre>
 
 <p>追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
-(もちろん、Jruby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
+(もちろん、JRuby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
 
 <pre><code>$ cd ~/local/bin
 $ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
