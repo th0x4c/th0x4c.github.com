@@ -1,95 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
 
-<!DOCTYPE html>
-<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
-<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
-<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
-<head>
-  <meta charset="utf-8">
-  <title>[Oracle]ネットワーク構成 - th0x4c 備忘録</title>
-  <meta name="author" content="Takashi Hashizume">
-
-  
-  <meta name="description" content="Oracle DB にネットワーク接続できるように構成する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) サーバー側のネットワーク構成 netca により構成する。 netca &hellip;">
-  
-
-  <!-- http://t.co/dKP3o1e -->
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/05/oracle-net-services/">
-  <link href="/favicon.png" rel="icon">
-  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
-  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
-  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-
-  
-
-</head>
-
-<body   >
-  <header role="banner"><hgroup>
-  <h1><a href="/">th0x4c 備忘録</a></h1>
-  
-</hgroup>
-
-</header>
-  <nav role="navigation"><ul class="subscription" data-subscription="rss">
-  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
-  
-</ul>
-  
-<form action="http://google.com/search" method="get">
-  <fieldset role="search">
-    <input type="hidden" name="q" value="site:th0x4c.github.com" />
-    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
-  </fieldset>
-</form>
-  
-<ul class="main-navigation">
-  <li><a href="/">Blog</a></li>
-  <li><a href="/blog/archives">Archives</a></li>
-</ul>
-
-</nav>
-  <div id="main">
-    <div id="content">
-      <div>
-<article class="hentry" role="article">
-  
-  <header>
+  <title><![CDATA[Category: Oracle | th0x4c 備忘録]]></title>
+  <link href="http://th0x4c.github.com/blog/categories/oracle/atom.xml" rel="self"/>
+  <link href="http://th0x4c.github.com/"/>
+  <updated>2012-09-05T23:22:33+09:00</updated>
+  <id>http://th0x4c.github.com/</id>
+  <author>
+    <name><![CDATA[Takashi Hashizume]]></name>
     
-      <h1 class="entry-title">[Oracle]ネットワーク構成</h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
 
   
-
-
-<time datetime="2012-09-05T21:50:00+09:00" pubdate data-updated="true">Sep 5<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-<div class="entry-content"><p>Oracle DB にネットワーク接続できるように構成する。</p>
+  <entry>
+    <title type="html"><![CDATA[[Oracle]ネットワーク構成]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/05/oracle-net-services/"/>
+    <updated>2012-09-05T21:50:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/05/oracle-net-services</id>
+    <content type="html"><![CDATA[<p>Oracle DB にネットワーク接続できるように構成する。</p>
 
 <h2>環境</h2>
 
@@ -107,21 +36,21 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) サーバー側のネットワー�
 <li><p><code>netca</code> を起動</p>
 
 <p>  $ netca</p></li>
-<li><p>&#8220;リスナー構成&#8221; を選択</p></li>
+<li><p>"リスナー構成" を選択</p></li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-1.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;追加&#8221;</li>
+<li>"追加"</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-2.png" width="600" height="400"></p>
 
 <ul>
-<li>リスナー名の設定。今回はリスナー名はデフォルトの&#8221;LISTENER&#8221;のまま。</li>
+<li>リスナー名の設定。今回はリスナー名はデフォルトの"LISTENER"のまま。</li>
 </ul>
 
 
@@ -142,21 +71,21 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) サーバー側のネットワー�
 <p><img src="/images/2012-09-05-oracle-net-services/netca-5.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;いいえ&#8221;</li>
+<li>"いいえ"</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-6.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;次へ&#8221;</li>
+<li>"次へ"</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-7.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;完了&#8221;</li>
+<li>"完了"</li>
 </ul>
 
 
@@ -187,14 +116,14 @@ ADR_BASE_LISTENER = /u01/app/oracle
 <li><p><code>netca</code> を起動</p>
 
 <p>  $ netca</p></li>
-<li><p>&#8220;ローカル・ネット・サービス名構成&#8221; を選択</p></li>
+<li><p>"ローカル・ネット・サービス名構成" を選択</p></li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-9.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;追加&#8221;</li>
+<li>"追加"</li>
 </ul>
 
 
@@ -236,21 +165,21 @@ ADR_BASE_LISTENER = /u01/app/oracle
 <p><img src="/images/2012-09-05-oracle-net-services/netca-15.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;いいえ&#8221;</li>
+<li>"いいえ"</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-16.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;次へ&#8221;</li>
+<li>"次へ"</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-17.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;完了&#8221;</li>
+<li>"完了"</li>
 </ul>
 
 
@@ -384,115 +313,7 @@ With the Partitioning, OLAP, Data Mining and Real Application Testing options
 
 SQL&gt; 
 </code></pre>
-</div>
-
-
-  <footer>
-    <p class="meta">
-      
+]]></content>
+  </entry>
   
-
-<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
-
-      
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-05T21:50:00+09:00" pubdate data-updated="true">Sep 5<span>th</span>, 2012</time>
-      
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
-  
-</span>
-
-
-    </p>
-    
-      <div class="sharing">
-  
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/05/oracle-net-services/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/05/oracle-net-services/" >Tweet</a>
-  
-  
-  
-</div>
-
-    
-    <p class="meta">
-      
-        <a class="basic-alignment left" href="/blog/2012/09/04/setup-octopress/" title="Previous Post: Octopress をセットアップ">&laquo; Octopress をセットアップ</a>
-      
-      
-    </p>
-  </footer>
-</article>
-
-</div>
-
-<aside class="sidebar">
-  
-    <section>
-  <h1>Recent Posts</h1>
-  <ul id="recent_posts">
-    
-      <li class="post">
-        <a href="/blog/2012/09/05/oracle-net-services/">[Oracle]ネットワーク構成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/04/setup-octopress/">Octopress をセットアップ</a>
-      </li>
-    
-  </ul>
-</section>
-
-
-
-
-
-
-  
-</aside>
-
-
-    </div>
-  </div>
-  <footer role="contentinfo"><p>
-  Copyright &copy; 2012 - Takashi Hashizume -
-  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
-</p>
-
-</footer>
-  
-
-
-
-
-
-
-
-  <script type="text/javascript">
-    (function(){
-      var twitterWidgets = document.createElement('script');
-      twitterWidgets.type = 'text/javascript';
-      twitterWidgets.async = true;
-      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
-      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
-    })();
-  </script>
-
-
-
-
-
-</body>
-</html>
+</feed>
