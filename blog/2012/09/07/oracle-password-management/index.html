@@ -1,0 +1,375 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] パスワードの管理 - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 パスワードを大文字・小文字の区別をするようにする。
+DB のパスワードについてはその他複雑なパスワードにするように強制する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-password-management/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] パスワードの管理</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T22:09:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>パスワードを大文字・小文字の区別をするようにする。
+DB のパスワードについてはその他複雑なパスワードにするように強制する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>管理者ガイド<br/>
+-> 1 データベース管理スタート・ガイド<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/dba007.htm#i1006789">パスワード・ファイルの作成とメンテナンス</a></p></li>
+<li><p>セキュリティ・ガイド<br/>
+-> 3 認証の構成<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#CHDJDCGI">パスワードでの大/小文字の区別の有効化または無効化</a><br/>
+<a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#i1007341">パスワードの複雑度検証の規定</a></p></li>
+</ul>
+
+
+<h2>SYSDBA でのログイン時のパスワード</h2>
+
+<p>SYSDBA でのログイン(SYS ユーザで as sysdba でのログイン)時のパスワードを大文字・小文字の区別させるためにパスワードファイル(<code>$ORACLE_HOME/dbs/orapw&lt;ORACLE_SID&gt;</code>)を再作成する。</p>
+
+<p><code>orapwd</code>を引数なしで実行すると、使い方が分かる。</p>
+
+<pre><code>$ orapwd
+Usage: orapwd file=&lt;fname&gt; entries=&lt;users&gt; force=&lt;y/n&gt; ignorecase=&lt;y/n&gt; nosysdba=&lt;y/n&gt;
+
+  where
+    file - name of password file (required),
+    password - password for SYS will be prompted if not specified at command line,
+    entries - maximum number of distinct DBA (optional),
+    force - whether to overwrite existing file (optional),
+    ignorecase - passwords are case-insensitive (optional),
+    nosysdba - whether to shut out the SYSDBA logon (optional Database Vault only).
+
+  There must be no spaces around the equal-to (=) character.
+</code></pre>
+
+<p><code>ignorecase=n</code> で再作成すれば大文字・小文字が区別される。
+ちなみにパスワードファイルのファイル名は <code>orapw&lt;ORACLE_SID&gt;</code> でなければならない。</p>
+
+<pre><code>$ cd $ORACLE_HOME/dbs
+$ rm orapwPROD1
+$ orapwd file=orapwPROD1 password=oracle ignorecase=n
+</code></pre>
+
+<p>大文字・小文字が区別されるか確認。</p>
+
+<pre><code>SQL&gt; connect sys/oracle@PROD1 as sysdba
+Connected.
+SQL&gt; connect sys/ORACLE@PROD1 as sysdba
+ERROR:
+ORA-01017: invalid username/password; logon denied
+
+
+Warning: You are no longer connected to ORACLE.
+</code></pre>
+
+<h2>DB ユーザのパスワード</h2>
+
+<h3>大文字・小文字の区別</h3>
+
+<p>DB ユーザのパスワードの大文字・小文字を区別するためには初期かパラメータ <code>SEC_CASE_SENSITIVE_LOGON</code> を <code>TRUE</code> にする。(デフォルトは <code>TRUE</code>)</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE;
+
+System altered.
+</code></pre>
+
+<h3>複雑なパスワードを強制</h3>
+
+<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> を実行することで、デフォルトのプロファイルを使用するユーザがパスワード変更する際に以下がチェックされるようになる。</p>
+
+<ul>
+<li>パスワードの長さが8文字以上30文字以内であること。</li>
+<li>パスワードがユーザー名と同一でないこと。ユーザー名のスペルを逆にしたり、ユーザー名に数字を追加したパスワードでないこと。</li>
+<li>サーバー名と同一であったり、サーバー名に数字1から100を追加したパスワードでないこと。</li>
+<li>単純なパスワードでないこと(例: welcome1、database1、account1、user1234、password1、oracle、oracle123、computer1、abcdefg1、change_on_install)。</li>
+<li>パスワードに少なくとも数字が1つと英字が1つ含まれていること。</li>
+<li>以前のパスワードとの違いが3文字以上あること。</li>
+</ul>
+
+
+<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> の内容を確認すると分かるように、パスワード検証関数 <code>verify_function_11G</code> が作成されてデフォルトプロファイル(<code>DEFAULT</code>)が変更されている。(パスワードの存続期間等も設定される)</p>
+
+<pre><code>$ cat $ORACLE_HOME/rdbms/admin/utlpwdmg.sql
+...(*snip*)
+
+-- This script sets the default password resource parameters
+-- This script needs to be run to enable the password features.
+-- However the default resource parameters can be changed based
+-- on the need.
+-- A default password complexity function is also provided.
+-- This function makes the minimum complexity checks like
+-- the minimum length of the password, password not same as the
+-- username, etc. The user may enhance this function according to
+-- the need.
+-- This function must be created in SYS schema.
+-- connect sys/&lt;password&gt; as sysdba before running the script
+
+CREATE OR REPLACE FUNCTION verify_function_11G
+...(*snip*)
+END;
+/
+
+-- This script alters the default parameters for Password Management
+-- This means that all the users on the system have Password Management
+-- enabled and set to the following values unless another profile is
+-- created with parameter values set to different value or UNLIMITED
+-- is created and assigned to the user.
+
+ALTER PROFILE DEFAULT LIMIT
+PASSWORD_LIFE_TIME 180
+PASSWORD_GRACE_TIME 7
+PASSWORD_REUSE_TIME UNLIMITED
+PASSWORD_REUSE_MAX UNLIMITED
+FAILED_LOGIN_ATTEMPTS 10
+PASSWORD_LOCK_TIME 1
+PASSWORD_VERIFY_FUNCTION verify_function_11G;
+...(*snip*)
+</code></pre>
+
+<p>ということで、<code>utlpwdmg.sql</code> を実行する。</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; @?/rdbms/admin/utlpwdmg.sql
+
+Function created.
+
+
+Profile altered.
+
+
+Function created.
+</code></pre>
+
+<p>他のプロファイルも変更する場合は、<code>ALTER PROFILE</code> を実行する必要がある。</p>
+
+<pre><code>SQL&gt; ALTER PROFILE &lt;profile名&gt; LIMIT
+     PWSSWORD_VERIFY_FUNCTION verify_function_11G;
+</code></pre>
+
+<p>実際にパスワードを変更してチェックに引っかかるか確認してみる。</p>
+
+<pre><code>SQL&gt; alter user scott identified by tiger;
+alter user scott identified by tiger
+*
+ERROR at line 1:
+ORA-28003: password verification for the specified password failed
+ORA-20001: Password length less than 8
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T22:09:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/07/oracle-password-management/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/07/oracle-password-management/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/" title="Previous Post: [Oracle] 自動診断リポジトリの設定">&laquo; [Oracle] 自動診断リポジトリの設定</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/05/oracle-net-services/">[Oracle] ネットワーク構成</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
