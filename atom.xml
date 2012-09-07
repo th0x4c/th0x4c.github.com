@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-07T19:06:10+09:00</updated>
+  <updated>2012-09-07T20:25:32+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,90 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] ダイレクト NFS クライアント]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/"/>
+    <updated>2012-09-07T19:24:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>インストレーション・ガイド for Linux<br/>
+-> 5 Oracle Databaseのインストール後の作業<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
+</ul>
+
+
+<h2>ダイレクト NFS クライアントの有効化</h2>
+
+<ul>
+<li>libodm11.so の置き換え</li>
+</ul>
+
+
+<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_on
+</code></pre>
+
+<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
+
+<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
+if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
+        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
+        fi
+rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>ダイレクト NFS クライアントの無効化</h2>
+
+<ul>
+<li>libodm11.so の置き換え</li>
+</ul>
+
+
+<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_off
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>確認方法</h2>
+
+<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
+
+<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] 暗号化された表領域の作成]]></title>
