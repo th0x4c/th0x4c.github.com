@@ -1,0 +1,362 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] EM エージェントのインストール - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 EM エージェントをインストールする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3)
+EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] EM エージェントのインストール</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T23:28:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>EM エージェントをインストールする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>EM エージェントのインストール</h2>
+
+<p>EM からインストールする。</p>
+
+<ul>
+<li>&#8220;デプロイ&#8221; タブから &#8220;エージェントのインストール&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;フレッシュ・インストール&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-2.png" width="720" height="450"></p>
+
+<ul>
+<li>以下のように設定
+
+<ul>
+<li>&#8220;ホスト・リストの指定&#8221; : DB サーバのホスト名</li>
+<li>&#8220;OS 資格証明&#8221; : DB サーバの OS ユーザ</li>
+<li>&#8220;root.sh の実行&#8221; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
+<li>&#8220;インストールのベース・ディレクトリ&#8221; : /u01/app/oracle/Middleware</li>
+<li>&#8220;管理サーバの登録パスワード&#8221; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
+</ul>
+</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-3.png" width="720" height="450">
+<img src="/images/2012-09-07-oracle-em-agent-installation/em-4.png" width="720" height="450">
+<img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&#8221; のチェックははずす。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-7.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール中</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-8.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール完了。&#8221;完了&#8221; をクリック。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-9.png" width="720" height="450"></p>
+
+<ul>
+<li>DB サーバ上で root.sh を実行する。</li>
+</ul>
+
+
+<p>DB サーバ上で実行。</p>
+
+<pre><code>$ cd /u01/app/oracle/Middleware/agent11g
+$ su
+# ./root.sh
+</code></pre>
+
+<h2>DB インスタンスを EM に登録する</h2>
+
+<p>EM エージェントをインストールしただけでは DB インスタンスのステータスが保留状態なので構成する必要がある。</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
+
+<ul>
+<li>DB インスタンスを選択して &#8220;構成&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-11.png" width="720" height="450"></p>
+
+<ul>
+<li>dbsnmp のパスワードを変更</li>
+</ul>
+
+
+<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &#8220;接続テスト&#8221; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-13.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
+
+<p>dbsnmp のパスワードを変更したらもう一度 &#8220;接続テスト&#8221; を行い成功することを確認して &#8220;次へ&#8221; をクリック</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
+
+<ul>
+<li>確認して &#8220;発行&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-16.png" width="720" height="450"></p>
+
+<ul>
+<li>構成中</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;OK&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-18.png" width="720" height="450"></p>
+
+<ul>
+<li>他の DB がある場合は同様に構成して、ステータスが正常になることを確認</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T23:28:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr1/'>11gR1</a>, <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/em/'>EM</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/07/oracle-password-management/" title="Previous Post: [Oracle] パスワードの管理">&laquo; [Oracle] パスワードの管理</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-em-agent-installation/">[Oracle] EM エージェントのインストール</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

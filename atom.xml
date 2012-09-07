@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-07T23:04:13+09:00</updated>
+  <updated>2012-09-08T01:21:27+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,160 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] EM エージェントのインストール]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/"/>
+    <updated>2012-09-07T23:28:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>EM エージェントをインストールする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>EM エージェントのインストール</h2>
+
+<p>EM からインストールする。</p>
+
+<ul>
+<li>&#8220;デプロイ&#8221; タブから &#8220;エージェントのインストール&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;フレッシュ・インストール&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-2.png" width="720" height="450"></p>
+
+<ul>
+<li>以下のように設定
+
+<ul>
+<li>&#8220;ホスト・リストの指定&#8221; : DB サーバのホスト名</li>
+<li>&#8220;OS 資格証明&#8221; : DB サーバの OS ユーザ</li>
+<li>&#8220;root.sh の実行&#8221; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
+<li>&#8220;インストールのベース・ディレクトリ&#8221; : /u01/app/oracle/Middleware</li>
+<li>&#8220;管理サーバの登録パスワード&#8221; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
+</ul>
+</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-3.png" width="720" height="450">
+<img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-4.png" width="720" height="450">
+<img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&#8221; のチェックははずす。</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-7.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール中</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-8.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール完了。&#8221;完了&#8221; をクリック。</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-9.png" width="720" height="450"></p>
+
+<ul>
+<li>DB サーバ上で root.sh を実行する。</li>
+</ul>
+
+
+<p>DB サーバ上で実行。</p>
+
+<pre><code>$ cd /u01/app/oracle/Middleware/agent11g
+$ su
+# ./root.sh
+</code></pre>
+
+<h2>DB インスタンスを EM に登録する</h2>
+
+<p>EM エージェントをインストールしただけでは DB インスタンスのステータスが保留状態なので構成する必要がある。</p>
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
+
+<ul>
+<li>DB インスタンスを選択して &#8220;構成&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-11.png" width="720" height="450"></p>
+
+<ul>
+<li>dbsnmp のパスワードを変更</li>
+</ul>
+
+
+<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &#8220;接続テスト&#8221; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-13.png" width="720" height="450"></p>
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
+
+<p>dbsnmp のパスワードを変更したらもう一度 &#8220;接続テスト&#8221; を行い成功することを確認して &#8220;次へ&#8221; をクリック</p>
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
+
+<ul>
+<li>確認して &#8220;発行&#8221;</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-16.png" width="720" height="450"></p>
+
+<ul>
+<li>構成中</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;OK&#8221;</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-18.png" width="720" height="450"></p>
+
+<ul>
+<li>他の DB がある場合は同様に構成して、ステータスが正常になることを確認</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] パスワードの管理]]></title>

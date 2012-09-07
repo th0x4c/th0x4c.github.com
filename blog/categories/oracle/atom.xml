@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Oracle | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/oracle/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-07T23:04:13+09:00</updated>
+  <updated>2012-09-08T01:21:27+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,160 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] EM エージェントのインストール]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/"/>
+    <updated>2012-09-07T23:28:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>EM エージェントをインストールする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>EM エージェントのインストール</h2>
+
+<p>EM からインストールする。</p>
+
+<ul>
+<li>"デプロイ" タブから "エージェントのインストール" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
+
+<ul>
+<li>"フレッシュ・インストール" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-2.png" width="720" height="450"></p>
+
+<ul>
+<li>以下のように設定
+
+<ul>
+<li>"ホスト・リストの指定" : DB サーバのホスト名</li>
+<li>"OS 資格証明" : DB サーバの OS ユーザ</li>
+<li>"root.sh の実行" のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
+<li>"インストールのベース・ディレクトリ" : /u01/app/oracle/Middleware</li>
+<li>"管理サーバの登録パスワード" : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
+</ul>
+</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-3.png" width="720" height="450">
+<img src="/images/2012-09-07-oracle-em-agent-installation/em-4.png" width="720" height="450">
+<img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
+
+<ul>
+<li>"セキュリティ・アップデートをMy Oracle Support経由で受け取ります。" のチェックははずす。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
+
+<ul>
+<li>"はい"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-7.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール中</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-8.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール完了。"完了" をクリック。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-9.png" width="720" height="450"></p>
+
+<ul>
+<li>DB サーバ上で root.sh を実行する。</li>
+</ul>
+
+
+<p>DB サーバ上で実行。</p>
+
+<pre><code>$ cd /u01/app/oracle/Middleware/agent11g
+$ su
+# ./root.sh
+</code></pre>
+
+<h2>DB インスタンスを EM に登録する</h2>
+
+<p>EM エージェントをインストールしただけでは DB インスタンスのステータスが保留状態なので構成する必要がある。</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
+
+<ul>
+<li>DB インスタンスを選択して "構成" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-11.png" width="720" height="450"></p>
+
+<ul>
+<li>dbsnmp のパスワードを変更</li>
+</ul>
+
+
+<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して "接続テスト" をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-13.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
+
+<p>dbsnmp のパスワードを変更したらもう一度 "接続テスト" を行い成功することを確認して "次へ" をクリック</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
+
+<ul>
+<li>確認して "発行"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-16.png" width="720" height="450"></p>
+
+<ul>
+<li>構成中</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
+
+<ul>
+<li>"OK"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-18.png" width="720" height="450"></p>
+
+<ul>
+<li>他の DB がある場合は同様に構成して、ステータスが正常になることを確認</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] パスワードの管理]]></title>
@@ -500,311 +654,6 @@ TEMP                 NO
 USERS                NO
 EXAMPLE              NO
 SECURESPACE          YES
-</code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] ネットワーク構成]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/05/oracle-net-services/"/>
-    <updated>2012-09-05T21:50:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/05/oracle-net-services</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Oracle DB にネットワーク接続できるように構成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>サーバー側のネットワーク構成</h2>
-
-<p><code>netca</code> により構成する。</p>
-
-<ul>
-<li><p><code>netca</code> を起動</p>
-
-<p>  $ netca</p></li>
-<li><p>"リスナー構成" を選択</p></li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-1.png" width="600" height="400"></p>
-
-<ul>
-<li>"追加"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-2.png" width="600" height="400"></p>
-
-<ul>
-<li>リスナー名の設定。今回はリスナー名はデフォルトの"LISTENER"のまま。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-3.png" width="600" height="400"></p>
-
-<ul>
-<li>プロトコルの選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-4.png" width="600" height="400"></p>
-
-<ul>
-<li>ポート番号の指定。今回は標準ポート 1521 を使用。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-5.png" width="600" height="400"></p>
-
-<ul>
-<li>"いいえ"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-6.png" width="600" height="400"></p>
-
-<ul>
-<li>"次へ"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-7.png" width="600" height="400"></p>
-
-<ul>
-<li>"完了"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-8.png" width="600" height="400"></p>
-
-<p>これでリスナーの設定ファイル <code>$ORACLE_HOME/network/admin/listener.ora</code> が作成される。</p>
-
-<pre><code>$ cat $ORACLE_HOME/network/admin/listener.ora
-# listener.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-# Generated by Oracle configuration tools.
-
-LISTENER =
-  (DESCRIPTION_LIST =
-    (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
-      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
-    )
-  )
-
-ADR_BASE_LISTENER = /u01/app/oracle
-</code></pre>
-
-<h2>クライアント側のネットワーク構成</h2>
-
-<p>同じく <code>netca</code> により構成する。</p>
-
-<ul>
-<li><p><code>netca</code> を起動</p>
-
-<p>  $ netca</p></li>
-<li><p>"ローカル・ネット・サービス名構成" を選択</p></li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-9.png" width="600" height="400"></p>
-
-<ul>
-<li>"追加"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-10.png" width="600" height="400"></p>
-
-<ul>
-<li>サービス名を設定。通常は DB のグローバル・データベース名(db_name.db_domain)を入力。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-11.png" width="600" height="400"></p>
-
-<ul>
-<li>プロトコルの選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-12.png" width="600" height="400"></p>
-
-<ul>
-<li>ホスト名, ポート番号を設定</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-13.png" width="600" height="400"></p>
-
-<ul>
-<li>接続テスト。今回は行わない。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-14.png" width="600" height="400"></p>
-
-<ul>
-<li>ネット・サービス名の設定。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-15.png" width="600" height="400"></p>
-
-<ul>
-<li>"いいえ"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-16.png" width="600" height="400"></p>
-
-<ul>
-<li>"次へ"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-17.png" width="600" height="400"></p>
-
-<ul>
-<li>"完了"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-18.png" width="600" height="400"></p>
-
-<p>これでクライアントのネットワーク設定ファイル <code>$ORACLE_HOME/network/admin/tnsnames.ora</code> が作成される。</p>
-
-<pre><code>$ cat $ORACLE_HOME/network/admin/tnsnames.ora 
-# tnsnames.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/tnsnames.ora
-# Generated by Oracle configuration tools.
-
-PROD1 =
-  (DESCRIPTION =
-    (ADDRESS_LIST =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
-    )
-    (CONNECT_DATA =
-      (SERVICE_NAME = PROD1.local)
-    )
-  )
-</code></pre>
-
-<h2>接続テスト</h2>
-
-<p>クライアントから DB にネットワーク接続できるか確認する。</p>
-
-<ul>
-<li>リスナーの起動</li>
-</ul>
-
-
-<p><code>lsnrctl start</code> を実行</p>
-
-<pre><code>$ lsnrctl start
-
-LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:02:48
-
-Copyright (c) 1991, 2011, Oracle.  All rights reserved.
-
-Starting /u01/app/oracle/product/11.2.0/dbhome_1/bin/tnslsnr: please wait...
-
-TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-System parameter file is /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Log messages written to /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-Start Date                05-SEP-2012 23:02:48
-Uptime                    0 days 0 hr. 0 min. 0 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-The listener supports no services
-The command completed successfully
-</code></pre>
-
-<ul>
-<li>DB インスタンスの起動</li>
-</ul>
-
-
-<p><code>sqlplus</code> からインスタンスの起動</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; startup
-</code></pre>
-
-<ul>
-<li>インスタンスがリスナーに登録されていることを確認</li>
-</ul>
-
-
-<p><code>lsnrctl status</code> でサービスが登録されていることを確認する。</p>
-
-<pre><code>$ lsnrctl status
-
-LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:05:17
-
-Copyright (c) 1991, 2011, Oracle.  All rights reserved.
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-Start Date                05-SEP-2012 23:02:48
-Uptime                    0 days 0 hr. 2 min. 28 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-Services Summary...
-Service "PROD1.local" has 1 instance(s).
-  Instance "PROD1", status READY, has 1 handler(s) for this service...
-Service "PROD1XDB.local" has 1 instance(s).
-  Instance "PROD1", status READY, has 1 handler(s) for this service...
-The command completed successfully
-</code></pre>
-
-<ul>
-<li>クライアントからネットワーク接続できることを確認</li>
-</ul>
-
-
-<p>クライアント側のネットワーク構成で指定したネット・サービス名で接続できることを確認する。</p>
-
-<pre><code>$ sqlplus scott/tiger@PROD1
-
-SQL*Plus: Release 11.2.0.3.0 Production on Wed Sep 5 23:07:13 2012
-
-Copyright (c) 1982, 2011, Oracle.  All rights reserved.
-
-
-Connected to:
-Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
-With the Partitioning, OLAP, Data Mining and Real Application Testing options
-
-SQL&gt; 
 </code></pre>
 ]]></content>
   </entry>
