@@ -9,8 +9,10 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: &hellip;">
+  <meta name="description" content="目的 Oracle Database のログ出力先を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
+-> 9 診断データの管理
+-> &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -63,6 +65,120 @@ DB: &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T21:27:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Oracle Database のログ出力先を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>管理者ガイド<br/>
+-> 9 診断データの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
+<li><p>リファレンス<br/>
+-> 1 初期化パラメータ<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
+<li><p>Net Services管理者ガイド<br/>
+-> 16 Oracle Net Servicesのトラブルシューティング<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
+</ul>
+
+
+<h2>設定</h2>
+
+<p>Oracle Database 11gR1 より、各種ログの出力先が&#8221;自動診断リポジトリ(Automatic Diagnostic Repository, ADR)&#8221;という構造になった。</p>
+
+<ul>
+<li>Oracle Database のログ</li>
+</ul>
+
+
+<p>Oracle Database のログの出力先は初期化パラメータ <code>DIAGNOSTIC_DEST</code> にて設定する。
+例えば、<code>/home/oracle</code> 配下に変更する場合は以下のようにパラメータ変更を行う。
+(動的に変更可能なので DB 再起動は不要。)</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; ALTER SYSTEM SET DIAGNOSTIC_DEST = "/home/oracle" SCOPE = BOTH;
+
+System altered.
+</code></pre>
+
+<p>指定したディレクトリ配下に <code>diag/rdbms</code> ディレクトリが作成され、その配下に alert.log やトレースが出力される。</p>
+
+<ul>
+<li>Listener のログ</li>
+</ul>
+
+
+<p>Listener のログ出力先は <code>listener.ora</code> 内の <code>ADR_BASE_&lt;リスナー名&gt;</code> で設定する。</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/listener.ora # 以下を編集 or 追加
+ADR_BASE_LISTENER = /home/oracle
+</code></pre>
+
+<p>設定を反映させるために Listener を再起動</p>
+
+<pre><code>$ lsnrctl stop
+$ lsnrctl start
+</code></pre>
+
+<p>これで、指定したディレクトリ配下に <code>diag/tnslsnr</code> ディレクトリができて、その配下に listener.log が出力される。</p>
+
+<ul>
+<li>Oracle Net Client のログ</li>
+</ul>
+
+
+<p>Oracle Net Client のログは <code>sqlnet.ora</code> 内の <code>ADR_BASE</code> パラメータで設定する。</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora # 以下を編集 or 追加
+ADR_BASE = /home/oracle
+</code></pre>
+
+<p>これで、ログ出力時は指定したディレクトリ配下に <code>diag/clients</code> ディレクトリができて、そこに出力される。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -857,6 +973,10 @@ $ jruby -S gen_deploy
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a>
