@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 マルチセクション・バックアップにより効率的にバックアップを行う。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップおよびリカバリ・ユーザーズ・ガイド
--> &hellip;">
+  <meta name="description" content="目的 RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +63,153 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップ�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-archival-backup/">[Oracle] アーカイブ・バックアップの作成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T04:16:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 9 データベースのバックアップ<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
+</ul>
+
+
+<h2>アーカイブ・バックアップの作成</h2>
+
+<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。これは <code>DELETE OBSOLETE</code> しても削除されないバックアップになる。</p>
+
+<p><code>BACKUP ... KEEP</code> によりアーカイブ・バックアップが作成される。</p>
+
+<ul>
+<li><strong>注意</strong>
+
+<ul>
+<li><strong><code>KEEP FOREVER</code> の場合にはリカバリ・カタログが必要。</strong></li>
+<li><strong>アーカイブ・バックアップは初期化パラメータ <code>DB_RECOVERY_FILE_DEST</code> で指定したディレクトリ(高速リカバリ領域)以外に保存する必要がある。</strong>
+もし、保存先を高速リカバリ領域のままにしていると、<code>ORA-19811: cannot have files in DB_RECOVERY_FILE_DEST with keep attributes</code> が発生して失敗する。
+保存先は <code>FORMAT</code> で指定できる。</li>
+</ul>
+</li>
+</ul>
+
+
+<p>以下の例では、タグと通常のリストア・ポイントを指定して、アーカイブ・バックアップを作成している。</p>
+
+<pre><code>RMAN&gt; BACKUP DATABASE
+      FORMAT '/home/oracle/backup/%U'
+      TAG quarterly
+      KEEP FOREVER
+      RESTORE POINT FY12Q3;
+
+Starting backup at 12-09-09
+current log archived
+
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00001 name=/u01/app/oracle/oradata/PROD1/system01.dbf
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00002 name=/u01/app/oracle/oradata/PROD1/sysaux01.dbf
+input datafile file number=00003 name=/u01/app/oracle/oradata/PROD1/undotbs01.dbf
+input datafile file number=00004 name=/u01/app/oracle/oradata/PROD1/users01.dbf
+channel ORA_DISK_2: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2mnko5ao_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:07
+channel ORA_DISK_2: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2nnko5ao_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:07
+
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+including current SPFILE in backup set
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2onko5av_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+
+
+current log archived
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting archived log backup set
+channel ORA_DISK_1: specifying archived log(s) in backup set
+input archived log thread=1 sequence=10 RECID=3 STAMP=793515360
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2pnko5b1_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+including current control file in backup set
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2qnko5b3_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+Finished backup at 12-09-09
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1649,166 +1795,9 @@ SQL&gt;
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/04/setup-octopress/">Octopress をセットアップ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-04T23:15:00+09:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
-<a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
-ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
-
-<h2>使用マシン</h2>
-
-<ul>
-<li>MacBook Pro Retina ディスプレイモデル(Mid 2012)</li>
-<li>Mountain Lion (OS X 10.8.1)</li>
-</ul>
-
-
-<h2>JRuby のインストール</h2>
-
-<p>~/local 配下に zip を解凍してインストール</p>
-
-<pre><code>$ cd ~/local/
-$ curl -O http://jruby.org.s3.amazonaws.com/downloads/1.7.0.preview2/jruby-bin-1.7.0.preview2.zip
-$ unzip jruby-bin-1.7.0.preview2.zip
-$ cd ~/local/bin/
-$ ln -s ../jruby-1.7.0.preview2/bin/jruby .
-</code></pre>
-
-<h2>Octopress のセットアップ</h2>
-
-<p><a href="http://octopress.org/docs/setup/">Octopress のセットアップ手順</a> に従う。</p>
-
-<pre><code>$ cd ~/Documents/
-$ git clone git://github.com/imathis/octopress.git octopress
-$ cd octopress/
-$ jruby -S gem install bundler
-expr: syntax error
-Fetching gem metadata from http://rubygems.org/.......
-Using rake (0.9.2.2)
-Using RedCloth (4.2.9)
-Installing posix-spawn (0.3.6) with native extensions
-Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension.
-
-        /Users/hashi/local/bin/../jruby-1.7.0.preview2/bin/jruby extconf.rb
-NotImplementedError: C extension support is not enabled. Pass -Xcext.enabled=true to JRuby or set JRUBY_OPTS or modify .jrubyrc to enable.
-
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/mkmf.rb:8
-  require at org/jruby/RubyKernel.java:1024
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/rubygems/custom_require.rb:1
-   (root) at extconf.rb:1
-
-
-Gem files will remain installed in /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6 for inspection.
-Results logged to /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6/ext/gem_make.out
-An error occurred while installing posix-spawn (0.3.6), and Bundler cannot continue.
-Make sure that `gem install posix-spawn -v '0.3.6'` succeeds before bundling.
-</code></pre>
-
-<p>なんかエラーとなったので、エラーメッセージの指示通りに <code>JRUBY_OPTS</code> を設定したらうまくいった。</p>
-
-<pre><code>$ export JRUBY_OPTS="-Xcext.enabled=true"
-$ jruby -S bundle install
-$ jruby -S rake install
-</code></pre>
-
-<p>追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
-(もちろん、JRuby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
-
-<pre><code>$ cd ~/local/bin
-$ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
-$ ln -s ../jruby-1.7.0.preview2/bin/compass .
-$ ln -s ../jruby-1.7.0.preview2/bin/rackup .
-</code></pre>
-
-<h2>Github Pages の設定</h2>
-
-<p>引き続き <a href="http://octopress.org/docs/deploying/github/">Octopress の Github Pages へのデプロイ手順</a> に従う。
-まず、<code>username.github.com</code> というレポジトリを<a href="https://github.com/repositories/new">新規で作成</a>する。
-ここで、次の <code>rake setup_github_pages</code> の <code>Repository url:</code> で HTTPS での指定(<code>https://github.com/username/username.github.com.git</code>)ができなかったため、レポジトリに <a href="https://help.github.com/articles/generating-ssh-keys">SSH key でのアクセス設定</a>した上で、<code>git@github.com:username/username.github.com.git</code> を指定する必要があった。</p>
-
-<pre><code>$ cd ~/Documents/octopress
-$ jruby -S rake setup_github_pages
-expr: syntax error
-Enter the read/write url for your repository
-(For example, 'git@github.com:your_username/your_username.github.com)
-Repository url: git@github.com:th0x4c/th0x4c.github.com.git
-...
-</code></pre>
-
-<p>これで次のことが行われるとのこと。</p>
-
-<ol>
-<li>Ask you for your Github Pages repository url.</li>
-<li>Rename the remote pointing to imathis/octopress from ‘origin’ to ‘octopress’</li>
-<li>Add your Github Pages repository as the default origin remote.</li>
-<li>Switch the active branch from master to source.</li>
-<li>Configure your blog’s url according to your repository.</li>
-<li>Setup a master branch in the _deploy directory for deployment.</li>
-</ol>
-
-
-<p>最後に以下を実行すれば <code>_deploy/</code> ディレクトリにファイルが生成され、Github のレポジトリに push され、Github Pages に反映される。</p>
-
-<pre><code>$ jruby -S rake generate
-$ jruby -S rake deploy
-</code></pre>
-
-<p>あとは、Octopress の以下のページを参照のこと。</p>
-
-<ul>
-<li><a href="http://octopress.org/docs/configuring/">Configure your blog</a></li>
-</ul>
-
-
-<p>とりあえず、<code>_config.yml</code> の <code>title:</code>, <code>author:</code> ぐらいを変更した。</p>
-
-<h2>ブログ発行</h2>
-
-<p><a href="http://octopress.org/docs/blogging/">Start blogging with Octopress</a>を参照。</p>
-
-<p>基本的に <code>rake new_post["Zombie Ninjas Attack: A survivor's retrospective"]</code> (<code>Zombie ...</code>はタイトル)を実行して、<code>source/_posts</code> 配下のファイルを編集すればよい。</p>
-
-<p><code>rake preview</code> で <code>http://localhost:4000</code> でプレビューを確認して、<code>rake gen_deploy</code> で Github Pages にデプロイ。</p>
-
-<pre><code>$ jruby -S rake new_post["Setup Octopress"]
-$ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
-$ jruby -S rake preview
-$ jruby -S gen_deploy
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/2/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -1819,6 +1808,10 @@ $ jruby -S gen_deploy
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/09/oracle-archival-backup/">[Oracle] アーカイブ・バックアップの作成</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/09/09/oracle-multisection-backup/">[Oracle] マルチセクション・バックアップ</a>
@@ -1834,10 +1827,6 @@ $ jruby -S gen_deploy
     
       <li class="post">
         <a href="/blog/2012/09/07/oracle-em-agent-installation/">[Oracle] EM エージェントのインストール</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a>
       </li>
     
   </ul>
