@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] マルチセクション・バックアップ - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 マルチセクション・バックアップにより効率的にバックアップを行う。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップおよびリカバリ・ユーザーズ・ガイド
+-> &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-multisection-backup/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] マルチセクション・バックアップ</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T03:25:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>マルチセクション・バックアップにより効率的にバックアップを行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 10 データベースのバックアップ: 高度なトピック<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckad.htm#CHDBAHAD">セクションへの大規模なデータファイルのバックアップの分割</a></li>
+</ul>
+
+
+<h2>マルチセクション・バックアップの実行</h2>
+
+<p>マルチセクション・バックアップにより、ファイルサイズが大きいデータ・ファイルを複数のバックアップ・ピースに分割してバックアップすることができる。パラレル化の設定がされていれば、複数のチャネルを使用して平行でバックアップされるためパフォーマンスが向上する。</p>
+
+<p>マルチセクション・バックアップを行うためには、<code>SECTION SIZE</code> パラメータを指定して <code>BACKUP</code> を実行すればよい。</p>
+
+<ul>
+<li>必要に応じて、パラレル化の設定をする。(パラレル化の設定がされていないとマルチセクション・バックアップを実施しても複数バックアップ・ピースに分割されるがシリアルにバックアップされてあまり意味がない。)</li>
+</ul>
+
+
+<p><code>CONFIGURE</code> コマンドで設定</p>
+
+<pre><code>RMAN&gt; CONFIGURE DEVICE TYPE DISK PARALLELISM 2;
+
+new RMAN configuration parameters:
+CONFIGURE DEVICE TYPE DISK PARALLELISM 2 BACKUP TYPE TO BACKUPSET;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<ul>
+<li>マルチセクション・バックアップ実施</li>
+</ul>
+
+
+<p>以下の例では 約 350M の 1 つデータファイルからなる example 表領域のバックアップを行っている。パラレル度を 2 にしたので、チャネルが 2 つ(<code>ORA_DISK_1</code> と <code>ORA_DISK_2</code>)割り当てられてパラレルで動作する。また、セクションサイズを 100M で指定したので、データファイルを 100M に分けて 4 つのバックアップ・ピースでバックアップしている。(1 つのピースは 12800 blocks * 8k = 100M)</p>
+
+<pre><code>RMAN&gt; BACKUP
+      SECTION SIZE 100M
+      TABLESPACE example;
+
+Starting backup at 12-09-09
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=145 device type=DISK
+allocated channel: ORA_DISK_2
+channel ORA_DISK_2: SID=140 device type=DISK
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 1 through 12800
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 12801 through 25600
+channel ORA_DISK_2: starting piece 2 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 25601 through 38400
+channel ORA_DISK_1: starting piece 3 at 12-09-09
+channel ORA_DISK_2: finished piece 2 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 38401 through 44240
+channel ORA_DISK_2: starting piece 4 at 12-09-09
+channel ORA_DISK_1: finished piece 3 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:02
+channel ORA_DISK_2: finished piece 4 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
+Finished backup at 12-09-09
+</code></pre>
+
+<p>バックアップの確認。確かに 4 つのバックアップ・ピースに分かれている。</p>
+
+<pre><code>RMAN&gt; list backup;
+...(*snip*)
+
+BS Key  Type LV Size       Device Type Elapsed Time Completion Time
+------- ---- -- ---------- ----------- ------------ ---------------
+956     Full    69.01M     DISK        00:00:02     12-09-09
+  List of Datafiles in backup set 956
+  File LV Type Ckp SCN    Ckp Time Name
+  ---- -- ---- ---------- -------- ----
+  5       Full 1160848    12-09-09 /u01/app/oracle/oradata/PROD1/example01.dbf
+
+  Backup Set Copy #1 of backup set 956
+  Device Type Elapsed Time Completion Time Compressed Tag
+  ----------- ------------ --------------- ---------- ---
+  DISK        00:00:02     12-09-09        NO         TAG20120909T035001
+
+    List of Backup Pieces for backup set 956 Copy #1
+    BP Key  Pc# Status      Piece Name
+    ------- --- ----------- ----------
+    958     1   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp
+    959     2   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp
+    960     3   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp
+    961     4   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T03:25:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/09/oracle-multisection-backup/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/09/oracle-multisection-backup/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/09/oracle-configure-rman/" title="Previous Post: [Oracle] RMAN の構成">&laquo; [Oracle] RMAN の構成</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/09/oracle-multisection-backup/">[Oracle] マルチセクション・バックアップ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/09/oracle-configure-rman/">[Oracle] RMAN の構成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/08/oracle-setup-recovery-catalog/">[Oracle] リカバリ・カタログのセットアップ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-em-agent-installation/">[Oracle] EM エージェントのインストール</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

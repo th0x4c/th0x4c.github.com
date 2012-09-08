@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Oracle | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/oracle/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-09T03:22:23+09:00</updated>
+  <updated>2012-09-09T04:07:53+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,134 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] マルチセクション・バックアップ]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-multisection-backup/"/>
+    <updated>2012-09-09T03:25:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-multisection-backup</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>マルチセクション・バックアップにより効率的にバックアップを行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 10 データベースのバックアップ: 高度なトピック<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckad.htm#CHDBAHAD">セクションへの大規模なデータファイルのバックアップの分割</a></li>
+</ul>
+
+
+<h2>マルチセクション・バックアップの実行</h2>
+
+<p>マルチセクション・バックアップにより、ファイルサイズが大きいデータ・ファイルを複数のバックアップ・ピースに分割してバックアップすることができる。パラレル化の設定がされていれば、複数のチャネルを使用して平行でバックアップされるためパフォーマンスが向上する。</p>
+
+<p>マルチセクション・バックアップを行うためには、<code>SECTION SIZE</code> パラメータを指定して <code>BACKUP</code> を実行すればよい。</p>
+
+<ul>
+<li>必要に応じて、パラレル化の設定をする。(パラレル化の設定がされていないとマルチセクション・バックアップを実施しても複数バックアップ・ピースに分割されるがシリアルにバックアップされてあまり意味がない。)</li>
+</ul>
+
+
+<p><code>CONFIGURE</code> コマンドで設定</p>
+
+<pre><code>RMAN&gt; CONFIGURE DEVICE TYPE DISK PARALLELISM 2;
+
+new RMAN configuration parameters:
+CONFIGURE DEVICE TYPE DISK PARALLELISM 2 BACKUP TYPE TO BACKUPSET;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<ul>
+<li>マルチセクション・バックアップ実施</li>
+</ul>
+
+
+<p>以下の例では 約 350M の 1 つデータファイルからなる example 表領域のバックアップを行っている。パラレル度を 2 にしたので、チャネルが 2 つ(<code>ORA_DISK_1</code> と <code>ORA_DISK_2</code>)割り当てられてパラレルで動作する。また、セクションサイズを 100M で指定したので、データファイルを 100M に分けて 4 つのバックアップ・ピースでバックアップしている。(1 つのピースは 12800 blocks * 8k = 100M)</p>
+
+<pre><code>RMAN&gt; BACKUP
+      SECTION SIZE 100M
+      TABLESPACE example;
+
+Starting backup at 12-09-09
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=145 device type=DISK
+allocated channel: ORA_DISK_2
+channel ORA_DISK_2: SID=140 device type=DISK
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 1 through 12800
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 12801 through 25600
+channel ORA_DISK_2: starting piece 2 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 25601 through 38400
+channel ORA_DISK_1: starting piece 3 at 12-09-09
+channel ORA_DISK_2: finished piece 2 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 38401 through 44240
+channel ORA_DISK_2: starting piece 4 at 12-09-09
+channel ORA_DISK_1: finished piece 3 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:02
+channel ORA_DISK_2: finished piece 4 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
+Finished backup at 12-09-09
+</code></pre>
+
+<p>バックアップの確認。確かに 4 つのバックアップ・ピースに分かれている。</p>
+
+<pre><code>RMAN&gt; list backup;
+...(*snip*)
+
+BS Key  Type LV Size       Device Type Elapsed Time Completion Time
+------- ---- -- ---------- ----------- ------------ ---------------
+956     Full    69.01M     DISK        00:00:02     12-09-09
+  List of Datafiles in backup set 956
+  File LV Type Ckp SCN    Ckp Time Name
+  ---- -- ---- ---------- -------- ----
+  5       Full 1160848    12-09-09 /u01/app/oracle/oradata/PROD1/example01.dbf
+
+  Backup Set Copy #1 of backup set 956
+  Device Type Elapsed Time Completion Time Compressed Tag
+  ----------- ------------ --------------- ---------- ---
+  DISK        00:00:02     12-09-09        NO         TAG20120909T035001
+
+    List of Backup Pieces for backup set 956 Copy #1
+    BP Key  Pc# Status      Piece Name
+    ------- --- ----------- ----------
+    958     1   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp
+    959     2   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp
+    960     3   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp
+    961     4   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] RMAN の構成]]></title>
@@ -593,93 +721,6 @@ ERROR at line 1:
 ORA-28003: password verification for the specified password failed
 ORA-20001: Password length less than 8
 </code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] 自動診断リポジトリの設定]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/07/oracle-automatic-diagnostic-repository/"/>
-    <updated>2012-09-07T21:27:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/07/oracle-automatic-diagnostic-repository</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Oracle Database のログ出力先を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>管理者ガイド<br/>
--> 9 診断データの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
-<li><p>リファレンス<br/>
--> 1 初期化パラメータ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
-<li><p>Net Services管理者ガイド<br/>
--> 16 Oracle Net Servicesのトラブルシューティング<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
-</ul>
-
-
-<h2>設定</h2>
-
-<p>Oracle Database 11gR1 より、各種ログの出力先が"自動診断リポジトリ(Automatic Diagnostic Repository, ADR)"という構造になった。</p>
-
-<ul>
-<li>Oracle Database のログ</li>
-</ul>
-
-
-<p>Oracle Database のログの出力先は初期化パラメータ <code>DIAGNOSTIC_DEST</code> にて設定する。
-例えば、<code>/home/oracle</code> 配下に変更する場合は以下のようにパラメータ変更を行う。
-(動的に変更可能なので DB 再起動は不要。)</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; ALTER SYSTEM SET DIAGNOSTIC_DEST = "/home/oracle" SCOPE = BOTH;
-
-System altered.
-</code></pre>
-
-<p>指定したディレクトリ配下に <code>diag/rdbms</code> ディレクトリが作成され、その配下に alert.log やトレースが出力される。</p>
-
-<ul>
-<li>Listener のログ</li>
-</ul>
-
-
-<p>Listener のログ出力先は <code>listener.ora</code> 内の <code>ADR_BASE_&lt;リスナー名&gt;</code> で設定する。</p>
-
-<pre><code>$ vi $ORACLE_HOME/network/admin/listener.ora # 以下を編集 or 追加
-ADR_BASE_LISTENER = /home/oracle
-</code></pre>
-
-<p>設定を反映させるために Listener を再起動</p>
-
-<pre><code>$ lsnrctl stop
-$ lsnrctl start
-</code></pre>
-
-<p>これで、指定したディレクトリ配下に <code>diag/tnslsnr</code> ディレクトリができて、その配下に listener.log が出力される。</p>
-
-<ul>
-<li>Oracle Net Client のログ</li>
-</ul>
-
-
-<p>Oracle Net Client のログは <code>sqlnet.ora</code> 内の <code>ADR_BASE</code> パラメータで設定する。</p>
-
-<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora # 以下を編集 or 追加
-ADR_BASE = /home/oracle
-</code></pre>
-
-<p>これで、ログ出力時は指定したディレクトリ配下に <code>diag/clients</code> ディレクトリができて、そこに出力される。</p>
 ]]></content>
   </entry>
   
