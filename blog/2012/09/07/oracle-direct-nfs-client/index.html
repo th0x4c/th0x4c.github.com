@@ -113,7 +113,8 @@ DB: &hellip;">
 <h2>ダイレクト NFS クライアントの有効化</h2>
 
 <ul>
-<li>libodm11.so の置き換え</li>
+<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
+<li><p>libodm11.so の置き換え</p></li>
 </ul>
 
 
@@ -228,6 +229,10 @@ $ make -f ins_rdbms.mk dnfs_off
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/09/oracle-configure-rman/">[Oracle] RMAN の構成</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/08/oracle-setup-recovery-catalog/">[Oracle] リカバリ・カタログのセットアップ</a>
       </li>
     
@@ -241,10 +246,6 @@ $ make -f ins_rdbms.mk dnfs_off
     
       <li class="post">
         <a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a>
       </li>
     
   </ul>

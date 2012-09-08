@@ -4,7 +4,7 @@
   <title><![CDATA[Category: DB | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/db/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-09T00:48:42+09:00</updated>
+  <updated>2012-09-09T03:20:04+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,115 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] RMAN の構成]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-configure-rman/"/>
+    <updated>2012-09-09T01:47:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-configure-rman</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>RMAN の構成を変更して、以下ができるようにする。</p>
+
+<ul>
+<li>制御ファイルと SPFILE の自動バックアップ取得</li>
+<li>バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)</li>
+<li>ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、増分バックアップ時のパフォーマンスが向上する。)</li>
+</ul>
+
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 5 Recovery Manager環境の構成<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1019739">Recovery Managerの永続的な構成の表示およびクリア</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1017907">制御ファイルおよびサーバー・パラメータ・ファイルの自動バックアップの構成</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#sthref449">バックアップの最適化の構成</a></p>
+
+<p>-> 9 データベースのバックアップ<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#sthref883">ブロック・チェンジ・トラッキングの有効化および無効化</a></p></li>
+</ul>
+
+
+<h2>RMAN 構成の確認</h2>
+
+<p>現在の RMAN 構成は <code>show all</code> にて確認できる。</p>
+
+<pre><code>$ rman target / catalog rman/rman@EMREP
+RMAN&gt; show all;
+
+RMAN configuration parameters for database with db_unique_name PROD1 are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
+</code></pre>
+
+<h2>制御ファイル, SPFILE の自動バックアップ</h2>
+
+<p><code>BACKUP</code> コマンドが実行されるときに、制御ファイルと SPFILE も自動的にバックアップするように設定する。</p>
+
+<pre><code>RMAN&gt; CONFIGURE CONTROLFILE AUTOBACKUP ON;
+
+new RMAN configuration parameters:
+CONFIGURE CONTROLFILE AUTOBACKUP ON;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<h2>バックアップの最適化</h2>
+
+<p>バックアップの最適化を有効にすると、保存方針によって同一ファイルの不要なバックアップをしなくなる。例えば、保存方針が <code>REDUNDANCY 1</code> として USERS 表領域を READ ONLY にして、<code>BACKUP DATABASE</code> を実行すると USERS 表領域のバックアップは 2 つ(REDUNDANCY + 1)あればよいので、3 回目以降の <code>BACKUP DATABASE</code> では USERS 表領域のバックアップが取得されなくなる。</p>
+
+<pre><code>RMAN&gt; CONFIGURE BACKUP OPTIMIZATION ON;
+
+new RMAN configuration parameters:
+CONFIGURE BACKUP OPTIMIZATION ON;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<h2>ブロック・チェンジ・トラッキングを有効化</h2>
+
+<p>DB で変更されたブロックをブロック・チェンジ・トラッキング・ファイル上に記録するようにする。このことで、増分バックアップ時に変更があったブロックだけを読むだけでよくなり、データファイルのすべてのブロックの読み込みが不要になり、パフォーマンスが向上する。</p>
+
+<p>マニュアルでは <code>DB_CREATE_FILE_DEST</code> の設定の記載があるが、ブロック・チェンジ・トラッキング・ファイルのパスをフルパスで指定する場合は <code>DB_CREATE_FILE_DEST</code> の設定は不要。</p>
+
+<pre><code>SQL&gt; ALTER DATABASE ENABLE BLOCK CHANGE TRACKING
+     USING FILE '/u01/app/oracle/oradata/PROD1/rman_change_track.f' REUSE;
+
+Database altered.
+
+SQL&gt; SELECT STATUS, FILENAME
+     FROM V$BLOCK_CHANGE_TRACKING;
+
+STATUS   FILENAME
+-------- ------------------------------------------------------------
+ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] リカバリ・カタログのセットアップ]]></title>
@@ -571,90 +680,6 @@ ADR_BASE = /home/oracle
 </code></pre>
 
 <p>これで、ログ出力時は指定したディレクトリ配下に <code>diag/clients</code> ディレクトリができて、そこに出力される。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] ダイレクト NFS クライアント]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/"/>
-    <updated>2012-09-07T19:24:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>OS の NFS クライアントのかわりに、Oracle の"ダイレクト NFS クライアント"を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>インストレーション・ガイド for Linux<br/>
--> 5 Oracle Databaseのインストール後の作業<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
-</ul>
-
-
-<h2>ダイレクト NFS クライアントの有効化</h2>
-
-<ul>
-<li>libodm11.so の置き換え</li>
-</ul>
-
-
-<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_on
-</code></pre>
-
-<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
-
-<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
-if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
-        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
-        fi
-rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>ダイレクト NFS クライアントの無効化</h2>
-
-<ul>
-<li>libodm11.so の置き換え</li>
-</ul>
-
-
-<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_off
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>確認方法</h2>
-
-<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
-
-<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
-</code></pre>
 ]]></content>
   </entry>
   
