@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: 11gR2 | th0x4c 備忘録]]></title>
-  <link href="http://th0x4c.github.com/blog/categories/11gr2/atom.xml" rel="self"/>
+  <title><![CDATA[Category: Data Guard | th0x4c 備忘録]]></title>
+  <link href="http://th0x4c.github.com/blog/categories/data-guard/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
   <updated>2012-09-09T23:22:28+09:00</updated>
   <id>http://th0x4c.github.com/</id>

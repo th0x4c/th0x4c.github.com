@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Oracle | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/oracle/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-09T23:16:37+09:00</updated>
+  <updated>2012-09-09T23:22:28+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -97,6 +97,96 @@ new RMAN configuration parameters are successfully stored
 new RMAN configuration parameters:
 CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
 new RMAN configuration parameters are successfully stored
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard リアルタイム問い合わせ]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-real-time-query/"/>
+    <updated>2012-09-09T22:28:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-real-time-query</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard の "リアルタイム問い合わせ" 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>リアルタイム問い合わせ</h2>
+
+<p>Data Guard の "リアルタイム問い合わせ" 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
+
+<p>今回は EM Grid Control を使用してこの機能を有効にする。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>"リアルタイム問い合わせ" の "無効" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-1.png" width="720" height="450"></p>
+
+<ul>
+<li>"リアルタイム問い合わせの有効化" をチェックして、"適用" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 正常に適用された</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-4.png" width="720" height="450"></p>
+
+<ul>
+<li>Data Guard の構成画面に戻るとロールが "リアルタイム問い合わせ" の "有効" になっている</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-5.png" width="720" height="450"></p>
+
+<p>実際にスタンバイ DB に接続すると、SELECT が実行可能でプライマリの変更が REDO 適用された時点で即時反映されることが確認できる。</p>
+
+<pre><code>SQL&gt; connect scott/tiger@PROD1 -- プライマリに接続
+Connected.
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+
+SQL&gt; connect scott/tiger@STDBY1_DGMGRL -- スタンバイに接続
+Connected.
+SQL&gt; SELECT * FROM emp2 WHERE ROWNUM = 1; -- プライマリの更新が反映されている
+
+     EMPNO ENAME                          JOB                                MGR
+---------- ------------------------------ --------------------------- ----------
+HIREDATE        SAL       COMM     DEPTNO
+-------- ---------- ---------- ----------
+      7369 SMITH                          CLERK                             7902
+80-12-17        800                    20
+
+
+SQL&gt; UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369; -- スタンバイの更新はできない
+UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369
+       *
+ERROR at line 1:
+ORA-16000: database open for read-only access
 </code></pre>
 ]]></content>
   </entry>
@@ -371,126 +461,6 @@ Table created.
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-15.png" width="720" height="450"></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] アーカイブ・バックアップの作成]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-archival-backup/"/>
-    <updated>2012-09-09T04:16:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-archival-backup</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 9 データベースのバックアップ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
-</ul>
-
-
-<h2>アーカイブ・バックアップの作成</h2>
-
-<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。これは <code>DELETE OBSOLETE</code> しても削除されないバックアップになる。</p>
-
-<p><code>BACKUP ... KEEP</code> によりアーカイブ・バックアップが作成される。</p>
-
-<ul>
-<li><strong>注意</strong>
-
-<ul>
-<li><strong><code>KEEP FOREVER</code> の場合にはリカバリ・カタログが必要。</strong></li>
-<li><strong>アーカイブ・バックアップは初期化パラメータ <code>DB_RECOVERY_FILE_DEST</code> で指定したディレクトリ(高速リカバリ領域)以外に保存する必要がある。</strong>
-もし、保存先を高速リカバリ領域のままにしていると、<code>ORA-19811: cannot have files in DB_RECOVERY_FILE_DEST with keep attributes</code> が発生して失敗する。
-保存先は <code>FORMAT</code> で指定できる。</li>
-</ul>
-</li>
-</ul>
-
-
-<p>以下の例では、タグと通常のリストア・ポイントを指定して、アーカイブ・バックアップを作成している。</p>
-
-<pre><code>RMAN&gt; BACKUP DATABASE
-      FORMAT '/home/oracle/backup/%U'
-      TAG quarterly
-      KEEP FOREVER
-      RESTORE POINT FY12Q3;
-
-Starting backup at 12-09-09
-current log archived
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-input datafile file number=00001 name=/u01/app/oracle/oradata/PROD1/system01.dbf
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_2: starting full datafile backup set
-channel ORA_DISK_2: specifying datafile(s) in backup set
-input datafile file number=00002 name=/u01/app/oracle/oradata/PROD1/sysaux01.dbf
-input datafile file number=00003 name=/u01/app/oracle/oradata/PROD1/undotbs01.dbf
-input datafile file number=00004 name=/u01/app/oracle/oradata/PROD1/users01.dbf
-channel ORA_DISK_2: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2mnko5ao_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:07
-channel ORA_DISK_2: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2nnko5ao_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_2: backup set complete, elapsed time: 00:00:07
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-including current SPFILE in backup set
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2onko5av_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-
-
-current log archived
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting archived log backup set
-channel ORA_DISK_1: specifying archived log(s) in backup set
-input archived log thread=1 sequence=10 RECID=3 STAMP=793515360
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2pnko5b1_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-including current control file in backup set
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2qnko5b3_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-Finished backup at 12-09-09
-</code></pre>
 ]]></content>
   </entry>
   
