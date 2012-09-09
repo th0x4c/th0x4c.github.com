@@ -5,12 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>[Oracle] ダイレクト NFS クライアント - th0x4c 備忘録</title>
+  <title>[Oracle] Data Guard スナップショット・スタンバイ・データベース - th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: &hellip;">
+  <meta name="description" content="目的 Data Guard のスナップショット・スタンバイ・データベースを利用して、スタンバイ DB を一時的に更新可能にする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3)
+EM: &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -19,7 +20,7 @@ DB: &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -66,7 +67,7 @@ DB: &hellip;">
   
   <header>
     
-      <h1 class="entry-title">[Oracle] ダイレクト NFS クライアント</h1>
+      <h1 class="entry-title">[Oracle] Data Guard スナップショット・スタンバイ・データベース</h1>
     
     
       <p class="meta">
@@ -82,7 +83,7 @@ DB: &hellip;">
   
 
 
-<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+<time datetime="2012-09-09T21:51:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
         
       </p>
     
@@ -91,81 +92,71 @@ DB: &hellip;">
 
 <div class="entry-content"><h2>目的</h2>
 
-<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
+<p>Data Guard のスナップショット・スタンバイ・データベースを利用して、スタンバイ DB を一時的に更新可能にする。</p>
 
 <h2>環境</h2>
 
 <ul>
 <li>OS: Oracle Enterprise Linux 5.8</li>
 <li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
 </ul>
 
 
-<h2>マニュアル</h2>
+<h2>スナップショット・スタンバイ・データベースへの変換</h2>
+
+<p>Data Guard のスナップショット・スタンバイ・データベースにより、スタンバイ DB が一時的に更新可能になる。この間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
+
+<p>EM Grid Control を使用すると変換が楽にできる。(&#8220;変換&#8221; をクリックするだけ)</p>
 
 <ul>
-<li>インストレーション・ガイド for Linux<br/>
--> 5 Oracle Databaseのインストール後の作業<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
+<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
-<h2>ダイレクト NFS クライアントの有効化</h2>
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
-<li><p>libodm11.so の置き換え</p></li>
+<li>&#8220;変換&#8221; をクリック</li>
 </ul>
 
 
-<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
 
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_on
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>ロールが &#8220;スナップショット・スタンバイ&#8221; になる。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
+
+<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
+
+<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
 </code></pre>
 
-<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
-
-<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
-if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
-        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
-        fi
-rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>ダイレクト NFS クライアントの無効化</h2>
-
-<ul>
-<li>libodm11.so の置き換え</li>
-</ul>
-
-
-<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_off
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>確認方法</h2>
-
-<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
-
-<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
-</code></pre>
+<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から &#8220;変換&#8221; をクリックすればよい。</p>
 </div>
 
 
@@ -188,7 +179,7 @@ $ make -f ins_rdbms.mk dnfs_off
   
 
 
-<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+<time datetime="2012-09-09T21:51:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
       
 
 <span class="categories">
@@ -202,7 +193,7 @@ $ make -f ins_rdbms.mk dnfs_off
     
       <div class="sharing">
   
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/" >Tweet</a>
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/" >Tweet</a>
   
   
   
@@ -211,10 +202,8 @@ $ make -f ins_rdbms.mk dnfs_off
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2012/09/07/oracle-encrypting-a-tablespace/" title="Previous Post: [Oracle] 暗号化された表領域の作成">&laquo; [Oracle] 暗号化された表領域の作成</a>
+        <a class="basic-alignment left" href="/blog/2012/09/09/oracle-data-guard-switchover/" title="Previous Post: [Oracle] Data Guard スイッチオーバー">&laquo; [Oracle] Data Guard スイッチオーバー</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/" title="Next Post: [Oracle] 自動診断リポジトリの設定">[Oracle] 自動診断リポジトリの設定 &raquo;</a>
       
     </p>
   </footer>

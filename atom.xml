@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-09T21:42:13+09:00</updated>
+  <updated>2012-09-09T22:14:59+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,81 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard スナップショット・スタンバイ・データベース]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/"/>
+    <updated>2012-09-09T21:51:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard のスナップショット・スタンバイ・データベースを利用して、スタンバイ DB を一時的に更新可能にする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>スナップショット・スタンバイ・データベースへの変換</h2>
+
+<p>Data Guard のスナップショット・スタンバイ・データベースにより、スタンバイ DB が一時的に更新可能になる。この間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
+
+<p>EM Grid Control を使用すると変換が楽にできる。(&#8220;変換&#8221; をクリックするだけ)</p>
+
+<ul>
+<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;変換&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
+
+<p><img src="http://th0x4c.github.com/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>ロールが &#8220;スナップショット・スタンバイ&#8221; になる。</li>
+</ul>
+
+
+<p><img src="http://th0x4c.github.com/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
+
+<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
+
+<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+</code></pre>
+
+<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から &#8220;変換&#8221; をクリックすればよい。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] Data Guard スイッチオーバー]]></title>
