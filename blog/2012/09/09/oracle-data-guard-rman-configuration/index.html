@@ -5,13 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>[Oracle] Data Guard スイッチオーバー - th0x4c 備忘録</title>
+  <title>[Oracle] Data Guard 環境での RMAN の構成 - th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3)
-EM: Oracle Enterprise &hellip;">
+  <meta name="description" content="目的 Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル Data Guard概要および管理 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +19,7 @@ EM: Oracle Enterprise &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -67,7 +66,7 @@ EM: Oracle Enterprise &hellip;">
   
   <header>
     
-      <h1 class="entry-title">[Oracle] Data Guard スイッチオーバー</h1>
+      <h1 class="entry-title">[Oracle] Data Guard 環境での RMAN の構成</h1>
     
     
       <p class="meta">
@@ -83,7 +82,7 @@ EM: Oracle Enterprise &hellip;">
   
 
 
-<time datetime="2012-09-09T21:19:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+<time datetime="2012-09-09T23:00:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
         
       </p>
     
@@ -92,73 +91,84 @@ EM: Oracle Enterprise &hellip;">
 
 <div class="entry-content"><h2>目的</h2>
 
-<p>Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。</p>
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
 
 <h2>環境</h2>
 
 <ul>
 <li>OS: Oracle Enterprise Linux 5.8</li>
 <li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
 </ul>
 
 
-<h2>スイッチオーバーの実施</h2>
-
-<p>EM Grid Control を使用してスイッチオーバーを行う。</p>
+<h2>マニュアル</h2>
 
 <ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
+<li>Data Guard概要および管理<br/>
+-> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
 </ul>
 
 
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+<h2>Data Guard 環境での RMAN の構成</h2>
+
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
 
 <ul>
-<li>&#8220;スイッチオーバー&#8221; をクリック</li>
+<li>現在の設定の確認</li>
 </ul>
 
 
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-1.png" width="720" height="450"></p>
+<p>プライマリ DB をターゲットとして接続し、<code>show all</code> コマンドで現在の設定を確認</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target /
+RMAN&gt; show all;
+
+using target database control file instead of recovery catalog
+RMAN configuration parameters for database with db_unique_name PROD1 are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
+</code></pre>
+
+<p>アーカイブ・ログの削除方針(<code>CONFIGURE ARCHIVELOG DELETION POLICY</code>)はデフォルトの <code>NONE</code> になっている。</p>
 
 <ul>
-<li>スタンバイ・サイト に接続する OS ユーザを入力</li>
+<li>アーカイブ・ログの削除方針を変更する。</li>
 </ul>
 
 
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-2.png" width="720" height="450"></p>
+<p><code>CONFIGURE ARCHIVELOG DELETION POLICY</code> コマンドによりアーカイブ・ログの削除方針を変更する。</p>
 
-<ul>
-<li>プライマリ・サイト に接続する OS ユーザを入力</li>
-</ul>
+<p>すべてのスタンバイ DB への<strong>送信(SHIPPED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
 
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
 
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-3.png" width="720" height="450"></p>
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
+new RMAN configuration parameters are successfully stored
+</code></pre>
 
-<ul>
-<li>&#8220;はい&#8221;</li>
-</ul>
+<p>すべてのスタンバイ DB への<strong>適用(APPLIED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
 
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
 
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-4.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-5.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-6.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>今度は元スタンバイでプライマリになったインスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-7.png" width="720" height="450"></p>
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
+new RMAN configuration parameters are successfully stored
+</code></pre>
 </div>
 
 
@@ -181,7 +191,7 @@ EM: Oracle Enterprise &hellip;">
   
 
 
-<time datetime="2012-09-09T21:19:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+<time datetime="2012-09-09T23:00:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
       
 
 <span class="categories">
@@ -195,7 +205,7 @@ EM: Oracle Enterprise &hellip;">
     
       <div class="sharing">
   
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover/" >Tweet</a>
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration/" >Tweet</a>
   
   
   
@@ -204,10 +214,8 @@ EM: Oracle Enterprise &hellip;">
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2012/09/09/oracle-creating-a-physical-standby-database/" title="Previous Post: [Oracle] フィジカル・スタンバイ・データベースの作成">&laquo; [Oracle] フィジカル・スタンバイ・データベースの作成</a>
+        <a class="basic-alignment left" href="/blog/2012/09/09/oracle-data-guard-real-time-query/" title="Previous Post: [Oracle] Data Guard リアルタイム問い合わせ">&laquo; [Oracle] Data Guard リアルタイム問い合わせ</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/" title="Next Post: [Oracle] Data Guard スナップショット・スタンバイ・データベース">[Oracle] Data Guard スナップショット・スタンバイ・データベース &raquo;</a>
       
     </p>
   </footer>

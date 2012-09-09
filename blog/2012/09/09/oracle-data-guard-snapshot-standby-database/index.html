@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard のスナップショット・スタンバイ・データベースを利用して、スタンバイ DB を一時的に更新可能にする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3)
-EM: &hellip;">
+  <meta name="description" content="目的 Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB を一時的に更新可能にする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -92,7 +91,7 @@ EM: &hellip;">
 
 <div class="entry-content"><h2>目的</h2>
 
-<p>Data Guard のスナップショット・スタンバイ・データベースを利用して、スタンバイ DB を一時的に更新可能にする。</p>
+<p>Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB を一時的に更新可能にする。</p>
 
 <h2>環境</h2>
 
@@ -105,7 +104,7 @@ EM: &hellip;">
 
 <h2>スナップショット・スタンバイ・データベースへの変換</h2>
 
-<p>Data Guard のスナップショット・スタンバイ・データベースにより、スタンバイ DB が一時的に更新可能になる。この間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
+<p>Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB が一時的に更新可能にできる。&#8221;スナップショット・スタンバイ・データベース&#8221; となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
 
 <p>EM Grid Control を使用すると変換が楽にできる。(&#8220;変換&#8221; をクリックするだけ)</p>
 
@@ -205,6 +204,8 @@ Table created.
         <a class="basic-alignment left" href="/blog/2012/09/09/oracle-data-guard-switchover/" title="Previous Post: [Oracle] Data Guard スイッチオーバー">&laquo; [Oracle] Data Guard スイッチオーバー</a>
       
       
+        <a class="basic-alignment right" href="/blog/2012/09/09/oracle-data-guard-real-time-query/" title="Next Post: [Oracle] Data Guard リアルタイム問い合わせ">[Oracle] Data Guard リアルタイム問い合わせ &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -218,6 +219,14 @@ Table created.
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/09/oracle-data-guard-rman-configuration/">[Oracle] Data Guard 環境での RMAN の構成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/09/oracle-data-guard-real-time-query/">[Oracle] Data Guard リアルタイム問い合わせ</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">[Oracle] Data Guard スナップショット・スタンバイ・データベース</a>
       </li>
     
@@ -227,14 +236,6 @@ Table created.
     
       <li class="post">
         <a href="/blog/2012/09/09/oracle-creating-a-physical-standby-database/">[Oracle] フィジカル・スタンバイ・データベースの作成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/09/oracle-archival-backup/">[Oracle] アーカイブ・バックアップの作成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/09/oracle-multisection-backup/">[Oracle] マルチセクション・バックアップ</a>
       </li>
     
   </ul>
