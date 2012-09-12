@@ -4,7 +4,7 @@
   <title><![CDATA[Category: DB | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/db/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-12T23:01:10+09:00</updated>
+  <updated>2012-09-13T00:49:29+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,626 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Oracle トランスポータブル表領域]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/12/oracle-transportable-tablespace/"/>
+    <updated>2012-09-12T23:18:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/12/oracle-transportable-tablespace</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>トランスポータブル表領域により DB 間で表領域の移動を行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>管理者ガイド<br/>
+-> 14 表領域の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces013.htm#i1007252">データベース間で表領域をトランスポートする手順および例</a></li>
+</ul>
+
+
+<h2>トランスポータブル表領域</h2>
+
+<p>マニュアルに記載の手順に従い、トランスポータブル表領域により DB 間で表領域の移動を行う。</p>
+
+<ul>
+<li>今回の検証用に表領域を作成</li>
+</ul>
+
+
+<p><code>tt_emp</code> 表領域を作成する。</p>
+
+<pre><code>SQL&gt; CREATE TABLESPACE tt_emp
+     DATAFILE '/u01/app/oracle/oradata/PROD1/tt_emp01.dbf'
+     SIZE 10M REUSE AUTOEXTEND ON;
+
+Tablespace created.
+
+SQL&gt; CREATE TABLE scott.tt_emp TABLESPACE tt_emp AS SELECT * FROM scott.emp;
+
+Table created.
+</code></pre>
+
+<ul>
+<li>endianness の確認</li>
+</ul>
+
+
+<p>異なるプラットフォーム間で表領域のトランスポートを行う場合は endianness が異なると変換が必要になる。
+endianness を確認する。</p>
+
+<pre><code>SQL&gt; set pages 100
+     col platform_name for a40
+     col endian_format for a15
+SQL&gt; SELECT * FROM V$TRANSPORTABLE_PLATFORM;
+
+PLATFORM_ID PLATFORM_NAME                            ENDIAN_FORMAT
+----------- ---------------------------------------- ---------------
+          1 Solaris[tm] OE (32-bit)                  Big
+          2 Solaris[tm] OE (64-bit)                  Big
+          7 Microsoft Windows IA (32-bit)            Little
+         10 Linux IA (32-bit)                        Little
+          6 AIX-Based Systems (64-bit)               Big
+          3 HP-UX (64-bit)                           Big
+          5 HP Tru64 UNIX                            Little
+          4 HP-UX IA (64-bit)                        Big
+         11 Linux IA (64-bit)                        Little
+         15 HP Open VMS                              Little
+          8 Microsoft Windows IA (64-bit)            Little
+          9 IBM zSeries Based Linux                  Big
+         13 Linux x86 64-bit                         Little
+         16 Apple Mac OS                             Big
+         12 Microsoft Windows x86 64-bit             Little
+         17 Solaris Operating System (x86)           Little
+         18 IBM Power Based Linux                    Big
+         19 HP IA Open VMS                           Little
+         20 Solaris Operating System (x86-64)        Little
+         21 Apple Mac OS (x86-64)                    Little
+
+20 rows selected.
+
+SQL&gt; SELECT PLATFORM_NAME FROM V$DATABASE;
+
+PLATFORM_NAME
+----------------------------------------
+Linux x86 64-bit
+
+SQL&gt; SELECT d.PLATFORM_NAME, ENDIAN_FORMAT
+     FROM V$TRANSPORTABLE_PLATFORM tp, V$DATABASE d
+     WHERE tp.PLATFORM_NAME = d.PLATFORM_NAME;
+
+PLATFORM_NAME                            ENDIAN_FORMAT
+---------------------------------------- ---------------
+Linux x86 64-bit                         Little
+</code></pre>
+
+<ul>
+<li>表領域が自己完結型かどうかの確認</li>
+</ul>
+
+
+<p>表領域内に別の表領域の表の索引が含まれている場合などは自己完結型でないためトランスポートできない。
+表領域が自己完結型かどうかチェックする。</p>
+
+<pre><code>SQL&gt; EXECUTE DBMS_TTS.TRANSPORT_SET_CHECK('tt_emp', TRUE);
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT * FROM TRANSPORT_SET_VIOLATIONS;
+
+no rows selected
+</code></pre>
+
+<p>もし、違反している場合は <code>TRANSPORT_SET_VIOLATIONS</code> ビューに違反している内容が表示される。</p>
+
+<ul>
+<li>表領域を読み取り専用にする</li>
+</ul>
+
+
+<p>表領域を読取り専用にする。</p>
+
+<pre><code>SQL&gt; ALTER TABLESPACE tt_emp READ ONLY;
+
+Tablespace altered.
+</code></pre>
+
+<ul>
+<li>データ・ポンプによりエクスポート</li>
+</ul>
+
+
+<p><code>expdp</code> によりエクスポートする。</p>
+
+<pre><code>$ expdp system/oracle dumpfile=expdat.dmp directory=data_pump_dir \
+        transport_tablespaces=tt_emp logfile=tts_export.log
+
+Export: Release 11.2.0.3.0 - Production on Wed Sep 12 23:53:49 2012
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+FLASHBACK automatically enabled to preserve database integrity.
+Starting "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01":  system/******** dumpfile=expdat.dmp directory=data_pump_dir transport_tablespaces=tt_emp logfile=tts_export.log 
+Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
+Processing object type TRANSPORTABLE_EXPORT/TABLE
+Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
+Master table "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully loaded/unloaded
+******************************************************************************
+Dump file set for SYSTEM.SYS_EXPORT_TRANSPORTABLE_01 is:
+  /u01/app/oracle/admin/PROD1/dpdump/expdat.dmp
+******************************************************************************
+Datafiles required for transportable tablespace TT_EMP:
+  /u01/app/oracle/oradata/PROD1/tt_emp01.dbf
+Job "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully completed at 23:54:17
+</code></pre>
+
+<ul>
+<li>endianness の変換</li>
+</ul>
+
+
+<p>もし、endianness の異なるプラットフォームにトランスポートする場合は、RMAN でデータファイルの変換を行う。</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target /
+RMAN&gt; CONVERT TABLESPACE tt_emp
+      TO PLATFORM 'Apple Mac OS'
+      FORMAT '/tmp/%U';
+
+Starting conversion at source at 12-09-12
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=43 device type=DISK
+channel ORA_DISK_1: starting datafile conversion
+input datafile file number=00006 name=/u01/app/oracle/oradata/PROD1/tt_emp01.dbf
+converted datafile=/tmp/data_D-PROD1_I-2014160803_TS-TT_EMP_FNO-6_07nl25cg
+channel ORA_DISK_1: datafile conversion complete, elapsed time: 00:00:01
+Finished conversion at source at 12-09-12  
+</code></pre>
+
+<ul>
+<li>表領域のデータファイルと、エクスポート・ダンプ・ファイルをトランスポート先に移動</li>
+</ul>
+
+
+<p>今回は同一サーバ上の別 DB にした。</p>
+
+<pre><code># エクスポート・ダンプ・ファイル をトランスポート先 DB の DATA_PUMP_DIR にコピー
+$ cp -i /u01/app/oracle/admin/PROD1/dpdump/expdat.dmp /u01/app/oracle/admin/PROD2/dpdump/
+
+# 通常はデータファイルをトランスポート先のデータファイルの位置にコピー
+# 今回はテストとして endianness を変換したファイルをコピーした
+$ cp -i /tmp/data_D-PROD1_I-2014160803_TS-TT_EMP_FNO-6_07nl25cg /tmp/tt_emp01.dbf
+</code></pre>
+
+<ul>
+<li>endianness の変換</li>
+</ul>
+
+
+<p>もし、endianness の異なるプラットフォームにトランスポートする場合でトランスポート元で変換を行っていない場合は、RMAN でデータファイルの変換を行う。</p>
+
+<pre><code>$ export ORACLE_SID=PROD2
+$ rman target /
+RMAN&gt; CONVERT DATAFILE
+      '/tmp/tt_emp01.dbf'
+      TO PLATFORM 'Linux x86 64-bit'
+      FROM PLATFORM 'Apple Mac OS'
+      DB_FILE_NAME_CONVERT='/tmp/', '/u01/app/oracle/oradata/PROD2/';
+
+Starting conversion at target at 12-09-13
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=36 device type=DISK
+channel ORA_DISK_1: starting datafile conversion
+input file name=/tmp/tt_emp01.dbf
+converted datafile=/u01/app/oracle/oradata/PROD2/tt_emp01.dbf
+channel ORA_DISK_1: datafile conversion complete, elapsed time: 00:00:01
+Finished conversion at target at 12-09-13
+</code></pre>
+
+<ul>
+<li>トランスポート元の表領域を読取り/書込みモードに戻す。</li>
+</ul>
+
+
+<p><code>ALTER TABLESPACE</code> にて戻す。</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; ALTER TABLESPACE tt_emp READ WRITE;
+
+Tablespace altered.
+</code></pre>
+
+<ul>
+<li>データ・ポンプによりインポート</li>
+</ul>
+
+
+<p><code>impdp</code> によりインポートする。</p>
+
+<pre><code>$ export ORACLE_SID=PROD2
+$ impdp system/oracle dumpfile=expdat.dmp directory=data_pump_dir \
+        transport_datafiles='/u01/app/oracle/oradata/PROD2/tt_emp01.dbf' \
+        logfile=tts_import.log
+
+Import: Release 11.2.0.3.0 - Production on Thu Sep 13 00:22:31 2012
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+Master table "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01" successfully loaded/unloaded
+Starting "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01":  system/******** dumpfile=expdat.dmp directory=data_pump_dir transport_datafiles=/u01/app/oracle/oradata/PROD2/tt_emp01.dbf logfile=tts_import.log 
+Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
+Processing object type TRANSPORTABLE_EXPORT/TABLE
+Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
+Job "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01" successfully completed at 00:22:34
+</code></pre>
+
+<ul>
+<li>トランスポート先の表領域を読取り/書込みモードに戻す。</li>
+</ul>
+
+
+<p><code>ALTER TABLESPACE</code> にて戻す。</p>
+
+<pre><code>$ export ORACLE_SID=PROD2
+$ sqlplus '/as sysdba'
+SQL&gt; ALTER TABLESPACE tt_emp READ WRITE;
+
+Tablespace altered.
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] マテリアライズド・ビューの高速リフレッシュ]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/"/>
+    <updated>2012-09-12T21:14:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/12/oracle-fast-refresh-on-materialized-view</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>集計(<code>AVG(sal)</code> など)や結合(<code>emp.deptno = dept.deptno</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>データ・ウェアハウス・ガイド<br/>
+-> 9 基本的なマテリアライズド・ビュー<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006519">集計を含むマテリアライズド・ビュー</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007028">集計を含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006674">結合のみを含むマテリアライズド・ビュー</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007013">結合のみを含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#sthref257">DBMS_MVIEW.EXPLAIN_MVIEWプロシージャの使用</a></li>
+</ul>
+
+
+<h2>集計を含むマテリアライズド・ビュー</h2>
+
+<p>集計(<code>AVG(sal)</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<p>マニュアルから、集計関数(<code>SUM</code>, <code>COUNT(*)</code>, <code>AVG</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にするためにはいくつか制限がある。
+ざっくり含める必要がある要件をまとめると以下。</p>
+
+<ul>
+<li><p>マテリアライズド・ビュー・ログの要件</p>
+
+<ul>
+<li>マテリアライズド・ビューで参照される列をすべて含める</li>
+<li><code>ROWID</code> および <code>INCLUDING NEW VALUES</code> 句を指定</li>
+<li>表の更新を行う場合は <code>SEQUENCE</code> 句を指定</li>
+</ul>
+</li>
+<li><p>マテリアライズド・ビューの SELECT 文に含める要件</p>
+
+<ul>
+<li><code>COUNT(*)</code> を含める</li>
+<li><code>AVG(expr)</code> などの集計ごとに、対応する <code>COUNT(expr)</code> および <code>SUM(expr)</code> を含める。(<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#sthref182">集計関数によって要件は異なる</a>)</li>
+</ul>
+</li>
+</ul>
+
+
+<p>例えば以下の SELECT を含むマテリアライズド・ビューを考える。</p>
+
+<pre><code>SELECT d.dname, AVG(e.sal) avg_sal
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+GROUP BY d.dname;
+</code></pre>
+
+<p>高速リフレッシュ可能なマテリアライズド・ビューを作成する。</p>
+
+<ul>
+<li>マテリアライズド・ビュー・ログの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW LOG</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW LOG ON emp
+     WITH SEQUENCE, ROWID
+     (sal, deptno)
+     INCLUDING NEW VALUES;
+
+Materialized view log created.
+
+SQL&gt; CREATE MATERIALIZED VIEW LOG ON dept
+     WITH SEQUENCE, ROWID
+     (deptno, dname)
+     INCLUDING NEW VALUES;
+
+Materialized view log created.
+</code></pre>
+
+<ul>
+<li>マテリアライズド・ビューの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW emp_dept_mv
+     BUILD IMMEDIATE
+     REFRESH FAST
+     ENABLE QUERY REWRITE
+     AS SELECT d.dname, AVG(e.sal) avg_sal,
+               COUNT(*) cnt, COUNT(e.sal) cnt_sal, SUM(e.sal) sum_sal
+     FROM emp e, dept d
+     WHERE e.deptno = d.deptno
+     GROUP BY d.dname;
+
+Materialized view created.
+</code></pre>
+
+<h2>高速リフレッシュ可能か確認する方法</h2>
+
+<p><code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャを使用することで簡単にマテリアライズド・ビューに関して次のことを確認できる。</p>
+
+<ul>
+<li>高速リフレッシュ可能かどうか</li>
+<li>実行できるクエリー・リライトのタイプ</li>
+<li>PCT リフレッシュ(パーティション単位での高速リフレッシュ)が可能かどうか(パーティション表でないと意味なし)</li>
+</ul>
+
+
+<p>使い方は以下</p>
+
+<ol>
+<li><code>$ORACLE_HOME/rdbms/admin/utlxmv.sql</code> を流して <code>MV_CAPABILITIES_TABLE</code> 表を作成</li>
+<li><code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャの引数にマテリアライズド・ビュー名かマテリアライズド・ビューで使用している SELECT 文を与えて実行</li>
+<li><code>MV_CAPABILITIES_TABLE</code> 表を SELECT して確認</li>
+<li>再度 <code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャを実行する場合は <code>TRUNCATE TABLE MV_CAPABILITIES_TABLE</code> で結果をクリア</li>
+</ol>
+
+
+<p>先ほど作成したマテリアライズド・ビューで確認してみる。</p>
+
+<pre><code>SQL&gt; @?/rdbms/admin/utlxmv.sql
+
+Table created.
+
+SQL&gt; EXEC DBMS_MVIEW.EXPLAIN_MVIEW('emp_dept_mv');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set lines 200
+     set pages 100
+     col capability_name for a30
+     col rel_text for a10
+     col msgtxt for a60
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   Y
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      Y
+REFRESH_FAST_AFTER_ONETAB_DML  Y
+REFRESH_FAST_AFTER_ANY_DML     Y
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p><code>possible</code> 列が <code>Y</code> であることから高速リフレッシュ可能であることが分かる。(<code>PCT*</code> に関してはパーティション表ではないので無視)</p>
+
+<p>例えば、以下のようにマテリアライズド・ビュー作成前に高速リフレッシュ可能か確認でき、可能でない場合は理由を表示してくれる。</p>
+
+<pre><code>SQL&gt; TRUNCATE TABLE MV_CAPABILITIES_TABLE;
+
+Table truncated.
+
+SQL&gt; -- わざと COUNT(e.sal), SUM(e.sal) を外してみる
+SQL&gt; BEGIN
+       DBMS_MVIEW.EXPLAIN_MVIEW('
+         SELECT d.dname, AVG(e.sal) avg_sal,
+                COUNT(*) cnt
+         FROM emp e, dept d
+         WHERE e.deptno = d.deptno
+         GROUP BY d.dname');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   N
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      N   AVG_SAL    agg(expr) requires correspondng COUNT(expr) function
+REFRESH_FAST_AFTER_ONETAB_DML  N              see the reason why REFRESH_FAST_AFTER_INSERT is disabled
+REFRESH_FAST_AFTER_ANY_DML     N              see the reason why REFRESH_FAST_AFTER_ONETAB_DML is disabled
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p>高速リフレッシュが不可で、<code>AVG_SAL</code> 列に関して対応する <code>COUNT(expr)</code> が必要なことを指摘してくれる。</p>
+
+<h2>結合のみを含むマテリアライズド・ビュー</h2>
+
+<p>集計関数は含まずに結合(<code>emp.deptno = dept.deptno</code> など)のみを含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<p>マニュアルから、結合のみを含むマテリアライズド・ビューを高速リフレッシュ可能にするためにはいくつか制限がある。
+ざっくり含める必要がある要件をまとめると以下。</p>
+
+<ul>
+<li><p>マテリアライズド・ビュー・ログの要件</p>
+
+<ul>
+<li><code>ROWID</code> 句を指定</li>
+</ul>
+</li>
+<li><p>マテリアライズド・ビューの SELECT 文に含める要件</p>
+
+<ul>
+<li><code>FROM</code> 内の全ての表の ROWID を含める</li>
+</ul>
+</li>
+</ul>
+
+
+<p>例えば以下の SELECT を含むマテリアライズド・ビューを考える。</p>
+
+<pre><code>SELECT e.ename, d.loc
+FROM emp e, dept d
+WHERE e.deptno = d.deptno;
+</code></pre>
+
+<p>高速リフレッシュ可能なマテリアライズド・ビューを作成する。</p>
+
+<ul>
+<li>マテリアライズド・ビュー・ログの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW LOG</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW LOG ON emp
+     WITH ROWID;
+
+Materialized view log created.
+
+SQL&gt; CREATE MATERIALIZED VIEW LOG ON dept
+     WITH ROWID;
+
+Materialized view log created.
+</code></pre>
+
+<ul>
+<li>マテリアライズド・ビューの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW emp_dept_mv
+     BUILD IMMEDIATE
+     REFRESH FAST
+     ENABLE QUERY REWRITE
+     AS SELECT e.ename, d.loc,
+               e.rowid e_rowid, d.rowid d_rowid
+     FROM emp e, dept d
+     WHERE e.deptno = d.deptno;
+
+Materialized view created.
+</code></pre>
+
+<ul>
+<li>高速リフレッシュ可能か確認</li>
+</ul>
+
+
+<p>先ほど行ったように <code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャで確認する。</p>
+
+<pre><code>SQL&gt; TRUNCATE TABLE MV_CAPABILITIES_TABLE;
+
+Table truncated.
+
+SQL&gt; EXEC DBMS_MVIEW.EXPLAIN_MVIEW('emp_dept_mv');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   Y
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      Y
+REFRESH_FAST_AFTER_ONETAB_DML  Y
+REFRESH_FAST_AFTER_ANY_DML     Y
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p><code>PCT*</code> 以外は <code>possible</code> 列が <code>Y</code> になっているので高速リフレッシュ可能。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] Data Guard ファスト・スタート・フェイルオーバー]]></title>
@@ -382,158 +1002,6 @@ UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369
 ERROR at line 1:
 ORA-16000: database open for read-only access
 </code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] Data Guard スナップショット・スタンバイ・データベース]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/"/>
-    <updated>2012-09-09T21:51:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Data Guard の "スナップショット・スタンバイ・データベース" 機能により、スタンバイ DB を一時的に更新可能にする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>スナップショット・スタンバイ・データベースへの変換</h2>
-
-<p>Data Guard の "スナップショット・スタンバイ・データベース" 機能により、スタンバイ DB が一時的に更新可能にできる。"スナップショット・スタンバイ・データベース" となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
-
-<p>EM Grid Control を使用すると変換が楽にできる。("変換" をクリックするだけ)</p>
-
-<ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>"変換" をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
-
-<ul>
-<li>"はい"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>ロールが "スナップショット・スタンバイ" になる。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
-
-<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
-
-<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
-SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
-
-Table created.
-</code></pre>
-
-<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から "変換" をクリックすればよい。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] Data Guard スイッチオーバー]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover/"/>
-    <updated>2012-09-09T21:19:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>スイッチオーバーの実施</h2>
-
-<p>EM Grid Control を使用してスイッチオーバーを行う。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>"スイッチオーバー" をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-1.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ・サイト に接続する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-2.png" width="720" height="450"></p>
-
-<ul>
-<li>プライマリ・サイト に接続する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-3.png" width="720" height="450"></p>
-
-<ul>
-<li>"はい"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-4.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-5.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-6.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>今度は元スタンバイでプライマリになったインスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-7.png" width="720" height="450"></p>
 ]]></content>
   </entry>
   
