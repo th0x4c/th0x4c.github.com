@@ -4,7 +4,7 @@
   <title><![CDATA[Category: DB | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/db/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-13T03:05:46+09:00</updated>
+  <updated>2012-09-13T03:10:38+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -33,7 +33,7 @@
 <h2>マニュアル</h2>
 
 <ul>
-<li>データ・ウェアハウス・ガイド
+<li>データ・ウェアハウス・ガイド<br/>
 -> 20 スキーマのモデリング化技法<br/>
 -> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/schemas.htm#CIHGHEFB">スター・クエリーの最適化</a></li>
 </ul>
