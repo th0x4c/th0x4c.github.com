@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 EM エージェントをインストールする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3)
-EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
+  <meta name="description" content="目的 Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップおよびリカバリ・ &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +63,185 @@ EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/08/oracle-setup-recovery-catalog/">[Oracle] リカバリ・カタログのセットアップ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-08T23:44:00+09:00" pubdate data-updated="true">Sep 8<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 13 リカバリ・カタログの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
+</ul>
+
+
+<h2>リカバリ・カタログとは</h2>
+
+<p>リカバリ・カタログには、RMAN で使用するメタデータ情報(バックアップ・ファイルの情報など)が格納されている。RMAN が使用するメタデータは通常は制御ファイルに格納されているが、リカバリ・カタログとして(リカバリのターゲットとなる DB とは別の) DB に格納することができる。リカバリ・カタログを使用するメリットは次のようなものがある。</p>
+
+<ul>
+<li><p>制御ファイルに格納されているメタデータと同様の情報が格納されているので、冗長性が確保される。制御ファイルが消失した場合も、リカバリ・カタログを使用すればいい。制御ファイルとの同期はバックアップ実行時などに自動で実行される。</p></li>
+<li><p>複数の DB の RMAN メタデータを集中管理できる。</p></li>
+<li><p>リカバリ・カタログには、制御ファイルより長期のメタデータ履歴を格納できる。よって、制御ファイルの履歴より前の時点にリカバリすることができる。</p></li>
+<li><p>一部の RMAN 機能は、リカバリ・カタログが必須。例えば、リカバリ・カタログには Recovery Manager スクリプトを格納することができる。</p></li>
+<li><p>Data Guard 環境で RMAN を使用する場合は、リカバリ・カタログが必要。</p></li>
+</ul>
+
+
+<h2>リカバリ・カタログの作成</h2>
+
+<p>リカバリ・カタログを作成する DB にリカバリ・カタログを所有するスキーマを作成して、必要な権限を与え、リカバリ・カタログを作成する。</p>
+
+<ul>
+<li>リカバリ・カタログを所有するスキーマを作成</li>
+</ul>
+
+
+<p>リカバリ・カタログを格納する DB に接続してスキーマを作成。</p>
+
+<pre><code>$ sqlplus sys/oracle@EMREP as sysdba
+SQL&gt; CREATE USER rman IDENTIFIED BY rman
+     TEMPORARY TABLESPACE temp
+     DEFAULT TABLESPACE users
+     QUOTA UNLIMITED ON users;
+
+User created.
+</code></pre>
+
+<ul>
+<li>必要な権限の付与</li>
+</ul>
+
+
+<p>リカバリ・カタログの管理に必要なすべての権限を含む <code>RECOVERY_CATALOG_OWNER</code> ロールを付与する。</p>
+
+<pre><code>SQL&gt; GRANT RECOVERY_CATALOG_OWNER TO rman;
+
+Grant succeeded.
+</code></pre>
+
+<ul>
+<li>リカバリ・カタログの作成</li>
+</ul>
+
+
+<p>RMAN を使用して先ほど作成したリカバリ・カタログを所有するスキーマで接続して、リカバリ・カタログを作成。</p>
+
+<pre><code>$ rman catalog rman/rman@EMREP
+RMAN&gt; CREATE CATALOG;
+
+recovery catalog created
+</code></pre>
+
+<h2>リカバリ・カタログへの DB の登録</h2>
+
+<p>リカバリ・カタログにターゲットとなる DB を登録する。</p>
+
+<ul>
+<li><p>ターゲット DB がマウントしていない場合は、マウントまたはオープンする。</p></li>
+<li><p>RMAN からターゲット DB, リカバリ・カタログに接続する。</p></li>
+</ul>
+
+
+<p>RMAN から以下のようにして接続</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target / catalog rman/rman@EMREP
+
+Recovery Manager: Release 11.2.0.3.0 - Production on Sun Sep 9 00:37:33 2012
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: PROD1 (DBID=2014160803)
+connected to recovery catalog database
+</code></pre>
+
+<ul>
+<li>リカバリ・カタログにターゲット DB を登録</li>
+</ul>
+
+
+<p><code>REGISTER DATABASE</code> によりターゲット DB を登録する。</p>
+
+<pre><code>RMAN&gt; REGISTER DATABASE;
+
+database registered in recovery catalog
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<ul>
+<li>正常に登録されていることを確認</li>
+</ul>
+
+
+<p><code>REPORT SCHEMA</code> により正常に登録されていることを確認する。</p>
+
+<pre><code>RMAN&gt; REPORT SCHEMA;
+
+Report of database schema for database with db_unique_name PROD1
+
+List of Permanent Datafiles
+===========================
+File Size(MB) Tablespace           RB segs Datafile Name
+---- -------- -------------------- ------- ------------------------
+1    720      SYSTEM               YES     /u01/app/oracle/oradata/PROD1/system01.dbf
+2    550      SYSAUX               NO      /u01/app/oracle/oradata/PROD1/sysaux01.dbf
+3    95       UNDOTBS1             YES     /u01/app/oracle/oradata/PROD1/undotbs01.dbf
+4    5        USERS                NO      /u01/app/oracle/oradata/PROD1/users01.dbf
+5    345      EXAMPLE              NO      /u01/app/oracle/oradata/PROD1/example01.dbf
+
+List of Temporary Files
+=======================
+File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
+---- -------- -------------------- ----------- --------------------
+1    29       TEMP                 32767       /u01/app/oracle/oradata/PROD1/temp01.dbf
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1353,6 +1531,10 @@ $ jruby -S gen_deploy
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/">[Oracle] マテリアライズド・ビューの高速リフレッシュ</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a>
       </li>
     
@@ -1366,10 +1548,6 @@ $ jruby -S gen_deploy
     
       <li class="post">
         <a href="/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">[Oracle] Data Guard スナップショット・スタンバイ・データベース</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/09/oracle-data-guard-switchover/">[Oracle] Data Guard スイッチオーバー</a>
       </li>
     
   </ul>

@@ -9,8 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2. &hellip;">
+  <meta name="description" content="目的 集計(AVG(sal) など)や結合(emp.deptno = dept.deptno など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -63,6 +63,369 @@ DB: Oracle Database 11g Release 2 (11.2. &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/">[Oracle] マテリアライズド・ビューの高速リフレッシュ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-12T21:14:00+09:00" pubdate data-updated="true">Sep 12<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>集計(<code>AVG(sal)</code> など)や結合(<code>emp.deptno = dept.deptno</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>データ・ウェアハウス・ガイド<br/>
+-> 9 基本的なマテリアライズド・ビュー<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006519">集計を含むマテリアライズド・ビュー</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007028">集計を含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006674">結合のみを含むマテリアライズド・ビュー</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007013">結合のみを含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#sthref257">DBMS_MVIEW.EXPLAIN_MVIEWプロシージャの使用</a></li>
+</ul>
+
+
+<h2>集計を含むマテリアライズド・ビュー</h2>
+
+<p>集計(<code>AVG(sal)</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<p>マニュアルから、集計関数(<code>SUM</code>, <code>COUNT(*)</code>, <code>AVG</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にするためにはいくつか制限がある。
+ざっくり含める必要がある要件をまとめると以下。</p>
+
+<ul>
+<li><p>マテリアライズド・ビュー・ログの要件</p>
+
+<ul>
+<li>マテリアライズド・ビューで参照される列をすべて含める</li>
+<li><code>ROWID</code> および <code>INCLUDING NEW VALUES</code> 句を指定</li>
+<li>表の更新を行う場合は <code>SEQUENCE</code> 句を指定</li>
+</ul>
+</li>
+<li><p>マテリアライズド・ビューの SELECT 文に含める要件</p>
+
+<ul>
+<li><code>COUNT(*)</code> を含める</li>
+<li><code>AVG(expr)</code> などの集計ごとに、対応する <code>COUNT(expr)</code> および <code>SUM(expr)</code> を含める。(<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#sthref182">集計関数によって要件は異なる</a>)</li>
+</ul>
+</li>
+</ul>
+
+
+<p>例えば以下の SELECT を含むマテリアライズド・ビューを考える。</p>
+
+<pre><code>SELECT d.dname, AVG(e.sal) avg_sal
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+GROUP BY d.dname;
+</code></pre>
+
+<p>高速リフレッシュ可能なマテリアライズド・ビューを作成する。</p>
+
+<ul>
+<li>マテリアライズド・ビュー・ログの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW LOG</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW LOG ON emp
+     WITH SEQUENCE, ROWID
+     (sal, deptno)
+     INCLUDING NEW VALUES;
+
+Materialized view log created.
+
+SQL&gt; CREATE MATERIALIZED VIEW LOG ON dept
+     WITH SEQUENCE, ROWID
+     (deptno, dname)
+     INCLUDING NEW VALUES;
+
+Materialized view log created.
+</code></pre>
+
+<ul>
+<li>マテリアライズド・ビューの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW emp_dept_mv
+     BUILD IMMEDIATE
+     REFRESH FAST
+     ENABLE QUERY REWRITE
+     AS SELECT d.dname, AVG(e.sal) avg_sal,
+               COUNT(*) cnt, COUNT(e.sal) cnt_sal, SUM(e.sal) sum_sal
+     FROM emp e, dept d
+     WHERE e.deptno = d.deptno
+     GROUP BY d.dname;
+
+Materialized view created.
+</code></pre>
+
+<h2>高速リフレッシュ可能か確認する方法</h2>
+
+<p><code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャを使用することで簡単にマテリアライズド・ビューに関して次のことを確認できる。</p>
+
+<ul>
+<li>高速リフレッシュ可能かどうか</li>
+<li>実行できるクエリー・リライトのタイプ</li>
+<li>PCT リフレッシュ(パーティション単位での高速リフレッシュ)が可能かどうか(パーティション表でないと意味なし)</li>
+</ul>
+
+
+<p>使い方は以下</p>
+
+<ol>
+<li><code>$ORACLE_HOME/rdbms/admin/utlxmv.sql</code> を流して <code>MV_CAPABILITIES_TABLE</code> 表を作成</li>
+<li><code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャの引数にマテリアライズド・ビュー名かマテリアライズド・ビューで使用している SELECT 文を与えて実行</li>
+<li><code>MV_CAPABILITIES_TABLE</code> 表を SELECT して確認</li>
+<li>再度 <code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャを実行する場合は <code>TRUNCATE TABLE MV_CAPABILITIES_TABLE</code> で結果をクリア</li>
+</ol>
+
+
+<p>先ほど作成したマテリアライズド・ビューで確認してみる。</p>
+
+<pre><code>SQL&gt; @?/rdbms/admin/utlxmv.sql
+
+Table created.
+
+SQL&gt; EXEC DBMS_MVIEW.EXPLAIN_MVIEW('emp_dept_mv');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set lines 200
+     set pages 100
+     col capability_name for a30
+     col rel_text for a10
+     col msgtxt for a60
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   Y
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      Y
+REFRESH_FAST_AFTER_ONETAB_DML  Y
+REFRESH_FAST_AFTER_ANY_DML     Y
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p><code>possible</code> 列が <code>Y</code> であることから高速リフレッシュ可能であることが分かる。(<code>PCT*</code> に関してはパーティション表ではないので無視)</p>
+
+<p>例えば、以下のようにマテリアライズド・ビュー作成前に高速リフレッシュ可能か確認でき、可能でない場合は理由を表示してくれる。</p>
+
+<pre><code>SQL&gt; TRUNCATE TABLE MV_CAPABILITIES_TABLE;
+
+Table truncated.
+
+SQL&gt; -- わざと COUNT(e.sal), SUM(e.sal) を外してみる
+SQL&gt; BEGIN
+       DBMS_MVIEW.EXPLAIN_MVIEW('
+         SELECT d.dname, AVG(e.sal) avg_sal,
+                COUNT(*) cnt
+         FROM emp e, dept d
+         WHERE e.deptno = d.deptno
+         GROUP BY d.dname');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   N
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      N   AVG_SAL    agg(expr) requires correspondng COUNT(expr) function
+REFRESH_FAST_AFTER_ONETAB_DML  N              see the reason why REFRESH_FAST_AFTER_INSERT is disabled
+REFRESH_FAST_AFTER_ANY_DML     N              see the reason why REFRESH_FAST_AFTER_ONETAB_DML is disabled
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p>高速リフレッシュが不可で、<code>AVG_SAL</code> 列に関して対応する <code>COUNT(expr)</code> が必要なことを指摘してくれる。</p>
+
+<h2>結合のみを含むマテリアライズド・ビュー</h2>
+
+<p>集計関数は含まずに結合(<code>emp.deptno = dept.deptno</code> など)のみを含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<p>マニュアルから、結合のみを含むマテリアライズド・ビューを高速リフレッシュ可能にするためにはいくつか制限がある。
+ざっくり含める必要がある要件をまとめると以下。</p>
+
+<ul>
+<li><p>マテリアライズド・ビュー・ログの要件</p>
+
+<ul>
+<li><code>ROWID</code> 句を指定</li>
+</ul>
+</li>
+<li><p>マテリアライズド・ビューの SELECT 文に含める要件</p>
+
+<ul>
+<li><code>FROM</code> 内の全ての表の ROWID を含める</li>
+</ul>
+</li>
+</ul>
+
+
+<p>例えば以下の SELECT を含むマテリアライズド・ビューを考える。</p>
+
+<pre><code>SELECT e.ename, d.loc
+FROM emp e, dept d
+WHERE e.deptno = d.deptno;
+</code></pre>
+
+<p>高速リフレッシュ可能なマテリアライズド・ビューを作成する。</p>
+
+<ul>
+<li>マテリアライズド・ビュー・ログの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW LOG</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW LOG ON emp
+     WITH ROWID;
+
+Materialized view log created.
+
+SQL&gt; CREATE MATERIALIZED VIEW LOG ON dept
+     WITH ROWID;
+
+Materialized view log created.
+</code></pre>
+
+<ul>
+<li>マテリアライズド・ビューの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW emp_dept_mv
+     BUILD IMMEDIATE
+     REFRESH FAST
+     ENABLE QUERY REWRITE
+     AS SELECT e.ename, d.loc,
+               e.rowid e_rowid, d.rowid d_rowid
+     FROM emp e, dept d
+     WHERE e.deptno = d.deptno;
+
+Materialized view created.
+</code></pre>
+
+<ul>
+<li>高速リフレッシュ可能か確認</li>
+</ul>
+
+
+<p>先ほど行ったように <code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャで確認する。</p>
+
+<pre><code>SQL&gt; TRUNCATE TABLE MV_CAPABILITIES_TABLE;
+
+Table truncated.
+
+SQL&gt; EXEC DBMS_MVIEW.EXPLAIN_MVIEW('emp_dept_mv');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   Y
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      Y
+REFRESH_FAST_AFTER_ONETAB_DML  Y
+REFRESH_FAST_AFTER_ANY_DML     Y
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p><code>PCT*</code> 以外は <code>possible</code> 列が <code>Y</code> になっているので高速リフレッシュ可能。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1309,185 +1672,6 @@ ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/08/oracle-setup-recovery-catalog/">[Oracle] リカバリ・カタログのセットアップ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-08T23:44:00+09:00" pubdate data-updated="true">Sep 8<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 13 リカバリ・カタログの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
-</ul>
-
-
-<h2>リカバリ・カタログとは</h2>
-
-<p>リカバリ・カタログには、RMAN で使用するメタデータ情報(バックアップ・ファイルの情報など)が格納されている。RMAN が使用するメタデータは通常は制御ファイルに格納されているが、リカバリ・カタログとして(リカバリのターゲットとなる DB とは別の) DB に格納することができる。リカバリ・カタログを使用するメリットは次のようなものがある。</p>
-
-<ul>
-<li><p>制御ファイルに格納されているメタデータと同様の情報が格納されているので、冗長性が確保される。制御ファイルが消失した場合も、リカバリ・カタログを使用すればいい。制御ファイルとの同期はバックアップ実行時などに自動で実行される。</p></li>
-<li><p>複数の DB の RMAN メタデータを集中管理できる。</p></li>
-<li><p>リカバリ・カタログには、制御ファイルより長期のメタデータ履歴を格納できる。よって、制御ファイルの履歴より前の時点にリカバリすることができる。</p></li>
-<li><p>一部の RMAN 機能は、リカバリ・カタログが必須。例えば、リカバリ・カタログには Recovery Manager スクリプトを格納することができる。</p></li>
-<li><p>Data Guard 環境で RMAN を使用する場合は、リカバリ・カタログが必要。</p></li>
-</ul>
-
-
-<h2>リカバリ・カタログの作成</h2>
-
-<p>リカバリ・カタログを作成する DB にリカバリ・カタログを所有するスキーマを作成して、必要な権限を与え、リカバリ・カタログを作成する。</p>
-
-<ul>
-<li>リカバリ・カタログを所有するスキーマを作成</li>
-</ul>
-
-
-<p>リカバリ・カタログを格納する DB に接続してスキーマを作成。</p>
-
-<pre><code>$ sqlplus sys/oracle@EMREP as sysdba
-SQL&gt; CREATE USER rman IDENTIFIED BY rman
-     TEMPORARY TABLESPACE temp
-     DEFAULT TABLESPACE users
-     QUOTA UNLIMITED ON users;
-
-User created.
-</code></pre>
-
-<ul>
-<li>必要な権限の付与</li>
-</ul>
-
-
-<p>リカバリ・カタログの管理に必要なすべての権限を含む <code>RECOVERY_CATALOG_OWNER</code> ロールを付与する。</p>
-
-<pre><code>SQL&gt; GRANT RECOVERY_CATALOG_OWNER TO rman;
-
-Grant succeeded.
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログの作成</li>
-</ul>
-
-
-<p>RMAN を使用して先ほど作成したリカバリ・カタログを所有するスキーマで接続して、リカバリ・カタログを作成。</p>
-
-<pre><code>$ rman catalog rman/rman@EMREP
-RMAN&gt; CREATE CATALOG;
-
-recovery catalog created
-</code></pre>
-
-<h2>リカバリ・カタログへの DB の登録</h2>
-
-<p>リカバリ・カタログにターゲットとなる DB を登録する。</p>
-
-<ul>
-<li><p>ターゲット DB がマウントしていない場合は、マウントまたはオープンする。</p></li>
-<li><p>RMAN からターゲット DB, リカバリ・カタログに接続する。</p></li>
-</ul>
-
-
-<p>RMAN から以下のようにして接続</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target / catalog rman/rman@EMREP
-
-Recovery Manager: Release 11.2.0.3.0 - Production on Sun Sep 9 00:37:33 2012
-
-Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
-
-connected to target database: PROD1 (DBID=2014160803)
-connected to recovery catalog database
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログにターゲット DB を登録</li>
-</ul>
-
-
-<p><code>REGISTER DATABASE</code> によりターゲット DB を登録する。</p>
-
-<pre><code>RMAN&gt; REGISTER DATABASE;
-
-database registered in recovery catalog
-starting full resync of recovery catalog
-full resync complete
-</code></pre>
-
-<ul>
-<li>正常に登録されていることを確認</li>
-</ul>
-
-
-<p><code>REPORT SCHEMA</code> により正常に登録されていることを確認する。</p>
-
-<pre><code>RMAN&gt; REPORT SCHEMA;
-
-Report of database schema for database with db_unique_name PROD1
-
-List of Permanent Datafiles
-===========================
-File Size(MB) Tablespace           RB segs Datafile Name
----- -------- -------------------- ------- ------------------------
-1    720      SYSTEM               YES     /u01/app/oracle/oradata/PROD1/system01.dbf
-2    550      SYSAUX               NO      /u01/app/oracle/oradata/PROD1/sysaux01.dbf
-3    95       UNDOTBS1             YES     /u01/app/oracle/oradata/PROD1/undotbs01.dbf
-4    5        USERS                NO      /u01/app/oracle/oradata/PROD1/users01.dbf
-5    345      EXAMPLE              NO      /u01/app/oracle/oradata/PROD1/example01.dbf
-
-List of Temporary Files
-=======================
-File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
----- -------- -------------------- ----------- --------------------
-1    29       TEMP                 32767       /u01/app/oracle/oradata/PROD1/temp01.dbf
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -1503,6 +1687,10 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/">[Oracle] マテリアライズド・ビューの高速リフレッシュ</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a>
       </li>
     
@@ -1516,10 +1704,6 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
     
       <li class="post">
         <a href="/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">[Oracle] Data Guard スナップショット・スタンバイ・データベース</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/09/oracle-data-guard-switchover/">[Oracle] Data Guard スイッチオーバー</a>
       </li>
     
   </ul>
