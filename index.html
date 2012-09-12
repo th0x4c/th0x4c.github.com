@@ -9,10 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 トランスポータブル表領域により DB 間で表領域の移動を行う。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
--> 14 表領域の管理
--> &hellip;">
+  <meta name="description" content="目的 スター型変換を行い、スター・クエリーをチューニングする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル データ・ウェアハウス・ガイド
+-> 20 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +64,358 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/13/oracle-star-transformation/">[Oracle] スター型変換の使用</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-13T01:14:00+09:00" pubdate data-updated="true">Sep 13<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>スター型変換を行い、スター・クエリーをチューニングする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>データ・ウェアハウス・ガイド
+-> 20 スキーマのモデリング化技法<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/schemas.htm#CIHGHEFB">スター・クエリーの最適化</a></li>
+</ul>
+
+
+<h2>スター型変換を使用したスター・クエリーのチューニング</h2>
+
+<p>スター型変換を行い、スター・クエリーをチューニングする。
+スター・クエリーは1つの大規模なファクト表と、複数の小規模なディメンション表を結合するようなクエリー。ファクト表が大きいため、ファクト表をなるべく条件を絞り込んだ後でアクセスするような特別な結合(スター結合)をしたほうが効率がよい。このために暗黙的に SQL をリライト(または変換)する機能をスター型変換という。</p>
+
+<p>スター型変換を行うためには、以下に従う必要がある。</p>
+
+<ol>
+<li>ビットマップ索引をファクト表の各外部キー列上に作成する必要がある。</li>
+<li>初期化パラメータ <code>STAR_TRANSFORMATION_ENABLED</code> を <code>TRUE</code> に設定する必要がある。</li>
+</ol>
+
+
+<p>検証してみる。</p>
+
+<ul>
+<li>表、データを準備</li>
+</ul>
+
+
+<p>ディメンション表 <code>jobs</code>, <code>dates</code>, ファクト表 <code>emp_fact</code> を作成</p>
+
+<pre><code>$ sqlplus scott/tiger
+SQL&gt; -- ディメンション表 jobs
+SQL&gt; CREATE TABLE jobs
+     AS SELECT rownum job_id, job
+     FROM (SELECT DISTINCT job FROM emp);
+
+Table created.
+
+SQL&gt; ALTER TABLE jobs ADD (CONSTRAINT jobs_pk PRIMARY KEY (job_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; -- ディメンション表 dates
+SQL&gt; CREATE TABLE dates
+     AS SELECT rownum date_id, hiredate, to_char(hiredate, 'YYYY') year
+     FROM (SELECT DISTINCT hiredate FROM emp);
+
+Table created.
+
+SQL&gt; ALTER TABLE dates ADD (CONSTRAINT dates_pk PRIMARY KEY (date_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; -- ファクト表 emp_fact
+SQL&gt; CREATE TABLE emp_fact
+     AS SELECT e.empno, e.ename, j.job_id, e.mgr, d.date_id, e.sal, e.comm, e.deptno
+     FROM emp e, dates d, jobs j
+     WHERE e.job = j.job AND e.hiredate = d.hiredate;
+
+Table created.
+
+SQL&gt; ALTER TABLE emp_fact ADD (CONSTRAINT emp_fact_jobs_fk FOREIGN KEY(job_id) REFERENCES jobs(job_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; ALTER TABLE emp_fact ADD (CONSTRAINT emp_fact_dates_fk FOREIGN KEY(date_id) REFERENCES dates(date_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; -- データロード
+SQL&gt; INSERT INTO emp_fact SELECT * FROM emp_fact;
+
+14 rows created.
+
+SQL&gt; /
+
+28 rows created.
+...(以下繰り返す)
+
+SQL&gt; /
+
+114688 rows created.
+
+SQL&gt; COMMIT;
+
+Commit complete.
+
+SQL&gt; -- 統計情報取得
+SQL&gt; EXEC DBMS_STATS.GATHER_SCHEMA_STATS('scott');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<ul>
+<li>スター変換の確認方法</li>
+</ul>
+
+
+<p>スター変換されているかどうかは <code>set autotrace trace exp</code> 等の実行計画から確認する。
+例えば <code>set autotrace trace exp</code> で <code>Note</code> に以下の出力があればスター変換されている。</p>
+
+<pre><code>Note 
+-----
+   - star transformation used for this statement
+</code></pre>
+
+<p>ちなみに <code>set autotrace</code> を使用するためには <code>PLUSTRACE</code> ロールが必要で、以下のように作成する。</p>
+
+<pre><code>SQL&gt; connect /as sysdba              
+Connected.
+SQL&gt; @?/sqlplus/admin/plustrce.sql
+
+SQL&gt; GRANT plustrace TO scott;
+
+Grant succeeded.
+</code></pre>
+
+<ul>
+<li>スター変換なしの場合</li>
+</ul>
+
+
+<p>以下の SELECT 文で試してみる。</p>
+
+<pre><code>SQL&gt; set timing on
+SQL&gt; set autotrace on
+SQL&gt; set lines 200
+SQL&gt; SELECT j.job, d.year, SUM(e.sal), d.dname
+     FROM emp_fact e, jobs j, dates d, dept d
+     WHERE e.job_id = j.job_id
+     AND   e.date_id = d.date_id
+     AND   e.deptno = d.deptno
+     AND   j.job = 'CLERK'
+     AND   d.year in ('1980', '1987')
+     GROUP BY j.job, d.year, d.dname;
+
+JOB                         YEAR         SUM(E.SAL) DNAME
+--------------------------- ------------ ---------- ------------------------------------------
+CLERK                       1987           18022400 RESEARCH
+CLERK                       1980           13107200 RESEARCH
+
+Elapsed: 00:00:00.04
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 3373499036
+
+------------------------------------------------------------------------------------
+| Id  | Operation               | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT        |          |     4 |   180 |   324   (3)| 00:00:04 |
+|   1 |  HASH GROUP BY          |          |     4 |   180 |   324   (3)| 00:00:04 |
+|*  2 |   HASH JOIN             |          | 22938 |  1008K|   323   (2)| 00:00:04 |
+|   3 |    TABLE ACCESS FULL    | DEPT     |     4 |    52 |     3   (0)| 00:00:01 |
+|*  4 |    HASH JOIN            |          | 22938 |   716K|   319   (2)| 00:00:04 |
+|   5 |     MERGE JOIN CARTESIAN|          |     7 |   133 |     6   (0)| 00:00:01 |
+|*  6 |      TABLE ACCESS FULL  | JOBS     |     1 |    11 |     3   (0)| 00:00:01 |
+|   7 |      BUFFER SORT        |          |     7 |    56 |     3   (0)| 00:00:01 |
+|*  8 |       TABLE ACCESS FULL | DATES    |     7 |    56 |     3   (0)| 00:00:01 |
+|   9 |     TABLE ACCESS FULL   | EMP_FACT |   229K|  2912K|   312   (2)| 00:00:04 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("E"."DEPTNO"="D"."DEPTNO")
+   4 - access("E"."JOB_ID"="J"."JOB_ID" AND "E"."DATE_ID"="D"."DATE_ID")
+   6 - filter("J"."JOB"='CLERK')
+   8 - filter("D"."YEAR"='1980' OR "D"."YEAR"='1987')
+
+
+Statistics
+----------------------------------------------------------
+          0  recursive calls
+          1  db block gets
+       1098  consistent gets
+          0  physical reads
+          0  redo size
+        824  bytes sent via SQL*Net to client
+        524  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          1  sorts (memory)
+          0  sorts (disk)
+          2  rows processed
+</code></pre>
+
+<p>0.04 秒かかっている。</p>
+
+<ul>
+<li>スター型変換</li>
+</ul>
+
+
+<p>スター型変換するようにビットマップ索引を作成し、初期化パラメータ<code>ALTER SESSION SET STAR_TRANSFORMATION_ENABLED</code> を <code>TRUE</code> にして再実行する。</p>
+
+<pre><code>SQL&gt; -- ビットマップ索引を作成
+SQL&gt; CREATE BITMAP INDEX emp_fact_job_bix ON emp_fact(job_id);
+
+Index created.
+
+SQL&gt; CREATE BITMAP INDEX emp_fact_date_bix ON emp_fact(date_id);
+
+Index created.
+
+SQL&gt; CREATE BITMAP INDEX emp_fact_dept_bix ON emp_fact(deptno);
+
+Index created.
+
+SQL&gt; -- 統計情報採取
+SQL&gt; EXEC DBMS_STATS.GATHER_SCHEMA_STATS('scott');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; -- 初期化パラメータ変更
+SQL&gt; SQL&gt; ALTER SESSION SET STAR_TRANSFORMATION_ENABLED = TRUE
+
+Session altered.
+</code></pre>
+
+<p>先ほどと同じ SELECT を実行する。</p>
+
+<pre><code>SQL&gt; set timing on
+SQL&gt; set autotrace on
+SQL&gt; set lines 200
+SQL&gt; SELECT j.job, d.year, SUM(e.sal), d.dname
+     FROM emp_fact e, jobs j, dates d, dept d
+     WHERE e.job_id = j.job_id
+     AND   e.date_id = d.date_id
+     AND   e.deptno = d.deptno
+     AND   j.job = 'CLERK'
+     AND   d.year in ('1980', '1987')
+     GROUP BY j.job, d.year, d.dname;
+
+JOB                         YEAR         SUM(E.SAL) DNAME
+--------------------------- ------------ ---------- ------------------------------------------
+CLERK                       1987           18022400 RESEARCH
+CLERK                       1980           13107200 RESEARCH
+
+Elapsed: 00:00:00.02
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 4243144607
+
+------------------------------------------------------------------------------------------------------
+| Id  | Operation                        | Name              | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                 |                   |     4 |   216 |   322   (1)| 00:00:04 |
+|   1 |  HASH GROUP BY                   |                   |     4 |   216 |   322   (1)| 00:00:04 |
+|*  2 |   HASH JOIN                      |                   |  8823 |   465K|   321   (1)| 00:00:04 |
+|   3 |    TABLE ACCESS FULL             | DEPT              |     4 |    52 |     3   (0)| 00:00:01 |
+|*  4 |    HASH JOIN                     |                   |  8823 |   353K|   318   (1)| 00:00:04 |
+|   5 |     MERGE JOIN CARTESIAN         |                   |     3 |    57 |     6   (0)| 00:00:01 |
+|*  6 |      TABLE ACCESS FULL           | JOBS              |     1 |    11 |     3   (0)| 00:00:01 |
+|   7 |      BUFFER SORT                 |                   |     3 |    24 |     3   (0)| 00:00:01 |
+|*  8 |       TABLE ACCESS FULL          | DATES             |     3 |    24 |     3   (0)| 00:00:01 |
+|   9 |     VIEW                         | VW_ST_7A68B670    | 10587 |   227K|   311   (0)| 00:00:04 |
+|  10 |      NESTED LOOPS                |                   | 10587 |   444K|   305   (0)| 00:00:04 |
+|  11 |       BITMAP CONVERSION TO ROWIDS|                   | 10586 |   186K|     6   (0)| 00:00:01 |
+|  12 |        BITMAP AND                |                   |       |       |            |          |
+|  13 |         BITMAP MERGE             |                   |       |       |            |          |
+|  14 |          BITMAP KEY ITERATION    |                   |       |       |            |          |
+|* 15 |           TABLE ACCESS FULL      | JOBS              |     1 |    11 |     3   (0)| 00:00:01 |
+|* 16 |           BITMAP INDEX RANGE SCAN| EMP_FACT_JOB_BIX  |       |       |            |          |
+|  17 |         BITMAP MERGE             |                   |       |       |            |          |
+|  18 |          BITMAP KEY ITERATION    |                   |       |       |            |          |
+|* 19 |           TABLE ACCESS FULL      | DATES             |     3 |    24 |     3   (0)| 00:00:01 |
+|* 20 |           BITMAP INDEX RANGE SCAN| EMP_FACT_DATE_BIX |       |       |            |          |
+|  21 |       TABLE ACCESS BY USER ROWID | EMP_FACT          |     1 |    25 |   305   (1)| 00:00:04 |
+------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("ITEM_1"="D"."DEPTNO")
+   4 - access("ITEM_3"="J"."JOB_ID" AND "ITEM_2"="D"."DATE_ID")
+   6 - filter("J"."JOB"='CLERK')
+   8 - filter("D"."YEAR"='1980' OR "D"."YEAR"='1987')
+  15 - filter("J"."JOB"='CLERK')
+  16 - access("E"."JOB_ID"="J"."JOB_ID")
+  19 - filter("D"."YEAR"='1980' OR "D"."YEAR"='1987')
+  20 - access("E"."DATE_ID"="D"."DATE_ID")
+
+Note
+-----
+   - star transformation used for this statement
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+       1075  consistent gets
+          0  physical reads
+          0  redo size
+        824  bytes sent via SQL*Net to client
+        524  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          1  sorts (memory)
+          0  sorts (disk)
+          2  rows processed
+</code></pre>
+
+<p>今回は、<code>star transformation used for this statement</code> の出力があるようにスター型変換されており、実行時間も 0.02秒と改善されている。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -740,1115 +1091,6 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-11T19:54:00+09:00" pubdate data-updated="true">Sep 11<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>ファスト・スタート・フェイルオーバーの構成</h2>
-
-<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにできる。
-ファスト・スタート・フェイルオーバーには、プライマリ DB、スタンバイ DB を監視する&#8221;オブザーバ&#8221;が必要。オブザーバはプライマリ DB、スタンバイ DB とは別のサーバに配置することが望ましいが、今回はスタンバイ DB と同じサーバに構成する。</p>
-
-<p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;ファスト・スタート・フェイルオーバー&#8221; の &#8220;無効&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;オブザーバの構成&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-2.png" width="720" height="450"></p>
-
-<ul>
-<li>オブザーバの場所として今回はスタンバイ DB と同じサーバを指定。ORACLE_HOME の位置も入力する。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;続行&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-4.png" width="720" height="450"></p>
-
-<ul>
-<li>オブザーバを起動する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;続行&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;はい&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-8.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>Data Guard の構成画面に戻ると &#8220;ファスト・スタート・フェイルオーバー&#8221; が &#8220;stdby1.localに対して有効&#8221; になり、&#8221;オブザーバの場所&#8221; が &#8220;sv2.local&#8221; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-10.png" width="720" height="450"></p>
-
-<h2>ファスト・スタート・フェイルオーバーの検証</h2>
-
-<p>ファスト・スタート・フェイルオーバーが動作するか検証してみる。
-<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#BCGHEJFH">マニュアル Data Guard Broker</a> によると次の場合にファスト・スタート・フェイルオーバーが試行される。</p>
-
-<ul>
-<li>プライマリ・データベースと、オブザーバおよびターゲット・スタンバイ・データベースの両方との接続が失われた場合</li>
-<li>インスタンス障害</li>
-<li>強制終了(ABORT オプションでの停止)</li>
-</ul>
-
-
-<p>正常にデータベースを停止した場合(NORMAL, IMMEDIATE, TRANSACTIONAL)では、ファスト・スタート・フェイルオーバーは試行されないので、プライマリ DB を停止するときは通常通り ABORT 以外のオプションで SHUTDOWN すればいい。</p>
-
-<p>ファスト・スタート・フェイルオーバーを検証するためにプライマリ DB を <code>shutdown abort</code> で強制終了する。</p>
-
-<pre><code># プライマリ側で実施
-$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; shutdown abort
-ORACLE instance shut down.
-</code></pre>
-
-<p>これで、プライマリ DB の異常をオブザーバが検知して、フェイルオーバーが自動で開始される。
-オブザーバは Data Guard Broker の dgmgrl コマンドで実行されているので、ログは <code>$ORACLE_HOME/rdbms/log/dgmgrl_XXXX_XXXX.log</code> に出力されている。</p>
-
-<pre><code># オブザーバ配置サーバで実施
-$ ps -ef | grep dgmgrl
-oracle   12805     1  0 20:27 ?        00:00:01 /u01/app/oracle/product/11.2.0/dbhome_1/bin/dgmgrl -logfile /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/log/dgmgrl_PROD1_12804.log
-
-$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
-Observer started
-[W000 09/11 20:27:30.89] Observer started.
-
-21:07:33.37  2012年9月11日 Tuesday
-Initiating Fast-Start Failover to database "stdby1"...
-Performing failover NOW, please wait...
-Failover succeeded, new primary is "stdby1"
-21:07:35.66  2012年9月11日 Tuesday
-</code></pre>
-
-<p>これで、フェイルオーバーが実施された。EM の元スタンバイ DB 側を確認すると以下のようになっている。</p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-11.png" width="720" height="450"></p>
-
-<p>この後、元プライマリ DB を起動すると、自動でスタンバイ DB として構成してくれる。</p>
-
-<pre><code># 元プライマリ側で実施
-$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; shutdown abort
-ORACLE instance shut down.
-SQL&gt; startup
-ORACLE instance started.
-
-Total System Global Area  835104768 bytes
-Fixed Size                  2232960 bytes
-Variable Size             511708544 bytes
-Database Buffers          314572800 bytes
-Redo Buffers                6590464 bytes
-Database mounted.
-ORA-16649: possible failover to another database prevents this database from
-being opened
-</code></pre>
-
-<p>オブザーバのログを確認すると、元プライマリ DB が新たにスタンバイ DB としてマウントされたログ出力がある。</p>
-
-<pre><code># オブザーバ配置サーバで実施
-$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
-21:18:47.02  2012年9月11日 Tuesday
-Initiating reinstatement for database "PROD1"...
-Reinstating database "PROD1", please wait...
-Operation requires shutdown of instance "PROD1" on database "PROD1"
-Shutting down instance "PROD1"...
-ORA-01109: database not open
-
-Database dismounted.
-ORACLE instance shut down.
-Operation requires startup of instance "PROD1" on database "PROD1"
-Starting instance "PROD1"...
-ORACLE instance started.
-Database mounted.
-Continuing to reinstate database "PROD1" ...
-Reinstatement of database "PROD1" succeeded
-21:19:33.19  2012年9月11日 Tuesday
-</code></pre>
-
-<p>EM の元スタンバイ DB 側を確認すると以下のように元プライマリ DB が新たにスタンバイ DB として構成されていることが分かる。</p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
-
-<p>この後、スイッチオーバすれば、元の構成に戻る。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-rman-configuration/">[Oracle] Data Guard 環境での RMAN の構成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T23:00:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>Data Guard概要および管理<br/>
--> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
-</ul>
-
-
-<h2>Data Guard 環境での RMAN の構成</h2>
-
-<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
-
-<ul>
-<li>現在の設定の確認</li>
-</ul>
-
-
-<p>プライマリ DB をターゲットとして接続し、<code>show all</code> コマンドで現在の設定を確認</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target /
-RMAN&gt; show all;
-
-using target database control file instead of recovery catalog
-RMAN configuration parameters for database with db_unique_name PROD1 are:
-CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
-CONFIGURE BACKUP OPTIMIZATION OFF; # default
-CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
-CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
-CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
-CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
-CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
-CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
-CONFIGURE MAXSETSIZE TO UNLIMITED; # default
-CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
-CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
-CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
-CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
-CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
-</code></pre>
-
-<p>アーカイブ・ログの削除方針(<code>CONFIGURE ARCHIVELOG DELETION POLICY</code>)はデフォルトの <code>NONE</code> になっている。</p>
-
-<ul>
-<li>アーカイブ・ログの削除方針を変更する。</li>
-</ul>
-
-
-<p><code>CONFIGURE ARCHIVELOG DELETION POLICY</code> コマンドによりアーカイブ・ログの削除方針を変更する。</p>
-
-<p>すべてのスタンバイ DB への<strong>送信(SHIPPED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
-
-<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
-
-new RMAN configuration parameters:
-CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
-new RMAN configuration parameters are successfully stored
-</code></pre>
-
-<p>すべてのスタンバイ DB への<strong>適用(APPLIED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
-
-<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
-
-new RMAN configuration parameters:
-CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
-new RMAN configuration parameters are successfully stored
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-real-time-query/">[Oracle] Data Guard リアルタイム問い合わせ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T22:28:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard の &#8220;リアルタイム問い合わせ&#8221; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>リアルタイム問い合わせ</h2>
-
-<p>Data Guard の &#8220;リアルタイム問い合わせ&#8221; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
-
-<p>今回は EM Grid Control を使用してこの機能を有効にする。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;リアルタイム問い合わせ&#8221; の &#8220;無効&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-1.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;リアルタイム問い合わせの有効化&#8221; をチェックして、&#8221;適用&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-2.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 正常に適用された</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-3.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-4.png" width="720" height="450"></p>
-
-<ul>
-<li>Data Guard の構成画面に戻ると &#8220;リアルタイム問い合わせ&#8221; が &#8220;有効&#8221; になっている</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-5.png" width="720" height="450"></p>
-
-<p>実際にスタンバイ DB に接続すると、SELECT が実行可能でプライマリの変更が REDO 適用された時点で即時反映されることが確認できる。</p>
-
-<pre><code>SQL&gt; connect scott/tiger@PROD1 -- プライマリに接続
-Connected.
-SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
-
-Table created.
-
-SQL&gt; connect scott/tiger@STDBY1_DGMGRL -- スタンバイに接続
-Connected.
-SQL&gt; SELECT * FROM emp2 WHERE ROWNUM = 1; -- プライマリの更新が反映されている
-
-     EMPNO ENAME                          JOB                                MGR
----------- ------------------------------ --------------------------- ----------
-HIREDATE        SAL       COMM     DEPTNO
--------- ---------- ---------- ----------
-      7369 SMITH                          CLERK                             7902
-80-12-17        800                    20
-
-
-SQL&gt; UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369; -- スタンバイの更新はできない
-UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369
-       *
-ERROR at line 1:
-ORA-16000: database open for read-only access
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">[Oracle] Data Guard スナップショット・スタンバイ・データベース</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T21:51:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB を一時的に更新可能にする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>スナップショット・スタンバイ・データベースへの変換</h2>
-
-<p>Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB が一時的に更新可能にできる。&#8221;スナップショット・スタンバイ・データベース&#8221; となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
-
-<p>EM Grid Control を使用すると変換が楽にできる。(&#8220;変換&#8221; をクリックするだけ)</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;変換&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;はい&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>ロールが &#8220;スナップショット・スタンバイ&#8221; になる。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
-
-<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
-
-<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
-SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
-
-Table created.
-</code></pre>
-
-<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から &#8220;変換&#8221; をクリックすればよい。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-switchover/">[Oracle] Data Guard スイッチオーバー</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T21:19:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>スイッチオーバーの実施</h2>
-
-<p>EM Grid Control を使用してスイッチオーバーを行う。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;スイッチオーバー&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-1.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ・サイト に接続する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-2.png" width="720" height="450"></p>
-
-<ul>
-<li>プライマリ・サイト に接続する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-3.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;はい&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-4.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-5.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-6.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>今度は元スタンバイでプライマリになったインスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-7.png" width="720" height="450"></p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-creating-a-physical-standby-database/">[Oracle] フィジカル・スタンバイ・データベースの作成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T05:29:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard のフィジカル・スタンバイ・データベースを作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>フィジカル・スタンバイ・データベースの作成</h2>
-
-<p>EM Grid Control を使用してフィジカル・スタンバイ・データベースを作成する。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の &#8220;スタンバイ・データベースの追加&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-1.png" width="720" height="450"></p>
-
-<ul>
-<li>SYSDBA 権限で接続</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-2.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;スタンバイ・データベースの追加&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-3.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;新規のフィジカル・スタンバイ・データベースの作成&#8221; を選択し、&#8221;続行&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-4.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;Recovery Manager (RMAN)を使用してデータベース・ファイルをコピーします&#8221; のままで &#8220;次へ&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-5.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;プライマリ・ホスト資格証明&#8221; に OS ユーザとパスワードを入力。&#8221;スタンバイREDOログ・ファイルにOracle Managed Files(OMF)を使用&#8221; のチェックを外す</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-6.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ DB の &#8220;インスタンス名&#8221;, &#8220;ホスト&#8221; を環境に合わせて変更</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-7.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ DB のファイルの場所として &#8220;ファイル名と場所をプライマリ・データベースと同じ場所に保持&#8221; を選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-8.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;続行&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-9.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;一意のデータベース名&#8221;, &#8220;ターゲット名&#8221; (EM で表示されるターゲット名)を変更、スタンバイ DB の資格証明として &#8220;SYSDBA監視資格証明の使用&#8221; を選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-10.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;終了&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-11.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了となるが、なぜか完了の画面のまま &#8220;概要&#8221; のページに戻らない。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-12.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
-
-<p>alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>もう一度プライマリ DB インスタンスの &#8220;可用性&#8221; タブに行くと Data Guard の項目が変わっているので &#8220;設定および管理&#8221; をクリックして、正常にスタンバイ DB が作成されていることを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-15.png" width="720" height="450"></p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-archival-backup/">[Oracle] アーカイブ・バックアップの作成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T04:16:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 9 データベースのバックアップ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
-</ul>
-
-
-<h2>アーカイブ・バックアップの作成</h2>
-
-<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。これは <code>DELETE OBSOLETE</code> しても削除されないバックアップになる。</p>
-
-<p><code>BACKUP ... KEEP</code> によりアーカイブ・バックアップが作成される。</p>
-
-<ul>
-<li><strong>注意</strong>
-
-<ul>
-<li><strong><code>KEEP FOREVER</code> の場合にはリカバリ・カタログが必要。</strong></li>
-<li><strong>アーカイブ・バックアップは初期化パラメータ <code>DB_RECOVERY_FILE_DEST</code> で指定したディレクトリ(高速リカバリ領域)以外に保存する必要がある。</strong>
-もし、保存先を高速リカバリ領域のままにしていると、<code>ORA-19811: cannot have files in DB_RECOVERY_FILE_DEST with keep attributes</code> が発生して失敗する。
-保存先は <code>FORMAT</code> で指定できる。</li>
-</ul>
-</li>
-</ul>
-
-
-<p>以下の例では、タグと通常のリストア・ポイントを指定して、アーカイブ・バックアップを作成している。</p>
-
-<pre><code>RMAN&gt; BACKUP DATABASE
-      FORMAT '/home/oracle/backup/%U'
-      TAG quarterly
-      KEEP FOREVER
-      RESTORE POINT FY12Q3;
-
-Starting backup at 12-09-09
-current log archived
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-input datafile file number=00001 name=/u01/app/oracle/oradata/PROD1/system01.dbf
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_2: starting full datafile backup set
-channel ORA_DISK_2: specifying datafile(s) in backup set
-input datafile file number=00002 name=/u01/app/oracle/oradata/PROD1/sysaux01.dbf
-input datafile file number=00003 name=/u01/app/oracle/oradata/PROD1/undotbs01.dbf
-input datafile file number=00004 name=/u01/app/oracle/oradata/PROD1/users01.dbf
-channel ORA_DISK_2: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2mnko5ao_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:07
-channel ORA_DISK_2: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2nnko5ao_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_2: backup set complete, elapsed time: 00:00:07
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-including current SPFILE in backup set
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2onko5av_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-
-
-current log archived
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting archived log backup set
-channel ORA_DISK_1: specifying archived log(s) in backup set
-input archived log thread=1 sequence=10 RECID=3 STAMP=793515360
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2pnko5b1_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-including current control file in backup set
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2qnko5b3_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-Finished backup at 12-09-09
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-multisection-backup/">[Oracle] マルチセクション・バックアップ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T03:25:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>マルチセクション・バックアップにより効率的にバックアップを行う。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 10 データベースのバックアップ: 高度なトピック<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckad.htm#CHDBAHAD">セクションへの大規模なデータファイルのバックアップの分割</a></li>
-</ul>
-
-
-<h2>マルチセクション・バックアップの実行</h2>
-
-<p>マルチセクション・バックアップにより、ファイルサイズが大きいデータ・ファイルを複数のバックアップ・ピースに分割してバックアップすることができる。パラレル化の設定がされていれば、複数のチャネルを使用して平行でバックアップされるためパフォーマンスが向上する。</p>
-
-<p>マルチセクション・バックアップを行うためには、<code>SECTION SIZE</code> パラメータを指定して <code>BACKUP</code> を実行すればよい。</p>
-
-<ul>
-<li>必要に応じて、パラレル化の設定をする。(パラレル化の設定がされていないとマルチセクション・バックアップを実施しても複数バックアップ・ピースに分割されるがシリアルにバックアップされてあまり意味がない。)</li>
-</ul>
-
-
-<p><code>CONFIGURE</code> コマンドで設定</p>
-
-<pre><code>RMAN&gt; CONFIGURE DEVICE TYPE DISK PARALLELISM 2;
-
-new RMAN configuration parameters:
-CONFIGURE DEVICE TYPE DISK PARALLELISM 2 BACKUP TYPE TO BACKUPSET;
-new RMAN configuration parameters are successfully stored
-starting full resync of recovery catalog
-full resync complete
-</code></pre>
-
-<ul>
-<li>マルチセクション・バックアップ実施</li>
-</ul>
-
-
-<p>以下の例では 約 350M の 1 つデータファイルからなる example 表領域のバックアップを行っている。パラレル度を 2 にしたので、チャネルが 2 つ(<code>ORA_DISK_1</code> と <code>ORA_DISK_2</code>)割り当てられてパラレルで動作する。また、セクションサイズを 100M で指定したので、データファイルを 100M に分けて 4 つのバックアップ・ピースでバックアップしている。(1 つのピースは 12800 blocks * 8k = 100M)</p>
-
-<pre><code>RMAN&gt; BACKUP
-      SECTION SIZE 100M
-      TABLESPACE example;
-
-Starting backup at 12-09-09
-allocated channel: ORA_DISK_1
-channel ORA_DISK_1: SID=145 device type=DISK
-allocated channel: ORA_DISK_2
-channel ORA_DISK_2: SID=140 device type=DISK
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-backing up blocks 1 through 12800
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_2: starting full datafile backup set
-channel ORA_DISK_2: specifying datafile(s) in backup set
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-backing up blocks 12801 through 25600
-channel ORA_DISK_2: starting piece 2 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp tag=TAG20120909T035001 comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-backing up blocks 25601 through 38400
-channel ORA_DISK_1: starting piece 3 at 12-09-09
-channel ORA_DISK_2: finished piece 2 at 12-09-09
-piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp tag=TAG20120909T035001 comment=NONE
-channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
-channel ORA_DISK_2: starting full datafile backup set
-channel ORA_DISK_2: specifying datafile(s) in backup set
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-backing up blocks 38401 through 44240
-channel ORA_DISK_2: starting piece 4 at 12-09-09
-channel ORA_DISK_1: finished piece 3 at 12-09-09
-piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp tag=TAG20120909T035001 comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:02
-channel ORA_DISK_2: finished piece 4 at 12-09-09
-piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp tag=TAG20120909T035001 comment=NONE
-channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
-Finished backup at 12-09-09
-</code></pre>
-
-<p>バックアップの確認。確かに 4 つのバックアップ・ピースに分かれている。</p>
-
-<pre><code>RMAN&gt; list backup;
-...(*snip*)
-
-BS Key  Type LV Size       Device Type Elapsed Time Completion Time
-------- ---- -- ---------- ----------- ------------ ---------------
-956     Full    69.01M     DISK        00:00:02     12-09-09
-  List of Datafiles in backup set 956
-  File LV Type Ckp SCN    Ckp Time Name
-  ---- -- ---- ---------- -------- ----
-  5       Full 1160848    12-09-09 /u01/app/oracle/oradata/PROD1/example01.dbf
-
-  Backup Set Copy #1 of backup set 956
-  Device Type Elapsed Time Completion Time Compressed Tag
-  ----------- ------------ --------------- ---------- ---
-  DISK        00:00:02     12-09-09        NO         TAG20120909T035001
-
-    List of Backup Pieces for backup set 956 Copy #1
-    BP Key  Pc# Status      Piece Name
-    ------- --- ----------- ----------
-    958     1   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp
-    959     2   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp
-    960     3   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp
-    961     4   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -1864,6 +1106,10 @@ BS Key  Type LV Size       Device Type Elapsed Time Completion Time
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/13/oracle-star-transformation/">[Oracle] スター型変換の使用</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/12/oracle-transportable-tablespace/">Oracle トランスポータブル表領域</a>
       </li>
     
@@ -1877,10 +1123,6 @@ BS Key  Type LV Size       Device Type Elapsed Time Completion Time
     
       <li class="post">
         <a href="/blog/2012/09/09/oracle-data-guard-rman-configuration/">[Oracle] Data Guard 環境での RMAN の構成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/09/oracle-data-guard-real-time-query/">[Oracle] Data Guard リアルタイム問い合わせ</a>
       </li>
     
   </ul>

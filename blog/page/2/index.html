@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 RMAN の構成を変更して、以下ができるようにする。 制御ファイルと SPFILE の自動バックアップ取得
-バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)
-ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、 &hellip;">
+  <meta name="description" content="目的 Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -70,7 +69,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-configure-rman/">[Oracle] RMAN の構成</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a></h1>
     
     
       <p class="meta">
@@ -86,7 +85,7 @@
   
 
 
-<time datetime="2012-09-09T01:47:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+<time datetime="2012-09-11T19:54:00+09:00" pubdate data-updated="true">Sep 11<span>th</span>, 2012</time>
         
       </p>
     
@@ -95,14 +94,228 @@
 
   <div class="entry-content"><h2>目的</h2>
 
-<p>RMAN の構成を変更して、以下ができるようにする。</p>
+<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。</p>
+
+<h2>環境</h2>
 
 <ul>
-<li>制御ファイルと SPFILE の自動バックアップ取得</li>
-<li>バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)</li>
-<li>ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、増分バックアップ時のパフォーマンスが向上する。)</li>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
 </ul>
 
+
+<h2>ファスト・スタート・フェイルオーバーの構成</h2>
+
+<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにできる。
+ファスト・スタート・フェイルオーバーには、プライマリ DB、スタンバイ DB を監視する&#8221;オブザーバ&#8221;が必要。オブザーバはプライマリ DB、スタンバイ DB とは別のサーバに配置することが望ましいが、今回はスタンバイ DB と同じサーバに構成する。</p>
+
+<p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;ファスト・スタート・フェイルオーバー&#8221; の &#8220;無効&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;オブザーバの構成&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-2.png" width="720" height="450"></p>
+
+<ul>
+<li>オブザーバの場所として今回はスタンバイ DB と同じサーバを指定。ORACLE_HOME の位置も入力する。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;続行&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-4.png" width="720" height="450"></p>
+
+<ul>
+<li>オブザーバを起動する OS ユーザを入力</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;続行&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-8.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>Data Guard の構成画面に戻ると &#8220;ファスト・スタート・フェイルオーバー&#8221; が &#8220;stdby1.localに対して有効&#8221; になり、&#8221;オブザーバの場所&#8221; が &#8220;sv2.local&#8221; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-10.png" width="720" height="450"></p>
+
+<h2>ファスト・スタート・フェイルオーバーの検証</h2>
+
+<p>ファスト・スタート・フェイルオーバーが動作するか検証してみる。
+<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#BCGHEJFH">マニュアル Data Guard Broker</a> によると次の場合にファスト・スタート・フェイルオーバーが試行される。</p>
+
+<ul>
+<li>プライマリ・データベースと、オブザーバおよびターゲット・スタンバイ・データベースの両方との接続が失われた場合</li>
+<li>インスタンス障害</li>
+<li>強制終了(ABORT オプションでの停止)</li>
+</ul>
+
+
+<p>正常にデータベースを停止した場合(NORMAL, IMMEDIATE, TRANSACTIONAL)では、ファスト・スタート・フェイルオーバーは試行されないので、プライマリ DB を停止するときは通常通り ABORT 以外のオプションで SHUTDOWN すればいい。</p>
+
+<p>ファスト・スタート・フェイルオーバーを検証するためにプライマリ DB を <code>shutdown abort</code> で強制終了する。</p>
+
+<pre><code># プライマリ側で実施
+$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; shutdown abort
+ORACLE instance shut down.
+</code></pre>
+
+<p>これで、プライマリ DB の異常をオブザーバが検知して、フェイルオーバーが自動で開始される。
+オブザーバは Data Guard Broker の dgmgrl コマンドで実行されているので、ログは <code>$ORACLE_HOME/rdbms/log/dgmgrl_XXXX_XXXX.log</code> に出力されている。</p>
+
+<pre><code># オブザーバ配置サーバで実施
+$ ps -ef | grep dgmgrl
+oracle   12805     1  0 20:27 ?        00:00:01 /u01/app/oracle/product/11.2.0/dbhome_1/bin/dgmgrl -logfile /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/log/dgmgrl_PROD1_12804.log
+
+$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
+Observer started
+[W000 09/11 20:27:30.89] Observer started.
+
+21:07:33.37  2012年9月11日 Tuesday
+Initiating Fast-Start Failover to database "stdby1"...
+Performing failover NOW, please wait...
+Failover succeeded, new primary is "stdby1"
+21:07:35.66  2012年9月11日 Tuesday
+</code></pre>
+
+<p>これで、フェイルオーバーが実施された。EM の元スタンバイ DB 側を確認すると以下のようになっている。</p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-11.png" width="720" height="450"></p>
+
+<p>この後、元プライマリ DB を起動すると、自動でスタンバイ DB として構成してくれる。</p>
+
+<pre><code># 元プライマリ側で実施
+$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; shutdown abort
+ORACLE instance shut down.
+SQL&gt; startup
+ORACLE instance started.
+
+Total System Global Area  835104768 bytes
+Fixed Size                  2232960 bytes
+Variable Size             511708544 bytes
+Database Buffers          314572800 bytes
+Redo Buffers                6590464 bytes
+Database mounted.
+ORA-16649: possible failover to another database prevents this database from
+being opened
+</code></pre>
+
+<p>オブザーバのログを確認すると、元プライマリ DB が新たにスタンバイ DB としてマウントされたログ出力がある。</p>
+
+<pre><code># オブザーバ配置サーバで実施
+$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
+21:18:47.02  2012年9月11日 Tuesday
+Initiating reinstatement for database "PROD1"...
+Reinstating database "PROD1", please wait...
+Operation requires shutdown of instance "PROD1" on database "PROD1"
+Shutting down instance "PROD1"...
+ORA-01109: database not open
+
+Database dismounted.
+ORACLE instance shut down.
+Operation requires startup of instance "PROD1" on database "PROD1"
+Starting instance "PROD1"...
+ORACLE instance started.
+Database mounted.
+Continuing to reinstate database "PROD1" ...
+Reinstatement of database "PROD1" succeeded
+21:19:33.19  2012年9月11日 Tuesday
+</code></pre>
+
+<p>EM の元スタンバイ DB 側を確認すると以下のように元プライマリ DB が新たにスタンバイ DB として構成されていることが分かる。</p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
+
+<p>この後、スイッチオーバすれば、元の構成に戻る。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-rman-configuration/">[Oracle] Data Guard 環境での RMAN の構成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T23:00:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
 
 <h2>環境</h2>
 
@@ -115,24 +328,28 @@
 <h2>マニュアル</h2>
 
 <ul>
-<li><p>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 5 Recovery Manager環境の構成<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1019739">Recovery Managerの永続的な構成の表示およびクリア</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1017907">制御ファイルおよびサーバー・パラメータ・ファイルの自動バックアップの構成</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#sthref449">バックアップの最適化の構成</a></p>
-
-<p>-> 9 データベースのバックアップ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#sthref883">ブロック・チェンジ・トラッキングの有効化および無効化</a></p></li>
+<li>Data Guard概要および管理<br/>
+-> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
 </ul>
 
 
-<h2>RMAN 構成の確認</h2>
+<h2>Data Guard 環境での RMAN の構成</h2>
 
-<p>現在の RMAN 構成は <code>show all</code> にて確認できる。</p>
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
 
-<pre><code>$ rman target / catalog rman/rman@EMREP
+<ul>
+<li>現在の設定の確認</li>
+</ul>
+
+
+<p>プライマリ DB をターゲットとして接続し、<code>show all</code> コマンドで現在の設定を確認</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target /
 RMAN&gt; show all;
 
+using target database control file instead of recovery catalog
 RMAN configuration parameters for database with db_unique_name PROD1 are:
 CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
 CONFIGURE BACKUP OPTIMIZATION OFF; # default
@@ -150,49 +367,31 @@ CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
 CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
 </code></pre>
 
-<h2>制御ファイル, SPFILE の自動バックアップ</h2>
+<p>アーカイブ・ログの削除方針(<code>CONFIGURE ARCHIVELOG DELETION POLICY</code>)はデフォルトの <code>NONE</code> になっている。</p>
 
-<p><code>BACKUP</code> コマンドが実行されるときに、制御ファイルと SPFILE も自動的にバックアップするように設定する。</p>
+<ul>
+<li>アーカイブ・ログの削除方針を変更する。</li>
+</ul>
 
-<pre><code>RMAN&gt; CONFIGURE CONTROLFILE AUTOBACKUP ON;
 
-new RMAN configuration parameters:
-CONFIGURE CONTROLFILE AUTOBACKUP ON;
-new RMAN configuration parameters are successfully stored
-starting full resync of recovery catalog
-full resync complete
-</code></pre>
+<p><code>CONFIGURE ARCHIVELOG DELETION POLICY</code> コマンドによりアーカイブ・ログの削除方針を変更する。</p>
 
-<h2>バックアップの最適化</h2>
+<p>すべてのスタンバイ DB への<strong>送信(SHIPPED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
 
-<p>バックアップの最適化を有効にすると、保存方針によって同一ファイルの不要なバックアップをしなくなる。例えば、保存方針が <code>REDUNDANCY 1</code> として USERS 表領域を READ ONLY にして、<code>BACKUP DATABASE</code> を実行すると USERS 表領域のバックアップは 2 つ(REDUNDANCY + 1)あればよいので、3 回目以降の <code>BACKUP DATABASE</code> では USERS 表領域のバックアップが取得されなくなる。</p>
-
-<pre><code>RMAN&gt; CONFIGURE BACKUP OPTIMIZATION ON;
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
 
 new RMAN configuration parameters:
-CONFIGURE BACKUP OPTIMIZATION ON;
+CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
 new RMAN configuration parameters are successfully stored
-starting full resync of recovery catalog
-full resync complete
 </code></pre>
 
-<h2>ブロック・チェンジ・トラッキングを有効化</h2>
+<p>すべてのスタンバイ DB への<strong>適用(APPLIED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
 
-<p>DB で変更されたブロックをブロック・チェンジ・トラッキング・ファイル上に記録するようにする。このことで、増分バックアップ時に変更があったブロックだけを読むだけでよくなり、データファイルのすべてのブロックの読み込みが不要になり、パフォーマンスが向上する。</p>
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
 
-<p>マニュアルでは <code>DB_CREATE_FILE_DEST</code> の設定の記載があるが、ブロック・チェンジ・トラッキング・ファイルのパスをフルパスで指定する場合は <code>DB_CREATE_FILE_DEST</code> の設定は不要。</p>
-
-<pre><code>SQL&gt; ALTER DATABASE ENABLE BLOCK CHANGE TRACKING
-     USING FILE '/u01/app/oracle/oradata/PROD1/rman_change_track.f' REUSE;
-
-Database altered.
-
-SQL&gt; SELECT STATUS, FILENAME
-     FROM V$BLOCK_CHANGE_TRACKING;
-
-STATUS   FILENAME
--------- ------------------------------------------------------------
-ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
+new RMAN configuration parameters are successfully stored
 </code></pre>
 </div>
   
@@ -206,7 +405,7 @@ ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/09/08/oracle-setup-recovery-catalog/">[Oracle] リカバリ・カタログのセットアップ</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-real-time-query/">[Oracle] Data Guard リアルタイム問い合わせ</a></h1>
     
     
       <p class="meta">
@@ -222,7 +421,7 @@ ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
   
 
 
-<time datetime="2012-09-08T23:44:00+09:00" pubdate data-updated="true">Sep 8<span>th</span>, 2012</time>
+<time datetime="2012-09-09T22:28:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
         
       </p>
     
@@ -231,186 +430,7 @@ ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
 
   <div class="entry-content"><h2>目的</h2>
 
-<p>Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 13 リカバリ・カタログの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
-</ul>
-
-
-<h2>リカバリ・カタログとは</h2>
-
-<p>リカバリ・カタログには、RMAN で使用するメタデータ情報(バックアップ・ファイルの情報など)が格納されている。RMAN が使用するメタデータは通常は制御ファイルに格納されているが、リカバリ・カタログとして(リカバリのターゲットとなる DB とは別の) DB に格納することができる。リカバリ・カタログを使用するメリットは次のようなものがある。</p>
-
-<ul>
-<li><p>制御ファイルに格納されているメタデータと同様の情報が格納されているので、冗長性が確保される。制御ファイルが消失した場合も、リカバリ・カタログを使用すればいい。制御ファイルとの同期はバックアップ実行時などに自動で実行される。</p></li>
-<li><p>複数の DB の RMAN メタデータを集中管理できる。</p></li>
-<li><p>リカバリ・カタログには、制御ファイルより長期のメタデータ履歴を格納できる。よって、制御ファイルの履歴より前の時点にリカバリすることができる。</p></li>
-<li><p>一部の RMAN 機能は、リカバリ・カタログが必須。例えば、リカバリ・カタログには Recovery Manager スクリプトを格納することができる。</p></li>
-<li><p>Data Guard 環境で RMAN を使用する場合は、リカバリ・カタログが必要。</p></li>
-</ul>
-
-
-<h2>リカバリ・カタログの作成</h2>
-
-<p>リカバリ・カタログを作成する DB にリカバリ・カタログを所有するスキーマを作成して、必要な権限を与え、リカバリ・カタログを作成する。</p>
-
-<ul>
-<li>リカバリ・カタログを所有するスキーマを作成</li>
-</ul>
-
-
-<p>リカバリ・カタログを格納する DB に接続してスキーマを作成。</p>
-
-<pre><code>$ sqlplus sys/oracle@EMREP as sysdba
-SQL&gt; CREATE USER rman IDENTIFIED BY rman
-     TEMPORARY TABLESPACE temp
-     DEFAULT TABLESPACE users
-     QUOTA UNLIMITED ON users;
-
-User created.
-</code></pre>
-
-<ul>
-<li>必要な権限の付与</li>
-</ul>
-
-
-<p>リカバリ・カタログの管理に必要なすべての権限を含む <code>RECOVERY_CATALOG_OWNER</code> ロールを付与する。</p>
-
-<pre><code>SQL&gt; GRANT RECOVERY_CATALOG_OWNER TO rman;
-
-Grant succeeded.
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログの作成</li>
-</ul>
-
-
-<p>RMAN を使用して先ほど作成したリカバリ・カタログを所有するスキーマで接続して、リカバリ・カタログを作成。</p>
-
-<pre><code>$ rman catalog rman/rman@EMREP
-RMAN&gt; CREATE CATALOG;
-
-recovery catalog created
-</code></pre>
-
-<h2>リカバリ・カタログへの DB の登録</h2>
-
-<p>リカバリ・カタログにターゲットとなる DB を登録する。</p>
-
-<ul>
-<li><p>ターゲット DB がマウントしていない場合は、マウントまたはオープンする。</p></li>
-<li><p>RMAN からターゲット DB, リカバリ・カタログに接続する。</p></li>
-</ul>
-
-
-<p>RMAN から以下のようにして接続</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target / catalog rman/rman@EMREP
-
-Recovery Manager: Release 11.2.0.3.0 - Production on Sun Sep 9 00:37:33 2012
-
-Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
-
-connected to target database: PROD1 (DBID=2014160803)
-connected to recovery catalog database
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログにターゲット DB を登録</li>
-</ul>
-
-
-<p><code>REGISTER DATABASE</code> によりターゲット DB を登録する。</p>
-
-<pre><code>RMAN&gt; REGISTER DATABASE;
-
-database registered in recovery catalog
-starting full resync of recovery catalog
-full resync complete
-</code></pre>
-
-<ul>
-<li>正常に登録されていることを確認</li>
-</ul>
-
-
-<p><code>REPORT SCHEMA</code> により正常に登録されていることを確認する。</p>
-
-<pre><code>RMAN&gt; REPORT SCHEMA;
-
-Report of database schema for database with db_unique_name PROD1
-
-List of Permanent Datafiles
-===========================
-File Size(MB) Tablespace           RB segs Datafile Name
----- -------- -------------------- ------- ------------------------
-1    720      SYSTEM               YES     /u01/app/oracle/oradata/PROD1/system01.dbf
-2    550      SYSAUX               NO      /u01/app/oracle/oradata/PROD1/sysaux01.dbf
-3    95       UNDOTBS1             YES     /u01/app/oracle/oradata/PROD1/undotbs01.dbf
-4    5        USERS                NO      /u01/app/oracle/oradata/PROD1/users01.dbf
-5    345      EXAMPLE              NO      /u01/app/oracle/oradata/PROD1/example01.dbf
-
-List of Temporary Files
-=======================
-File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
----- -------- -------------------- ----------- --------------------
-1    29       TEMP                 32767       /u01/app/oracle/oradata/PROD1/temp01.dbf
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-em-agent-installation/">[Oracle] EM エージェントのインストール</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T23:28:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>EM エージェントをインストールする。</p>
+<p>Data Guard の &#8220;リアルタイム問い合わせ&#8221; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
 
 <h2>環境</h2>
 
@@ -421,1230 +441,74 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
 </ul>
 
 
-<h2>EM エージェントのインストール</h2>
+<h2>リアルタイム問い合わせ</h2>
 
-<p>EM からインストールする。
-事前に EM エージェントをインストールするサーバに ssh 接続できることを確認しておくこと。</p>
+<p>Data Guard の &#8220;リアルタイム問い合わせ&#8221; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
+
+<p>今回は EM Grid Control を使用してこの機能を有効にする。</p>
 
 <ul>
-<li>&#8220;デプロイ&#8221; タブから &#8220;エージェントのインストール&#8221; をクリック</li>
+<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;フレッシュ・インストール&#8221; をクリック</li>
+<li>&#8220;リアルタイム問い合わせ&#8221; の &#8220;無効&#8221; をクリック</li>
 </ul>
 
 
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-2.png" width="720" height="450"></p>
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-1.png" width="720" height="450"></p>
 
 <ul>
-<li>以下のように設定
-
-<ul>
-<li>&#8220;ホスト・リストの指定&#8221; : DB サーバのホスト名</li>
-<li>&#8220;OS 資格証明&#8221; : DB サーバの OS ユーザ</li>
-<li>&#8220;root.sh の実行&#8221; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
-<li>&#8220;インストールのベース・ディレクトリ&#8221; : /u01/app/oracle/Middleware</li>
-<li>&#8220;管理サーバの登録パスワード&#8221; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
-</ul>
-</li>
+<li>&#8220;リアルタイム問い合わせの有効化&#8221; をチェックして、&#8221;適用&#8221; をクリック</li>
 </ul>
 
 
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-3.png" width="720" height="450">
-<img src="/images/2012-09-07-oracle-em-agent-installation/em-4.png" width="720" height="450">
-<img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-2.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&#8221; のチェックははずす。</li>
+<li>処理中 -> 正常に適用された</li>
 </ul>
 
 
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-4.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;はい&#8221;</li>
+<li>Data Guard の構成画面に戻ると &#8220;リアルタイム問い合わせ&#8221; が &#8220;有効&#8221; になっている</li>
 </ul>
 
 
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-7.png" width="720" height="450"></p>
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-5.png" width="720" height="450"></p>
 
-<ul>
-<li>インストール中</li>
-</ul>
+<p>実際にスタンバイ DB に接続すると、SELECT が実行可能でプライマリの変更が REDO 適用された時点で即時反映されることが確認できる。</p>
 
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-8.png" width="720" height="450"></p>
-
-<ul>
-<li>インストール完了。&#8221;完了&#8221; をクリック。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-9.png" width="720" height="450"></p>
-
-<ul>
-<li>DB サーバ上で root.sh を実行する。</li>
-</ul>
-
-
-<p>DB サーバ上で実行。</p>
-
-<pre><code>$ cd /u01/app/oracle/Middleware/agent11g
-$ su
-# ./root.sh
-</code></pre>
-
-<h2>DB インスタンスを EM に登録する</h2>
-
-<p>EM エージェントをインストールしただけでは DB インスタンスのステータスが保留状態なので構成する必要がある。</p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
-
-<ul>
-<li>DB インスタンスを選択して &#8220;構成&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-11.png" width="720" height="450"></p>
-
-<ul>
-<li>dbsnmp のパスワードを変更</li>
-</ul>
-
-
-<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &#8220;接続テスト&#8221; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-13.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
-
-<p>dbsnmp のパスワードを変更したらもう一度 &#8220;接続テスト&#8221; を行い成功することを確認して &#8220;次へ&#8221; をクリック</p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
-
-<ul>
-<li>確認して &#8220;発行&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-16.png" width="720" height="450"></p>
-
-<ul>
-<li>構成中</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;OK&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-18.png" width="720" height="450"></p>
-
-<ul>
-<li>他の DB がある場合は同様に構成して、ステータスが正常になることを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T22:09:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>パスワードを大文字・小文字の区別をするようにする。
-DB のパスワードについてはその他複雑なパスワードにするように強制する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>管理者ガイド<br/>
--> 1 データベース管理スタート・ガイド<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/dba007.htm#i1006789">パスワード・ファイルの作成とメンテナンス</a></p></li>
-<li><p>セキュリティ・ガイド<br/>
--> 3 認証の構成<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#CHDJDCGI">パスワードでの大/小文字の区別の有効化または無効化</a><br/>
-<a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#i1007341">パスワードの複雑度検証の規定</a></p></li>
-</ul>
-
-
-<h2>SYSDBA でのログイン時のパスワード</h2>
-
-<p>SYSDBA でのログイン(SYS ユーザで as sysdba でのログイン)時のパスワードを大文字・小文字の区別させるためにパスワードファイル(<code>$ORACLE_HOME/dbs/orapw&lt;ORACLE_SID&gt;</code>)を再作成する。</p>
-
-<p><code>orapwd</code>を引数なしで実行すると、使い方が分かる。</p>
-
-<pre><code>$ orapwd
-Usage: orapwd file=&lt;fname&gt; entries=&lt;users&gt; force=&lt;y/n&gt; ignorecase=&lt;y/n&gt; nosysdba=&lt;y/n&gt;
-
-  where
-    file - name of password file (required),
-    password - password for SYS will be prompted if not specified at command line,
-    entries - maximum number of distinct DBA (optional),
-    force - whether to overwrite existing file (optional),
-    ignorecase - passwords are case-insensitive (optional),
-    nosysdba - whether to shut out the SYSDBA logon (optional Database Vault only).
-
-  There must be no spaces around the equal-to (=) character.
-</code></pre>
-
-<p><code>ignorecase=n</code> で再作成すれば大文字・小文字が区別される。
-ちなみにパスワードファイルのファイル名は <code>orapw&lt;ORACLE_SID&gt;</code> でなければならない。</p>
-
-<pre><code>$ cd $ORACLE_HOME/dbs
-$ rm orapwPROD1
-$ orapwd file=orapwPROD1 password=oracle ignorecase=n
-</code></pre>
-
-<p>大文字・小文字が区別されるか確認。</p>
-
-<pre><code>SQL&gt; connect sys/oracle@PROD1 as sysdba
+<pre><code>SQL&gt; connect scott/tiger@PROD1 -- プライマリに接続
 Connected.
-SQL&gt; connect sys/ORACLE@PROD1 as sysdba
-ERROR:
-ORA-01017: invalid username/password; logon denied
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+
+SQL&gt; connect scott/tiger@STDBY1_DGMGRL -- スタンバイに接続
+Connected.
+SQL&gt; SELECT * FROM emp2 WHERE ROWNUM = 1; -- プライマリの更新が反映されている
+
+     EMPNO ENAME                          JOB                                MGR
+---------- ------------------------------ --------------------------- ----------
+HIREDATE        SAL       COMM     DEPTNO
+-------- ---------- ---------- ----------
+      7369 SMITH                          CLERK                             7902
+80-12-17        800                    20
 
 
-Warning: You are no longer connected to ORACLE.
-</code></pre>
-
-<h2>DB ユーザのパスワード</h2>
-
-<h3>大文字・小文字の区別</h3>
-
-<p>DB ユーザのパスワードの大文字・小文字を区別するためには初期かパラメータ <code>SEC_CASE_SENSITIVE_LOGON</code> を <code>TRUE</code> にする。(デフォルトは <code>TRUE</code>)</p>
-
-<pre><code>SQL&gt; ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE;
-
-System altered.
-</code></pre>
-
-<h3>複雑なパスワードを強制</h3>
-
-<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> を実行することで、デフォルトのプロファイルを使用するユーザがパスワード変更する際に以下がチェックされるようになる。</p>
-
-<ul>
-<li>パスワードの長さが8文字以上30文字以内であること。</li>
-<li>パスワードがユーザー名と同一でないこと。ユーザー名のスペルを逆にしたり、ユーザー名に数字を追加したパスワードでないこと。</li>
-<li>サーバー名と同一であったり、サーバー名に数字1から100を追加したパスワードでないこと。</li>
-<li>単純なパスワードでないこと(例: welcome1、database1、account1、user1234、password1、oracle、oracle123、computer1、abcdefg1、change_on_install)。</li>
-<li>パスワードに少なくとも数字が1つと英字が1つ含まれていること。</li>
-<li>以前のパスワードとの違いが3文字以上あること。</li>
-</ul>
-
-
-<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> の内容を確認すると分かるように、パスワード検証関数 <code>verify_function_11G</code> が作成されてデフォルトプロファイル(<code>DEFAULT</code>)が変更されている。(パスワードの存続期間等も設定される)</p>
-
-<pre><code>$ cat $ORACLE_HOME/rdbms/admin/utlpwdmg.sql
-...(*snip*)
-
--- This script sets the default password resource parameters
--- This script needs to be run to enable the password features.
--- However the default resource parameters can be changed based
--- on the need.
--- A default password complexity function is also provided.
--- This function makes the minimum complexity checks like
--- the minimum length of the password, password not same as the
--- username, etc. The user may enhance this function according to
--- the need.
--- This function must be created in SYS schema.
--- connect sys/&lt;password&gt; as sysdba before running the script
-
-CREATE OR REPLACE FUNCTION verify_function_11G
-...(*snip*)
-END;
-/
-
--- This script alters the default parameters for Password Management
--- This means that all the users on the system have Password Management
--- enabled and set to the following values unless another profile is
--- created with parameter values set to different value or UNLIMITED
--- is created and assigned to the user.
-
-ALTER PROFILE DEFAULT LIMIT
-PASSWORD_LIFE_TIME 180
-PASSWORD_GRACE_TIME 7
-PASSWORD_REUSE_TIME UNLIMITED
-PASSWORD_REUSE_MAX UNLIMITED
-FAILED_LOGIN_ATTEMPTS 10
-PASSWORD_LOCK_TIME 1
-PASSWORD_VERIFY_FUNCTION verify_function_11G;
-...(*snip*)
-</code></pre>
-
-<p>ということで、<code>utlpwdmg.sql</code> を実行する。</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; @?/rdbms/admin/utlpwdmg.sql
-
-Function created.
-
-
-Profile altered.
-
-
-Function created.
-</code></pre>
-
-<p>他のプロファイルも変更する場合は、<code>ALTER PROFILE</code> を実行する必要がある。</p>
-
-<pre><code>SQL&gt; ALTER PROFILE &lt;profile名&gt; LIMIT
-     PWSSWORD_VERIFY_FUNCTION verify_function_11G;
-</code></pre>
-
-<p>実際にパスワードを変更してチェックに引っかかるか確認してみる。</p>
-
-<pre><code>SQL&gt; alter user scott identified by tiger;
-alter user scott identified by tiger
-*
+SQL&gt; UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369; -- スタンバイの更新はできない
+UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369
+       *
 ERROR at line 1:
-ORA-28003: password verification for the specified password failed
-ORA-20001: Password length less than 8
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T21:27:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Oracle Database のログ出力先を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>管理者ガイド<br/>
--> 9 診断データの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
-<li><p>リファレンス<br/>
--> 1 初期化パラメータ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
-<li><p>Net Services管理者ガイド<br/>
--> 16 Oracle Net Servicesのトラブルシューティング<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
-</ul>
-
-
-<h2>設定</h2>
-
-<p>Oracle Database 11gR1 より、各種ログの出力先が&#8221;自動診断リポジトリ(Automatic Diagnostic Repository, ADR)&#8221;という構造になった。</p>
-
-<ul>
-<li>Oracle Database のログ</li>
-</ul>
-
-
-<p>Oracle Database のログの出力先は初期化パラメータ <code>DIAGNOSTIC_DEST</code> にて設定する。
-例えば、<code>/home/oracle</code> 配下に変更する場合は以下のようにパラメータ変更を行う。
-(動的に変更可能なので DB 再起動は不要。)</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; ALTER SYSTEM SET DIAGNOSTIC_DEST = "/home/oracle" SCOPE = BOTH;
-
-System altered.
-</code></pre>
-
-<p>指定したディレクトリ配下に <code>diag/rdbms</code> ディレクトリが作成され、その配下に alert.log やトレースが出力される。</p>
-
-<ul>
-<li>Listener のログ</li>
-</ul>
-
-
-<p>Listener のログ出力先は <code>listener.ora</code> 内の <code>ADR_BASE_&lt;リスナー名&gt;</code> で設定する。</p>
-
-<pre><code>$ vi $ORACLE_HOME/network/admin/listener.ora # 以下を編集 or 追加
-ADR_BASE_LISTENER = /home/oracle
-</code></pre>
-
-<p>設定を反映させるために Listener を再起動</p>
-
-<pre><code>$ lsnrctl stop
-$ lsnrctl start
-</code></pre>
-
-<p>これで、指定したディレクトリ配下に <code>diag/tnslsnr</code> ディレクトリができて、その配下に listener.log が出力される。</p>
-
-<ul>
-<li>Oracle Net Client のログ</li>
-</ul>
-
-
-<p>Oracle Net Client のログは <code>sqlnet.ora</code> 内の <code>ADR_BASE</code> パラメータで設定する。</p>
-
-<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora # 以下を編集 or 追加
-ADR_BASE = /home/oracle
-</code></pre>
-
-<p>これで、ログ出力時は指定したディレクトリ配下に <code>diag/clients</code> ディレクトリができて、そこに出力される。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>インストレーション・ガイド for Linux<br/>
--> 5 Oracle Databaseのインストール後の作業<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
-</ul>
-
-
-<h2>ダイレクト NFS クライアントの有効化</h2>
-
-<ul>
-<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
-<li><p>libodm11.so の置き換え</p></li>
-</ul>
-
-
-<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_on
-</code></pre>
-
-<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
-
-<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
-if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
-        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
-        fi
-rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>ダイレクト NFS クライアントの無効化</h2>
-
-<ul>
-<li>libodm11.so の置き換え</li>
-</ul>
-
-
-<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_off
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>確認方法</h2>
-
-<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
-
-<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>暗号化された表領域を作成する。<br/>
-&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>2日でセキュリティ・ガイド<br/>
--> 6 データの保護<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
-<li><p>管理者ガイド<br/>
--> 14 表領域の管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
-</ul>
-
-
-<h2>作成</h2>
-
-<p>&#8220;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
-
-<ol>
-<li>ウォレット(マスター暗号化キーが格納される)を DB 外の OS 上のファイルとして作成</li>
-<li>ウォレットを開く(データの暗号化が開始される)</li>
-<li>表領域の作成</li>
-</ol>
-
-
-<p>以下、マニュアルの手順に従い作成する。</p>
-
-<ul>
-<li>ウォレットを格納するディレクトリを作成</li>
-</ul>
-
-
-<p>OS 上でディレクトリ作成</p>
-
-<pre><code>$ mkdir /home/oracle/ORA_WALLETS
-</code></pre>
-
-<ul>
-<li>sqlnet.ora ファイルにウォレットを格納するディレクトリを指定</li>
-</ul>
-
-
-<p>sqlnet.ora ファイルを編集</p>
-
-<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora
-$ cat $ORACLE_HOME/network/admin/sqlnet.ora
-ENCRYPTION_WALLET_LOCATION=
- (SOURCE=
-  (METHOD=file)
-   (METHOD_DATA=
-    (DIRECTORY=/home/oracle/ORA_WALLETS)))
-</code></pre>
-
-<ul>
-<li><p>(ここで compatible 初期化バラメータの値が 10.2 より小さい場合は DB 再起動が必要)</p></li>
-<li><p>ウォレットを作成</p></li>
-</ul>
-
-
-<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&#8220;)で囲む必要がある。
-これでウォレット格納ディレクトリにウォレットの OS ファイルができる。</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; ALTER SYSTEM SET ENCRYPTION KEY IDENTIFIED BY "oracle";
-
-System altered.
-
-$ ls /home/oracle/ORA_WALLETS
-ewallet.p12
-</code></pre>
-
-<ul>
-<li>ウォレットを開く</li>
-</ul>
-
-
-<p>以下の <code>ALTER SYSTEM</code> によりウォレットを開く。この場合もパスワードは二重引用符で囲む必要がある。
-ちなみにウォレット作成直後は開かれた状態となっている。</p>
-
-<pre><code>SQL&gt; ALTER SYSTEM SET ENCRYPTION WALLET OPEN IDENTIFIED BY "oracle";
-
-System altered.
-</code></pre>
-
-<ul>
-<li>暗号化された表領域の作成</li>
-</ul>
-
-
-<p>以下のように、デフォルトの暗号化アルゴリズムを使用して暗号化された表領域を作成。暗号化アルゴリズムを指定する場合は <code>ENCRYPTION USING 'AES256'</code> などとする。</p>
-
-<pre><code>SQL&gt; CREATE TABLESPACE securespace
-     DATAFILE '/u01/app/oracle/oradata/PROD1/secure01.dbf' SIZE 100M
-     ENCRYPTION
-     DEFAULT STORAGE(ENCRYPT);
-
-Tablespace created.
-</code></pre>
-
-<h2>確認方法</h2>
-
-<ul>
-<li>ウォレットが開いているか閉じているかのチェック</li>
-</ul>
-
-
-<p><code>V$ENCRYPTION_VIEW</code> ビューを問い合わせる。</p>
-
-<pre><code>SQL&gt; SELECT * FROM V$ENCRYPTION_WALLET;
-
-WRL_TYPE   WRL_PARAMETER                  STATUS
----------- ------------------------------ ----------
-file       /home/oracle/ORA_WALLETS       OPEN
-</code></pre>
-
-<ul>
-<li>表領域が暗号化されているかのチェック</li>
-</ul>
-
-
-<p><code>DBA_TABLESPACES.ENCRYPTED</code> 列を確認する。</p>
-
-<pre><code>SQL&gt; SELECT TABLESPACE_NAME, ENCRYPTED FROM DBA_TABLESPACES;
-
-TABLESPACE_NAME      ENCRYPTED
--------------------- ----------
-SYSTEM               NO
-SYSAUX               NO
-UNDOTBS1             NO
-TEMP                 NO
-USERS                NO
-EXAMPLE              NO
-SECURESPACE          YES
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/05/oracle-net-services/">[Oracle] ネットワーク構成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-05T21:50:00+09:00" pubdate data-updated="true">Sep 5<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Oracle DB にネットワーク接続できるように構成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>サーバー側のネットワーク構成</h2>
-
-<p><code>netca</code> により構成する。</p>
-
-<ul>
-<li><p><code>netca</code> を起動</p>
-
-<p>  $ netca</p></li>
-<li><p>&#8220;リスナー構成&#8221; を選択</p></li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-1.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;追加&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-2.png" width="600" height="400"></p>
-
-<ul>
-<li>リスナー名の設定。今回はリスナー名はデフォルトの&#8221;LISTENER&#8221;のまま。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-3.png" width="600" height="400"></p>
-
-<ul>
-<li>プロトコルの選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-4.png" width="600" height="400"></p>
-
-<ul>
-<li>ポート番号の指定。今回は標準ポート 1521 を使用。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-5.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;いいえ&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-6.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;次へ&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-7.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;完了&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-8.png" width="600" height="400"></p>
-
-<p>これでリスナーの設定ファイル <code>$ORACLE_HOME/network/admin/listener.ora</code> が作成される。</p>
-
-<pre><code>$ cat $ORACLE_HOME/network/admin/listener.ora
-# listener.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-# Generated by Oracle configuration tools.
-
-LISTENER =
-  (DESCRIPTION_LIST =
-    (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
-      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
-    )
-  )
-
-ADR_BASE_LISTENER = /u01/app/oracle
-</code></pre>
-
-<h2>クライアント側のネットワーク構成</h2>
-
-<p>同じく <code>netca</code> により構成する。</p>
-
-<ul>
-<li><p><code>netca</code> を起動</p>
-
-<p>  $ netca</p></li>
-<li><p>&#8220;ローカル・ネット・サービス名構成&#8221; を選択</p></li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-9.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;追加&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-10.png" width="600" height="400"></p>
-
-<ul>
-<li>サービス名を設定。通常は DB のグローバル・データベース名(db_name.db_domain)を入力。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-11.png" width="600" height="400"></p>
-
-<ul>
-<li>プロトコルの選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-12.png" width="600" height="400"></p>
-
-<ul>
-<li>ホスト名, ポート番号を設定</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-13.png" width="600" height="400"></p>
-
-<ul>
-<li>接続テスト。今回は行わない。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-14.png" width="600" height="400"></p>
-
-<ul>
-<li>ネット・サービス名の設定。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-15.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;いいえ&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-16.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;次へ&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-17.png" width="600" height="400"></p>
-
-<ul>
-<li>&#8220;完了&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-18.png" width="600" height="400"></p>
-
-<p>これでクライアントのネットワーク設定ファイル <code>$ORACLE_HOME/network/admin/tnsnames.ora</code> が作成される。</p>
-
-<pre><code>$ cat $ORACLE_HOME/network/admin/tnsnames.ora 
-# tnsnames.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/tnsnames.ora
-# Generated by Oracle configuration tools.
-
-PROD1 =
-  (DESCRIPTION =
-    (ADDRESS_LIST =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
-    )
-    (CONNECT_DATA =
-      (SERVICE_NAME = PROD1.local)
-    )
-  )
-</code></pre>
-
-<h2>接続テスト</h2>
-
-<p>クライアントから DB にネットワーク接続できるか確認する。</p>
-
-<ul>
-<li>リスナーの起動</li>
-</ul>
-
-
-<p><code>lsnrctl start</code> を実行</p>
-
-<pre><code>$ lsnrctl start
-
-LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:02:48
-
-Copyright (c) 1991, 2011, Oracle.  All rights reserved.
-
-Starting /u01/app/oracle/product/11.2.0/dbhome_1/bin/tnslsnr: please wait...
-
-TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-System parameter file is /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Log messages written to /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-Start Date                05-SEP-2012 23:02:48
-Uptime                    0 days 0 hr. 0 min. 0 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-The listener supports no services
-The command completed successfully
-</code></pre>
-
-<ul>
-<li>DB インスタンスの起動</li>
-</ul>
-
-
-<p><code>sqlplus</code> からインスタンスの起動</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; startup
-</code></pre>
-
-<ul>
-<li>インスタンスがリスナーに登録されていることを確認</li>
-</ul>
-
-
-<p><code>lsnrctl status</code> でサービスが登録されていることを確認する。</p>
-
-<pre><code>$ lsnrctl status
-
-LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:05:17
-
-Copyright (c) 1991, 2011, Oracle.  All rights reserved.
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-Start Date                05-SEP-2012 23:02:48
-Uptime                    0 days 0 hr. 2 min. 28 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-Services Summary...
-Service "PROD1.local" has 1 instance(s).
-  Instance "PROD1", status READY, has 1 handler(s) for this service...
-Service "PROD1XDB.local" has 1 instance(s).
-  Instance "PROD1", status READY, has 1 handler(s) for this service...
-The command completed successfully
-</code></pre>
-
-<ul>
-<li>クライアントからネットワーク接続できることを確認</li>
-</ul>
-
-
-<p>クライアント側のネットワーク構成で指定したネット・サービス名で接続できることを確認する。</p>
-
-<pre><code>$ sqlplus scott/tiger@PROD1
-
-SQL*Plus: Release 11.2.0.3.0 Production on Wed Sep 5 23:07:13 2012
-
-Copyright (c) 1982, 2011, Oracle.  All rights reserved.
-
-
-Connected to:
-Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
-With the Partitioning, OLAP, Data Mining and Real Application Testing options
-
-SQL&gt; 
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/04/setup-octopress/">Octopress をセットアップ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-04T23:15:00+09:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
-<a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
-ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
-
-<h2>使用マシン</h2>
-
-<ul>
-<li>MacBook Pro Retina ディスプレイモデル(Mid 2012)</li>
-<li>Mountain Lion (OS X 10.8.1)</li>
-</ul>
-
-
-<h2>JRuby のインストール</h2>
-
-<p>~/local 配下に zip を解凍してインストール</p>
-
-<pre><code>$ cd ~/local/
-$ curl -O http://jruby.org.s3.amazonaws.com/downloads/1.7.0.preview2/jruby-bin-1.7.0.preview2.zip
-$ unzip jruby-bin-1.7.0.preview2.zip
-$ cd ~/local/bin/
-$ ln -s ../jruby-1.7.0.preview2/bin/jruby .
-</code></pre>
-
-<h2>Octopress のセットアップ</h2>
-
-<p><a href="http://octopress.org/docs/setup/">Octopress のセットアップ手順</a> に従う。</p>
-
-<pre><code>$ cd ~/Documents/
-$ git clone git://github.com/imathis/octopress.git octopress
-$ cd octopress/
-$ jruby -S gem install bundler
-expr: syntax error
-Fetching gem metadata from http://rubygems.org/.......
-Using rake (0.9.2.2)
-Using RedCloth (4.2.9)
-Installing posix-spawn (0.3.6) with native extensions
-Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension.
-
-        /Users/hashi/local/bin/../jruby-1.7.0.preview2/bin/jruby extconf.rb
-NotImplementedError: C extension support is not enabled. Pass -Xcext.enabled=true to JRuby or set JRUBY_OPTS or modify .jrubyrc to enable.
-
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/mkmf.rb:8
-  require at org/jruby/RubyKernel.java:1024
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/rubygems/custom_require.rb:1
-   (root) at extconf.rb:1
-
-
-Gem files will remain installed in /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6 for inspection.
-Results logged to /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6/ext/gem_make.out
-An error occurred while installing posix-spawn (0.3.6), and Bundler cannot continue.
-Make sure that `gem install posix-spawn -v '0.3.6'` succeeds before bundling.
-</code></pre>
-
-<p>なんかエラーとなったので、エラーメッセージの指示通りに <code>JRUBY_OPTS</code> を設定したらうまくいった。</p>
-
-<pre><code>$ export JRUBY_OPTS="-Xcext.enabled=true"
-$ jruby -S bundle install
-$ jruby -S rake install
-</code></pre>
-
-<p>追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
-(もちろん、JRuby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
-
-<pre><code>$ cd ~/local/bin
-$ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
-$ ln -s ../jruby-1.7.0.preview2/bin/compass .
-$ ln -s ../jruby-1.7.0.preview2/bin/rackup .
-</code></pre>
-
-<h2>Github Pages の設定</h2>
-
-<p>引き続き <a href="http://octopress.org/docs/deploying/github/">Octopress の Github Pages へのデプロイ手順</a> に従う。
-まず、<code>username.github.com</code> というレポジトリを<a href="https://github.com/repositories/new">新規で作成</a>する。
-ここで、次の <code>rake setup_github_pages</code> の <code>Repository url:</code> で HTTPS での指定(<code>https://github.com/username/username.github.com.git</code>)ができなかったため、レポジトリに <a href="https://help.github.com/articles/generating-ssh-keys">SSH key でのアクセス設定</a>した上で、<code>git@github.com:username/username.github.com.git</code> を指定する必要があった。</p>
-
-<pre><code>$ cd ~/Documents/octopress
-$ jruby -S rake setup_github_pages
-expr: syntax error
-Enter the read/write url for your repository
-(For example, 'git@github.com:your_username/your_username.github.com)
-Repository url: git@github.com:th0x4c/th0x4c.github.com.git
-...
-</code></pre>
-
-<p>これで次のことが行われるとのこと。</p>
-
-<ol>
-<li>Ask you for your Github Pages repository url.</li>
-<li>Rename the remote pointing to imathis/octopress from ‘origin’ to ‘octopress’</li>
-<li>Add your Github Pages repository as the default origin remote.</li>
-<li>Switch the active branch from master to source.</li>
-<li>Configure your blog’s url according to your repository.</li>
-<li>Setup a master branch in the _deploy directory for deployment.</li>
-</ol>
-
-
-<p>最後に以下を実行すれば <code>_deploy/</code> ディレクトリにファイルが生成され、Github のレポジトリに push され、Github Pages に反映される。</p>
-
-<pre><code>$ jruby -S rake generate
-$ jruby -S rake deploy
-</code></pre>
-
-<p>あとは、Octopress の以下のページを参照のこと。</p>
-
-<ul>
-<li><a href="http://octopress.org/docs/configuring/">Configure your blog</a></li>
-</ul>
-
-
-<p>とりあえず、<code>_config.yml</code> の <code>title:</code>, <code>author:</code> ぐらいを変更した。</p>
-
-<h2>ブログ発行</h2>
-
-<p><a href="http://octopress.org/docs/blogging/">Start blogging with Octopress</a>を参照。</p>
-
-<p>基本的に <code>rake new_post["Zombie Ninjas Attack: A survivor's retrospective"]</code> (<code>Zombie ...</code>はタイトル)を実行して、<code>source/_posts</code> 配下のファイルを編集すればよい。</p>
-
-<p><code>rake preview</code> で <code>http://localhost:4000</code> でプレビューを確認して、<code>rake gen_deploy</code> で Github Pages にデプロイ。</p>
-
-<pre><code>$ jruby -S rake new_post["Setup Octopress"]
-$ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
-$ jruby -S rake preview
-$ jruby -S gen_deploy
+ORA-16000: database open for read-only access
 </code></pre>
 </div>
   
@@ -1654,6 +518,8 @@ $ jruby -S gen_deploy
     </article>
   
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/3/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -1666,6 +532,10 @@ $ jruby -S gen_deploy
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/13/oracle-star-transformation/">[Oracle] スター型変換の使用</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/09/12/oracle-transportable-tablespace/">Oracle トランスポータブル表領域</a>
@@ -1681,10 +551,6 @@ $ jruby -S gen_deploy
     
       <li class="post">
         <a href="/blog/2012/09/09/oracle-data-guard-rman-configuration/">[Oracle] Data Guard 環境での RMAN の構成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/09/oracle-data-guard-real-time-query/">[Oracle] Data Guard リアルタイム問い合わせ</a>
       </li>
     
   </ul>

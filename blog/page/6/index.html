@@ -5,13 +5,14 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>[Oracle] 暗号化された表領域の作成 - th0x4c 備忘録</title>
+  <title>th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 暗号化された表領域を作成する。
-&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g &hellip;">
+  <meta name="description" content="目的 Oracle Database のログ出力先を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
+-> 9 診断データの管理
+-> &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +21,7 @@ DB: Oracle Database 11g &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/6/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -62,12 +63,241 @@ DB: Oracle Database 11g &hellip;">
 </nav>
   <div id="main">
     <div id="content">
-      <div>
-<article class="hentry" role="article">
+      <div class="blog-index">
   
+  
+  
+    <article>
+      
   <header>
     
-      <h1 class="entry-title">[Oracle] 暗号化された表領域の作成</h1>
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T21:27:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Oracle Database のログ出力先を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>管理者ガイド<br/>
+-> 9 診断データの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
+<li><p>リファレンス<br/>
+-> 1 初期化パラメータ<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
+<li><p>Net Services管理者ガイド<br/>
+-> 16 Oracle Net Servicesのトラブルシューティング<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
+</ul>
+
+
+<h2>設定</h2>
+
+<p>Oracle Database 11gR1 より、各種ログの出力先が&#8221;自動診断リポジトリ(Automatic Diagnostic Repository, ADR)&#8221;という構造になった。</p>
+
+<ul>
+<li>Oracle Database のログ</li>
+</ul>
+
+
+<p>Oracle Database のログの出力先は初期化パラメータ <code>DIAGNOSTIC_DEST</code> にて設定する。
+例えば、<code>/home/oracle</code> 配下に変更する場合は以下のようにパラメータ変更を行う。
+(動的に変更可能なので DB 再起動は不要。)</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; ALTER SYSTEM SET DIAGNOSTIC_DEST = "/home/oracle" SCOPE = BOTH;
+
+System altered.
+</code></pre>
+
+<p>指定したディレクトリ配下に <code>diag/rdbms</code> ディレクトリが作成され、その配下に alert.log やトレースが出力される。</p>
+
+<ul>
+<li>Listener のログ</li>
+</ul>
+
+
+<p>Listener のログ出力先は <code>listener.ora</code> 内の <code>ADR_BASE_&lt;リスナー名&gt;</code> で設定する。</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/listener.ora # 以下を編集 or 追加
+ADR_BASE_LISTENER = /home/oracle
+</code></pre>
+
+<p>設定を反映させるために Listener を再起動</p>
+
+<pre><code>$ lsnrctl stop
+$ lsnrctl start
+</code></pre>
+
+<p>これで、指定したディレクトリ配下に <code>diag/tnslsnr</code> ディレクトリができて、その配下に listener.log が出力される。</p>
+
+<ul>
+<li>Oracle Net Client のログ</li>
+</ul>
+
+
+<p>Oracle Net Client のログは <code>sqlnet.ora</code> 内の <code>ADR_BASE</code> パラメータで設定する。</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora # 以下を編集 or 追加
+ADR_BASE = /home/oracle
+</code></pre>
+
+<p>これで、ログ出力時は指定したディレクトリ配下に <code>diag/clients</code> ディレクトリができて、そこに出力される。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>インストレーション・ガイド for Linux<br/>
+-> 5 Oracle Databaseのインストール後の作業<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
+</ul>
+
+
+<h2>ダイレクト NFS クライアントの有効化</h2>
+
+<ul>
+<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
+<li><p>libodm11.so の置き換え</p></li>
+</ul>
+
+
+<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_on
+</code></pre>
+
+<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
+
+<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
+if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
+        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
+        fi
+rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>ダイレクト NFS クライアントの無効化</h2>
+
+<ul>
+<li>libodm11.so の置き換え</li>
+</ul>
+
+
+<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_off
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>確認方法</h2>
+
+<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
+
+<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a></h1>
     
     
       <p class="meta">
@@ -90,7 +320,7 @@ DB: Oracle Database 11g &hellip;">
   </header>
 
 
-<div class="entry-content"><h2>目的</h2>
+  <div class="entry-content"><h2>目的</h2>
 
 <p>暗号化された表領域を作成する。<br/>
 &#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
@@ -236,61 +466,22 @@ EXAMPLE              NO
 SECURESPACE          YES
 </code></pre>
 </div>
-
-
-  <footer>
-    <p class="meta">
-      
   
-
-<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
-
-      
-
-
-
-
-
-
-
-
   
 
 
-<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-      
-
-<span class="categories">
+    </article>
   
-    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
-  
-</span>
-
-
-    </p>
+  <div class="pagination">
     
-      <div class="sharing">
-  
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/" >Tweet</a>
-  
-  
-  
-</div>
-
+      <a class="prev" href="/blog/page/7/">&larr; Older</a>
     
-    <p class="meta">
-      
-        <a class="basic-alignment left" href="/blog/2012/09/05/oracle-net-services/" title="Previous Post: [Oracle] ネットワーク構成">&laquo; [Oracle] ネットワーク構成</a>
-      
-      
-        <a class="basic-alignment right" href="/blog/2012/09/07/oracle-direct-nfs-client/" title="Next Post: [Oracle] ダイレクト NFS クライアント">[Oracle] ダイレクト NFS クライアント &raquo;</a>
-      
-    </p>
-  </footer>
-</article>
-
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/5/">Newer &rarr;</a>
+    
+  </div>
 </div>
-
 <aside class="sidebar">
   
     <section>
@@ -323,7 +514,7 @@ SECURESPACE          YES
 <section>
   <h1>GitHub Repos</h1>
   <ul id="gh_repos">
-    <li class="loading">Status updating...</li>
+    <li class="loading">Status updating&#8230;</li>
   </ul>
   
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
@@ -356,7 +547,6 @@ SECURESPACE          YES
 
   
 </aside>
-
 
     </div>
   </div>
