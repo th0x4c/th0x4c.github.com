@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-16T19:15:11+09:00</updated>
+  <updated>2012-09-16T21:24:21+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,263 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] 複数列の統計]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-multicolumn-statistics/"/>
+    <updated>2012-09-16T20:21:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-multicolumn-statistics</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>相関のある複数列を列グループとして統計情報採取することでよりよい実行計画となるようにする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 13 オプティマイザ統計の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
+</ul>
+
+
+<h2>複数列の統計収集</h2>
+
+<p>相関のある複数列を列グループとして統計情報を採取することで、オプティマイザが個々の列でなく列グループとして実行計画を計算するようにする。</p>
+
+<ul>
+<li>検証で使用する表の作成</li>
+</ul>
+
+
+<p>C1 列、C2 列が同じになる(つまり相関がある)ような表を作成する。</p>
+
+<pre><code>SQL&gt; CREATE TABLE multi_col_tab (c1 NUMBER, c2 NUMBER);
+
+Table created.
+
+SQL&gt; BEGIN
+       FOR i IN 1..5 LOOP
+         FOR j IN 1..100 LOOP
+           INSERT INTO multi_col_tab VALUES(i, i);
+         END LOOP;
+       END LOOP;
+       COMMIT;
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>1 〜 5 までそれぞれ 100 行ずつ、計 500 行を INSERT。</p>
+
+<ul>
+<li>複数列統計を採取しない場合</li>
+</ul>
+
+
+<p>複数列統計を採取しない場合の実行計画</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 20 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> だが、相関があることを知らないので、選択行が <code>500行 * 1/5(c1 の選択率) * 1/5(c2 の選択率)</code> = 20行 となっていて正確でない。</p>
+
+<ul>
+<li>複数列統計を採取した場合</li>
+</ul>
+
+
+<p>複数列統計を採取する。<code>c1</code> および <code>c2</code> 列で構成させる列グループを追加して、統計情報取得。</p>
+
+<pre><code>SQL&gt; DECLARE
+       cg_name varchar2(30);
+     BEGIN
+       cg_name := dbms_stats.create_extended_stats(null,'multi_col_tab',  
+                 '(c1,c2)');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>なお、<code>DBMS_STATS.CREATE_EXTENDED_STATS</code> で明示的に列グループを作成しない場合は、以下のように統計情報収集時に <code>METHOD_OPT</code> で複数列を指定してもよい。</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY FOR COLUMNS (C1,C2) SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>先ほどと同じ SQL で実行計画を確認してみる。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 100 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> で相関があることを認識して正確に 100 行と計算している。</p>
+
+<ul>
+<li>複数列統計の確認</li>
+</ul>
+
+
+<p>拡張統計として、複数列が認識されていることを確認。</p>
+
+<pre><code>SQL&gt; col extension_name for a30
+     col extension for a30
+SQL&gt; Select extension_name, extension 
+     from user_stat_extensions 
+     where table_name='MULTI_COL_TAB';
+
+EXTENSION_NAME                 EXTENSION
+------------------------------ ------------------------------
+SYS_STUF3GLKIOP5F4B0BTTCFTMX0W ("C1","C2")
+</code></pre>
+
+<p>実際に複数列の統計が採られていることを確認</p>
+
+<pre><code>SQL&gt; col col_group for a30
+SQL&gt; select e.extension col_group, t.num_distinct, t.histogram
+     from user_stat_extensions e, user_tab_col_statistics t
+     where e.extension_name=t.column_name
+     and e.table_name=t.table_name
+     and t.table_name='MULTI_COL_TAB';
+
+COL_GROUP                      NUM_DISTINCT HISTOGRAM
+------------------------------ ------------ ---------------------------------------------
+("C1","C2")                               5 FREQUENCY
+</code></pre>
+
+<p><code>HISTGRAM</code> 列が <code>NONE</code> 以外であればヒストグラムが採られている。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] 結果キャッシュ]]></title>
@@ -2984,173 +3241,6 @@ $ su
 
 
 <p><img src="http://th0x4c.github.com/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] パスワードの管理]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/07/oracle-password-management/"/>
-    <updated>2012-09-07T22:09:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/07/oracle-password-management</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>パスワードを大文字・小文字の区別をするようにする。
-DB のパスワードについてはその他複雑なパスワードにするように強制する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>管理者ガイド<br/>
--> 1 データベース管理スタート・ガイド<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/dba007.htm#i1006789">パスワード・ファイルの作成とメンテナンス</a></p></li>
-<li><p>セキュリティ・ガイド<br/>
--> 3 認証の構成<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#CHDJDCGI">パスワードでの大/小文字の区別の有効化または無効化</a><br/>
-<a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#i1007341">パスワードの複雑度検証の規定</a></p></li>
-</ul>
-
-
-<h2>SYSDBA でのログイン時のパスワード</h2>
-
-<p>SYSDBA でのログイン(SYS ユーザで as sysdba でのログイン)時のパスワードを大文字・小文字の区別させるためにパスワードファイル(<code>$ORACLE_HOME/dbs/orapw&lt;ORACLE_SID&gt;</code>)を再作成する。</p>
-
-<p><code>orapwd</code>を引数なしで実行すると、使い方が分かる。</p>
-
-<pre><code>$ orapwd
-Usage: orapwd file=&lt;fname&gt; entries=&lt;users&gt; force=&lt;y/n&gt; ignorecase=&lt;y/n&gt; nosysdba=&lt;y/n&gt;
-
-  where
-    file - name of password file (required),
-    password - password for SYS will be prompted if not specified at command line,
-    entries - maximum number of distinct DBA (optional),
-    force - whether to overwrite existing file (optional),
-    ignorecase - passwords are case-insensitive (optional),
-    nosysdba - whether to shut out the SYSDBA logon (optional Database Vault only).
-
-  There must be no spaces around the equal-to (=) character.
-</code></pre>
-
-<p><code>ignorecase=n</code> で再作成すれば大文字・小文字が区別される。
-ちなみにパスワードファイルのファイル名は <code>orapw&lt;ORACLE_SID&gt;</code> でなければならない。</p>
-
-<pre><code>$ cd $ORACLE_HOME/dbs
-$ rm orapwPROD1
-$ orapwd file=orapwPROD1 password=oracle ignorecase=n
-</code></pre>
-
-<p>大文字・小文字が区別されるか確認。</p>
-
-<pre><code>SQL&gt; connect sys/oracle@PROD1 as sysdba
-Connected.
-SQL&gt; connect sys/ORACLE@PROD1 as sysdba
-ERROR:
-ORA-01017: invalid username/password; logon denied
-
-
-Warning: You are no longer connected to ORACLE.
-</code></pre>
-
-<h2>DB ユーザのパスワード</h2>
-
-<h3>大文字・小文字の区別</h3>
-
-<p>DB ユーザのパスワードの大文字・小文字を区別するためには初期かパラメータ <code>SEC_CASE_SENSITIVE_LOGON</code> を <code>TRUE</code> にする。(デフォルトは <code>TRUE</code>)</p>
-
-<pre><code>SQL&gt; ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE;
-
-System altered.
-</code></pre>
-
-<h3>複雑なパスワードを強制</h3>
-
-<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> を実行することで、デフォルトのプロファイルを使用するユーザがパスワード変更する際に以下がチェックされるようになる。</p>
-
-<ul>
-<li>パスワードの長さが8文字以上30文字以内であること。</li>
-<li>パスワードがユーザー名と同一でないこと。ユーザー名のスペルを逆にしたり、ユーザー名に数字を追加したパスワードでないこと。</li>
-<li>サーバー名と同一であったり、サーバー名に数字1から100を追加したパスワードでないこと。</li>
-<li>単純なパスワードでないこと(例: welcome1、database1、account1、user1234、password1、oracle、oracle123、computer1、abcdefg1、change_on_install)。</li>
-<li>パスワードに少なくとも数字が1つと英字が1つ含まれていること。</li>
-<li>以前のパスワードとの違いが3文字以上あること。</li>
-</ul>
-
-
-<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> の内容を確認すると分かるように、パスワード検証関数 <code>verify_function_11G</code> が作成されてデフォルトプロファイル(<code>DEFAULT</code>)が変更されている。(パスワードの存続期間等も設定される)</p>
-
-<pre><code>$ cat $ORACLE_HOME/rdbms/admin/utlpwdmg.sql
-...(*snip*)
-
--- This script sets the default password resource parameters
--- This script needs to be run to enable the password features.
--- However the default resource parameters can be changed based
--- on the need.
--- A default password complexity function is also provided.
--- This function makes the minimum complexity checks like
--- the minimum length of the password, password not same as the
--- username, etc. The user may enhance this function according to
--- the need.
--- This function must be created in SYS schema.
--- connect sys/&lt;password&gt; as sysdba before running the script
-
-CREATE OR REPLACE FUNCTION verify_function_11G
-...(*snip*)
-END;
-/
-
--- This script alters the default parameters for Password Management
--- This means that all the users on the system have Password Management
--- enabled and set to the following values unless another profile is
--- created with parameter values set to different value or UNLIMITED
--- is created and assigned to the user.
-
-ALTER PROFILE DEFAULT LIMIT
-PASSWORD_LIFE_TIME 180
-PASSWORD_GRACE_TIME 7
-PASSWORD_REUSE_TIME UNLIMITED
-PASSWORD_REUSE_MAX UNLIMITED
-FAILED_LOGIN_ATTEMPTS 10
-PASSWORD_LOCK_TIME 1
-PASSWORD_VERIFY_FUNCTION verify_function_11G;
-...(*snip*)
-</code></pre>
-
-<p>ということで、<code>utlpwdmg.sql</code> を実行する。</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; @?/rdbms/admin/utlpwdmg.sql
-
-Function created.
-
-
-Profile altered.
-
-
-Function created.
-</code></pre>
-
-<p>他のプロファイルも変更する場合は、<code>ALTER PROFILE</code> を実行する必要がある。</p>
-
-<pre><code>SQL&gt; ALTER PROFILE &lt;profile名&gt; LIMIT
-     PWSSWORD_VERIFY_FUNCTION verify_function_11G;
-</code></pre>
-
-<p>実際にパスワードを変更してチェックに引っかかるか確認してみる。</p>
-
-<pre><code>SQL&gt; alter user scott identified by tiger;
-alter user scott identified by tiger
-*
-ERROR at line 1:
-ORA-28003: password verification for the specified password failed
-ORA-20001: Password length less than 8
-</code></pre>
 ]]></content>
   </entry>
   
