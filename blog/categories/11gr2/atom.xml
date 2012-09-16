@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 11gR2 | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/11gr2/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-16T16:35:11+09:00</updated>
+  <updated>2012-09-16T16:45:08+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -77,6 +77,34 @@ SQL&gt; CREATE TABLE order_items
          PARTITION BY REFERENCE(order_items_fk);
 
 Table created. 
+</code></pre>
+
+<p>パーティション情報の確認。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col partitioning_type for a20
+     col ref_ptn_constraint_name for a30
+     set lines 200
+SQL&gt; SELECT table_name, partitioning_type, ref_ptn_constraint_name FROM user_part_tables;
+
+TABLE_NAME                     PARTITIONING_TYPE    REF_PTN_CONSTRAINT_NAME
+------------------------------ -------------------- ------------------------------
+ORDERS                         RANGE
+ORDER_ITEMS                    REFERENCE            ORDER_ITEMS_FK
+
+SQL&gt; col partition_name for a30
+SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
+
+TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
+------------------------------ ------------------------------ --------------------------------------------------------------------------------
+ORDERS                         Q1_2005                        TO_DATE(' 2005-04-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q2_2005                        TO_DATE(' 2005-07-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q3_2005                        TO_DATE(' 2005-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q4_2005                        TO_DATE(' 2006-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDER_ITEMS                    Q1_2005
+ORDER_ITEMS                    Q2_2005
+ORDER_ITEMS                    Q3_2005
+ORDER_ITEMS                    Q4_2005
 </code></pre>
 ]]></content>
   </entry>
