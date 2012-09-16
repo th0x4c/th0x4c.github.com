@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>th0x4c 備忘録</title>
+  <title>[Oracle] 結果キャッシュ - th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
@@ -20,7 +20,7 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマン�
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-result-cache/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -62,15 +62,12 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマン�
 </nav>
   <div id="main">
     <div id="content">
-      <div class="blog-index">
+      <div>
+<article class="hentry" role="article">
   
-  
-  
-    <article>
-      
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a></h1>
+      <h1 class="entry-title">[Oracle] 結果キャッシュ</h1>
     
     
       <p class="meta">
@@ -93,7 +90,7 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマン�
   </header>
 
 
-  <div class="entry-content"><h2>目的</h2>
+<div class="entry-content"><h2>目的</h2>
 
 <p>&#8220;結果キャッシュ&#8221; 機能を使用する。</p>
 
@@ -260,141 +257,16 @@ Result                         Published
 SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
 </code></pre>
 </div>
-  
-  
 
 
-    </article>
-  
-  
-    <article>
+  <footer>
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
   
 
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
 
-<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>アドバンスト・アプリケーション開発者ガイド<br/>
--> 12 Oracle Flashback Technologyの使用<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56259/adfns_flashback.htm#BJFFDCEH">フラッシュバック・データ・アーカイブの使用(Oracle Total Recall)</a></li>
-</ul>
-
-
-<h2>フラッシュバック・データ・アーカイブの使用</h2>
-
-<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存できる。例えば、コンプライアンス上変更履歴を年単位で長時間保存しておく必要がある場合などに有効。</p>
-
-<ul>
-<li>フラッシュバック・データ・アーカイブの作成</li>
-</ul>
-
-
-<p><code>CREATE FLASHBACK ARCHIVE</code> 文を使用してフラッシュバック・データ・アーカイブを作成する。
-データを1年間保持するデフォルトのフラッシュバック・データ・アーカイブ <code>fla1</code> を <code>USERS</code> 表領域に作成。
-作成するには <code>FLASHBACK ARCHIVE ADMINISTER</code> システム権限を持つユーザか、SYSDBA として接続する必要がある。</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-Connected.
-SQL&gt; CREATE FLASHBACK ARCHIVE DEFAULT fla1 TABLESPACE users
-     RETENTION 1 YEAR;
-
-Flashback archive created.
-</code></pre>
-
-<ul>
-<li>表のフラッシュバック・アーカイブの有効化</li>
-</ul>
-
-
-<p><code>scott.emp</code> 表のフラッシュバック・アーカイブを有効にして、フラッシュバック・データ・アーカイブ <code>fla1</code> に履歴データを格納するようにする。
-<code>scott</code> スキーマに <code>fla1</code> に対する <code>FLASHBACK ARCHIVE</code> オブジェクト権限を与えて、<code>ALTER TABLE</code> 文を発行する。</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-Connected.
-SQL&gt; GRANT FLASHBACK ARCHIVE ON fla1 TO scott;
-
-Grant succeeded.
-
-SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; ALTER TABLE scott.emp FLASHBACK ARCHIVE fla1;
-
-Table altered.
-</code></pre>
-
-<ul>
-<li>フラッシュバック・データ・アーカイブが有効になっていることの確認</li>
-</ul>
-
-
-<p><code>scott</code> スキーマで <code>emp</code> 表のフラッシュバック・データ・アーカイブが有効になっていることの確認</p>
-
-<pre><code>SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; col table_name for a30
-     col owner_name for a30
-     col flashback_archive_name for a30
-     col archive_table_name for a30
-     col status for a10
-     set lines 200
-SQL&gt; SELECT * FROM USER_FLASHBACK_ARCHIVE_TABLES;
-
-TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_NAME         ARCHIVE_TABLE_NAME             STATUS
------------------------------- ------------------------------ ------------------------------ ------------------------------ ----------
-EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-interval-partitioned-table/">[Oracle] 時間隔パーティション表</a></h1>
-    
-    
-      <p class="meta">
-        
 
 
 
@@ -406,117 +278,38 @@ EMP                            SCOTT                          FLA1              
   
 
 
-<time datetime="2012-09-16T16:46:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
+<time datetime="2012-09-16T18:40:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
     
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>時間隔パーティション表を作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>VLDBおよびパーティショニング・ガイド<br/>
--> 4 パーティションの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJHFFBE">時間隔パーティション表の作成</a></li>
-</ul>
-
-
-<h2>時間隔パーティション表の作成</h2>
-
-<p>時間隔パーティション表はレンジ・パーティションの一種で、例えば月単位の時間隔パーティション表を作成すると、パーティションを明示的に作成しなくても自動で必要な月のパーティションをデータ insert 時に作成してくれる。</p>
-
-<p><code>DATE</code> 型の <code>time_id</code> をパーティション・キーとして、2009年までは年単位でパーティション化し、2010年1月1日以降は月単位でパーティションを自動作成するような時間隔パーティション表を作成してみる。</p>
-
-<pre><code>SQL&gt; CREATE TABLE interval_sales
-         ( prod_id        NUMBER(6)
-         , cust_id        NUMBER
-         , time_id        DATE
-         , channel_id     CHAR(1)
-         , promo_id       NUMBER(6)
-         , quantity_sold  NUMBER(3)
-         , amount_sold    NUMBER(10,2)
-         ) 
-       PARTITION BY RANGE (time_id) 
-       INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
-         ( PARTITION p0 VALUES LESS THAN (TO_DATE('1-1-2008', 'DD-MM-YYYY')),
-           PARTITION p1 VALUES LESS THAN (TO_DATE('1-1-2009', 'DD-MM-YYYY')),
-           PARTITION p2 VALUES LESS THAN (TO_DATE('1-1-2010', 'DD-MM-YYYY')) );
-
-Table created.
-</code></pre>
-
-<p>ちなみに追加されるパーティションを日単位にする場合は、<code>NUMTODSINTERVAL(1, 'DAY')</code> 関数を利用する。</p>
-
-<p>パーティション情報の確認。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col partitioning_type for a20
-     set lines 200
-SQL&gt; SELECT table_name, partitioning_type FROM user_part_tables;
-
-TABLE_NAME                     PARTITIONING_TYPE   
------------------------------- --------------------
-INTERVAL_SALES                 RANGE
-
-SQL&gt; col partition_name for a30
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p>最初はパーティションは作られていないが、上記の範囲を超える行を insert するとパーティションが自動で作成される。</p>
-
-<pre><code>SQL&gt; INSERT INTO interval_sales(prod_id, time_id) VALUES(1, TO_DATE('2012-09-16', 'YYYY-MM-DD'));
-
-1 row created.
-
-SQL&gt; COMMIT;
-
-Commit complete.
-
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p><code>SYS_P41</code> というパーティションが自動で作成された。</p>
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/16/oracle-result-cache/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/16/oracle-result-cache/" >Tweet</a>
+  
+  
+  
 </div>
-  
-  
 
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/" title="Previous Post: [Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)">&laquo; [Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      
+      
+    </p>
+  </footer>
+</article>
 
-    </article>
-  
-  <div class="pagination">
-    
-      <a class="prev" href="/blog/page/2/">&larr; Older</a>
-    
-    <a href="/blog/archives">Blog Archives</a>
-    
-  </div>
 </div>
+
 <aside class="sidebar">
   
     <section>
@@ -549,7 +342,7 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
 <section>
   <h1>GitHub Repos</h1>
   <ul id="gh_repos">
-    <li class="loading">Status updating&#8230;</li>
+    <li class="loading">Status updating...</li>
   </ul>
   
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
@@ -582,6 +375,7 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
 
   
 </aside>
+
 
     </div>
   </div>
