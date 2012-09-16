@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-16T22:02:10+09:00</updated>
+  <updated>2012-09-16T23:56:12+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,207 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] SQL 計画管理]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-sql-plan-management/"/>
+    <updated>2012-09-16T23:28:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-sql-plan-management</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>SQL 計画管理により、実行計画を固定化する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 15 SQL計画の管理の使用方法<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/optplanmgmt.htm#BABEGJGB">15.2 SQL計画ベースラインの管理</a></li>
+</ul>
+
+
+<h2>SQL 計画管理</h2>
+
+<p>SQL 計画管理により、実行計画を固定化することができる。具体的には次のステップで行う。</p>
+
+<ol>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+<li>実行計画を管理する SQL を 2 回以上実行</li>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ol>
+
+
+<p>実際に実行してみる。</p>
+
+<ul>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>FALSE</code>)を <code>TRUE</code> に設定することで SQL 計画の自動取得が有効になる。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL を 2 回以上実行</li>
+</ul>
+
+
+<p>SQL を 2 回以上実行して、SQL 計画ベースラインに保存する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+</code></pre>
+
+<ul>
+<li>SQL 計画の自動取得を無効化(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE</code>)</li>
+</ul>
+
+
+<p>SQL 計画の自動取得を無効化する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL が SQL 計画ベースラインに保存されたことを確認</li>
+</ul>
+
+
+<p><code>DBA_SQL_PLAN_BASELINES</code> を確認する。</p>
+
+<pre><code>SQL&gt; col sql_text for a60
+     col sql_handle for a30
+     col plan_name for a30
+     set lines 200
+SQL&gt; SELECT SQL_TEXT, SQL_HANDLE, PLAN_NAME, ENABLED, ACCEPTED, FIXED
+     FROM   DBA_SQL_PLAN_BASELINES;
+
+SQL_TEXT                                                     SQL_HANDLE                     PLAN_NAME                      ENABLED   ACCEPTED  FIXED
+------------------------------------------------------------ ------------------------------ ------------------------------ --------- --------- ---------
+SELECT * FROM scott.emp WHERE empno = 7900                   SQL_84ec680ef31d6de4           SQL_PLAN_89v381vtjuvg4695cc014 YES       YES       NO
+</code></pre>
+
+<p>実行計画を確認する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM TABLE(
+       DBMS_XPLAN.DISPLAY_SQL_PLAN_BASELINE(
+         sql_handle=&gt;'SQL_84ec680ef31d6de4',
+         format=&gt;'basic'));
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SQL handle: SQL_84ec680ef31d6de4
+SQL text: SELECT * FROM scott.emp WHERE empno = 7900
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Plan name: SQL_PLAN_89v381vtjuvg4695cc014         Plan id: 1767686164
+Enabled: YES     Fixed: NO      Accepted: YES     Origin: AUTO-CAPTURE
+--------------------------------------------------------------------------------
+
+
+PLAN_TABLE_OUTPUT
+----------------------------------------------
+Plan hash value: 2949544139
+
+----------------------------------------------
+| Id  | Operation                   | Name   |
+----------------------------------------------
+|   0 | SELECT STATEMENT            |        |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |
+|   2 |   INDEX UNIQUE SCAN         | PK_EMP |
+----------------------------------------------
+
+20 rows selected.
+</code></pre>
+
+<ul>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_USE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>TRUE</code>)を <code>TRUE</code> に設定することで取得した SQL 計画を使用する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<p>あとは普通に SQL を時刻するだけで取得した SQL 計画が使用される。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2949544139
+
+--------------------------------------------------------------------------------------
+| Id  | Operation                   | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |        |     1 |    39 |     1   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |     1 |    39 |     1   (0)| 00:00:01 |
+|*  2 |   INDEX UNIQUE SCAN         | PK_EMP |     1 |       |     0   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("EMPNO"=7900)
+
+Note 
+-----
+   - SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          2  consistent gets
+          0  physical reads
+          0  redo size
+        889  bytes sent via SQL*Net to client
+        512  bytes received via SQL*Net from client
+          1  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>Note の <code>SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement</code> という出力から取得した SQL 計画が使用されていることが分かる。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] カーソルを無効にしない統計情報の取得]]></title>
@@ -3018,158 +3219,6 @@ SQL&gt; SELECT STATUS, FILENAME
 STATUS   FILENAME
 -------- ------------------------------------------------------------
 ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
-</code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] リカバリ・カタログのセットアップ]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/08/oracle-setup-recovery-catalog/"/>
-    <updated>2012-09-08T23:44:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/08/oracle-setup-recovery-catalog</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 13 リカバリ・カタログの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
-</ul>
-
-
-<h2>リカバリ・カタログとは</h2>
-
-<p>リカバリ・カタログには、RMAN で使用するメタデータ情報(バックアップ・ファイルの情報など)が格納されている。RMAN が使用するメタデータは通常は制御ファイルに格納されているが、リカバリ・カタログとして(リカバリのターゲットとなる DB とは別の) DB に格納することができる。リカバリ・カタログを使用するメリットは次のようなものがある。</p>
-
-<ul>
-<li><p>制御ファイルに格納されているメタデータと同様の情報が格納されているので、冗長性が確保される。制御ファイルが消失した場合も、リカバリ・カタログを使用すればいい。制御ファイルとの同期はバックアップ実行時などに自動で実行される。</p></li>
-<li><p>複数の DB の RMAN メタデータを集中管理できる。</p></li>
-<li><p>リカバリ・カタログには、制御ファイルより長期のメタデータ履歴を格納できる。よって、制御ファイルの履歴より前の時点にリカバリすることができる。</p></li>
-<li><p>一部の RMAN 機能は、リカバリ・カタログが必須。例えば、リカバリ・カタログには Recovery Manager スクリプトを格納することができる。</p></li>
-<li><p>Data Guard 環境で RMAN を使用する場合は、リカバリ・カタログが必要。</p></li>
-</ul>
-
-
-<h2>リカバリ・カタログの作成</h2>
-
-<p>リカバリ・カタログを作成する DB にリカバリ・カタログを所有するスキーマを作成して、必要な権限を与え、リカバリ・カタログを作成する。</p>
-
-<ul>
-<li>リカバリ・カタログを所有するスキーマを作成</li>
-</ul>
-
-
-<p>リカバリ・カタログを格納する DB に接続してスキーマを作成。</p>
-
-<pre><code>$ sqlplus sys/oracle@EMREP as sysdba
-SQL&gt; CREATE USER rman IDENTIFIED BY rman
-     TEMPORARY TABLESPACE temp
-     DEFAULT TABLESPACE users
-     QUOTA UNLIMITED ON users;
-
-User created.
-</code></pre>
-
-<ul>
-<li>必要な権限の付与</li>
-</ul>
-
-
-<p>リカバリ・カタログの管理に必要なすべての権限を含む <code>RECOVERY_CATALOG_OWNER</code> ロールを付与する。</p>
-
-<pre><code>SQL&gt; GRANT RECOVERY_CATALOG_OWNER TO rman;
-
-Grant succeeded.
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログの作成</li>
-</ul>
-
-
-<p>RMAN を使用して先ほど作成したリカバリ・カタログを所有するスキーマで接続して、リカバリ・カタログを作成。</p>
-
-<pre><code>$ rman catalog rman/rman@EMREP
-RMAN&gt; CREATE CATALOG;
-
-recovery catalog created
-</code></pre>
-
-<h2>リカバリ・カタログへの DB の登録</h2>
-
-<p>リカバリ・カタログにターゲットとなる DB を登録する。</p>
-
-<ul>
-<li><p>ターゲット DB がマウントしていない場合は、マウントまたはオープンする。</p></li>
-<li><p>RMAN からターゲット DB, リカバリ・カタログに接続する。</p></li>
-</ul>
-
-
-<p>RMAN から以下のようにして接続</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target / catalog rman/rman@EMREP
-
-Recovery Manager: Release 11.2.0.3.0 - Production on Sun Sep 9 00:37:33 2012
-
-Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
-
-connected to target database: PROD1 (DBID=2014160803)
-connected to recovery catalog database
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログにターゲット DB を登録</li>
-</ul>
-
-
-<p><code>REGISTER DATABASE</code> によりターゲット DB を登録する。</p>
-
-<pre><code>RMAN&gt; REGISTER DATABASE;
-
-database registered in recovery catalog
-starting full resync of recovery catalog
-full resync complete
-</code></pre>
-
-<ul>
-<li>正常に登録されていることを確認</li>
-</ul>
-
-
-<p><code>REPORT SCHEMA</code> により正常に登録されていることを確認する。</p>
-
-<pre><code>RMAN&gt; REPORT SCHEMA;
-
-Report of database schema for database with db_unique_name PROD1
-
-List of Permanent Datafiles
-===========================
-File Size(MB) Tablespace           RB segs Datafile Name
----- -------- -------------------- ------- ------------------------
-1    720      SYSTEM               YES     /u01/app/oracle/oradata/PROD1/system01.dbf
-2    550      SYSAUX               NO      /u01/app/oracle/oradata/PROD1/sysaux01.dbf
-3    95       UNDOTBS1             YES     /u01/app/oracle/oradata/PROD1/undotbs01.dbf
-4    5        USERS                NO      /u01/app/oracle/oradata/PROD1/users01.dbf
-5    345      EXAMPLE              NO      /u01/app/oracle/oradata/PROD1/example01.dbf
-
-List of Temporary Files
-=======================
-File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
----- -------- -------------------- ----------- --------------------
-1    29       TEMP                 32767       /u01/app/oracle/oradata/PROD1/temp01.dbf
 </code></pre>
 ]]></content>
   </entry>

@@ -9,8 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
+  <meta name="description" content="目的 &#8220;結果キャッシュ&#8221; 機能を使用する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング・ガイド
+-> 7 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -63,6 +64,207 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T18:40:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>&#8220;結果キャッシュ&#8221; 機能を使用する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 7 メモリーの構成および使用方法<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
+</ul>
+
+
+<h2>結果キャッシュの使用</h2>
+
+<p>&#8220;結果キャッシュ&#8221; 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
+
+<ul>
+<li>初期化パラメータの設定</li>
+</ul>
+
+
+<p>結果キャッシュを有効にするためには初期化パラメータ <code>RESULT_CACHE_MAX_SIZE</code> を 0 より大きくする必要がある。</p>
+
+<p>0 の場合は結果キャッシュは無効となる。(以下のように <code>DBMS_RESULT_CACHE.STATUS</code> の結果が <code>DISABLED</code> となっている。)</p>
+
+<pre><code>SQL&gt; show parameter result_cache_max_size
+
+NAME                                 TYPE                              VALUE
+------------------------------------ --------------------------------- ------------------------------
+result_cache_max_size                big integer                       0
+SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
+
+STATUS
+----------
+DISABLED
+</code></pre>
+
+<p>初期化パラメータ <code>RESULT_CACHE_MAX_SIZE</code> は以下のように動的に変更できるが、実際はインスタンスを再起動しないと有効にならなかった。</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET result_cache_max_size = 15M SCOPE=both;
+
+System altered.
+
+SQL&gt; show parameter result_cache_max_size
+
+NAME                                 TYPE                              VALUE
+------------------------------------ --------------------------------- ------------------------------
+result_cache_max_size                big integer                       15M
+SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
+
+STATUS
+----------
+DISABLED
+</code></pre>
+
+<p>インスタンスを再起動すると、有効になり、<code>DBMS_RESULT_CACHE.STATUS</code> も <code>ENABLED</code> に変わる。</p>
+
+<pre><code>SQL&gt; shutdown immediate
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL&gt; startup
+ORACLE instance started.
+
+Total System Global Area  835104768 bytes
+Fixed Size                  2232960 bytes
+Variable Size             734006656 bytes
+Database Buffers           92274688 bytes
+Redo Buffers                6590464 bytes
+Database mounted.
+Database opened.
+SQL&gt; show parameter result_cache_max_size
+
+NAME                                 TYPE                              VALUE
+------------------------------------ --------------------------------- ------------------------------
+result_cache_max_size                big integer                       15M
+SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
+
+STATUS
+----------
+ENABLED
+</code></pre>
+
+<ul>
+<li>結果キャッシュの使用</li>
+</ul>
+
+
+<p>結果キャッシュを使用するには <code>/*+ RESULT_CACHE */</code> ヒントを付与して問い合わせを実行すればよい。</p>
+
+<pre><code>SQL&gt; SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp;
+</code></pre>
+
+<ul>
+<li>結果キャッシュの確認</li>
+</ul>
+
+
+<p>実行計画で、<code>RESULT CACHE</code> と出ていると結果キャッシュが使われている。</p>
+
+<pre><code>SQL&gt; set lines 200
+SQL&gt; set autotrace on
+SQL&gt; SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp;
+
+  AVG(SAL)
+----------
+2083.21429
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2083865914
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name                       | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |                            |     1 |     4 |     3   (0)| 00:00:01 |
+|   1 |  RESULT CACHE       | 4z1ag1pqa9zqm704zf4nuj9tq4 |       |       |            |          |
+|   2 |   SORT AGGREGATE    |                            |     1 |     4 |            |          |
+|   3 |    TABLE ACCESS FULL| EMP                        |    14 |    56 |     3   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------------------
+
+Result Cache Information (identified by operation id):
+------------------------------------------------------
+
+   1 - column-count=1; dependencies=(SCOTT.EMP); attributes=(single-row); name="SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp"
+
+
+Statistics
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+          0  consistent gets
+          0  physical reads
+          0  redo size
+        545  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>また、<code>V$RESULT_CACHE_OBJECTS</code> からも結果キャッシュについて確認できる。</p>
+
+<pre><code>SQL&gt; SELECT type, status, name FROM v$result_cache_objects;
+
+TYPE                           STATUS
+------------------------------ ---------------------------
+NAME
+--------------------------------------------------------------------------------
+Dependency                     Published
+SCOTT.EMP
+
+Result                         Published
+SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -307,129 +509,6 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-reference-partitioned-table/">[Oracle] 参照パーティション表</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T16:13:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>参照パーティション表を作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>VLDBおよびパーティショニング・ガイド<br/>
--> 4 パーティションの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJDDEEC">参照パーティション表の作成</a></li>
-</ul>
-
-
-<h2>参照パーティション表の作成</h2>
-
-<p>参照パーティション表は、例えば次のようなケースで役立つ。注文を管理する orders 表に注文日が格納される order_date 列がある。また、注文に含まれる品目を管理する order_items 表があり、orders 表を order_id 列で外部参照しているとする。orders 表が order_date 列をキー値としてパーティション化されている場合、order_items 表も同じように注文日によりパーティション化したかったら、従来ならば order_date 列を order_itmes 表にも加える必要があった。参照パーティション表を使えば、order_items 列に余計な order_date 列を加えることなく、外部参照している orders と同じ単位でパーティション化することができる。</p>
-
-<p>実際に上記シナリオで参照パーティション表を作成してみる。</p>
-
-<pre><code>SQL&gt; CREATE TABLE orders
-         ( order_id           NUMBER(12),
-           order_date         DATE,
-           order_mode         VARCHAR2(8),
-           customer_id        NUMBER(6),
-           order_status       NUMBER(2),
-           order_total        NUMBER(8,2),
-           sales_rep_id       NUMBER(6),
-           promotion_id       NUMBER(6),
-           CONSTRAINT orders_pk PRIMARY KEY(order_id)
-         )
-       PARTITION BY RANGE(order_date)
-         ( PARTITION Q1_2005 VALUES LESS THAN (TO_DATE('01-APR-2005','DD-MON-YYYY')),
-           PARTITION Q2_2005 VALUES LESS THAN (TO_DATE('01-JUL-2005','DD-MON-YYYY')),
-           PARTITION Q3_2005 VALUES LESS THAN (TO_DATE('01-OCT-2005','DD-MON-YYYY')),
-           PARTITION Q4_2005 VALUES LESS THAN (TO_DATE('01-JAN-2006','DD-MON-YYYY'))
-         );
-
-Table created.
-
-SQL&gt; CREATE TABLE order_items
-         ( order_id           NUMBER(12) NOT NULL,
-           line_item_id       NUMBER(3)  NOT NULL,
-           product_id         NUMBER(6)  NOT NULL,
-           unit_price         NUMBER(8,2),
-           quantity           NUMBER(8),
-           CONSTRAINT order_items_fk
-           FOREIGN KEY(order_id) REFERENCES orders(order_id)
-         )
-         PARTITION BY REFERENCE(order_items_fk);
-
-Table created. 
-</code></pre>
-
-<p>パーティション情報の確認。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col partitioning_type for a20
-     col ref_ptn_constraint_name for a30
-     set lines 200
-SQL&gt; SELECT table_name, partitioning_type, ref_ptn_constraint_name FROM user_part_tables;
-
-TABLE_NAME                     PARTITIONING_TYPE    REF_PTN_CONSTRAINT_NAME
------------------------------- -------------------- ------------------------------
-ORDERS                         RANGE
-ORDER_ITEMS                    REFERENCE            ORDER_ITEMS_FK
-
-SQL&gt; col partition_name for a30
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-ORDERS                         Q1_2005                        TO_DATE(' 2005-04-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDERS                         Q2_2005                        TO_DATE(' 2005-07-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDERS                         Q3_2005                        TO_DATE(' 2005-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDERS                         Q4_2005                        TO_DATE(' 2006-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDER_ITEMS                    Q1_2005
-ORDER_ITEMS                    Q2_2005
-ORDER_ITEMS                    Q3_2005
-ORDER_ITEMS                    Q4_2005
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/3/">&larr; Older</a>
@@ -447,6 +526,10 @@ ORDER_ITEMS                    Q4_2005
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
       </li>
     
@@ -460,10 +543,6 @@ ORDER_ITEMS                    Q4_2005
     
       <li class="post">
         <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-interval-partitioned-table/">[Oracle] 時間隔パーティション表</a>
       </li>
     
   </ul>

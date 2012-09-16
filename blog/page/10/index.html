@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Octopress をセットアップ - th0x4c 備忘録</title>
+  <title>th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
@@ -20,7 +20,7 @@ ruby 1.9.3 が必要だが、今回は JRuby を使用した。 使用マシン 
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/04/setup-octopress/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/10/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -62,12 +62,15 @@ ruby 1.9.3 が必要だが、今回は JRuby を使用した。 使用マシン 
 </nav>
   <div id="main">
     <div id="content">
-      <div>
-<article class="hentry" role="article">
+      <div class="blog-index">
   
+  
+  
+    <article>
+      
   <header>
     
-      <h1 class="entry-title">Octopress をセットアップ</h1>
+      <h1 class="entry-title"><a href="/blog/2012/09/04/setup-octopress/">Octopress をセットアップ</a></h1>
     
     
       <p class="meta">
@@ -90,7 +93,7 @@ ruby 1.9.3 が必要だが、今回は JRuby を使用した。 使用マシン 
   </header>
 
 
-<div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
+  <div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
 <a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
 ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
 
@@ -215,53 +218,20 @@ $ jruby -S rake preview
 $ jruby -S gen_deploy
 </code></pre>
 </div>
-
-
-  <footer>
-    <p class="meta">
-      
   
-
-<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
-
-      
-
-
-
-
-
-
-
-
   
 
 
-<time datetime="2012-09-04T23:15:00+09:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
-      
-
-
-    </p>
+    </article>
+  
+  <div class="pagination">
     
-      <div class="sharing">
-  
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/04/setup-octopress/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/04/setup-octopress/" >Tweet</a>
-  
-  
-  
-</div>
-
+    <a href="/blog/archives">Blog Archives</a>
     
-    <p class="meta">
-      
-      
-        <a class="basic-alignment right" href="/blog/2012/09/05/oracle-net-services/" title="Next Post: [Oracle] ネットワーク構成">[Oracle] ネットワーク構成 &raquo;</a>
-      
-    </p>
-  </footer>
-</article>
-
+    <a class="next" href="/blog/page/9/">Newer &rarr;</a>
+    
+  </div>
 </div>
-
 <aside class="sidebar">
   
     <section>
@@ -294,7 +264,7 @@ $ jruby -S gen_deploy
 <section>
   <h1>GitHub Repos</h1>
   <ul id="gh_repos">
-    <li class="loading">Status updating...</li>
+    <li class="loading">Status updating&#8230;</li>
   </ul>
   
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
@@ -327,7 +297,6 @@ $ jruby -S gen_deploy
 
   
 </aside>
-
 
     </div>
   </div>

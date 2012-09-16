@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 11gR2 | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/11gr2/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-16T22:02:10+09:00</updated>
+  <updated>2012-09-16T23:56:12+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,207 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] SQL 計画管理]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-sql-plan-management/"/>
+    <updated>2012-09-16T23:28:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-sql-plan-management</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>SQL 計画管理により、実行計画を固定化する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 15 SQL計画の管理の使用方法<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/optplanmgmt.htm#BABEGJGB">15.2 SQL計画ベースラインの管理</a></li>
+</ul>
+
+
+<h2>SQL 計画管理</h2>
+
+<p>SQL 計画管理により、実行計画を固定化することができる。具体的には次のステップで行う。</p>
+
+<ol>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+<li>実行計画を管理する SQL を 2 回以上実行</li>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ol>
+
+
+<p>実際に実行してみる。</p>
+
+<ul>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>FALSE</code>)を <code>TRUE</code> に設定することで SQL 計画の自動取得が有効になる。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL を 2 回以上実行</li>
+</ul>
+
+
+<p>SQL を 2 回以上実行して、SQL 計画ベースラインに保存する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+</code></pre>
+
+<ul>
+<li>SQL 計画の自動取得を無効化(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE</code>)</li>
+</ul>
+
+
+<p>SQL 計画の自動取得を無効化する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL が SQL 計画ベースラインに保存されたことを確認</li>
+</ul>
+
+
+<p><code>DBA_SQL_PLAN_BASELINES</code> を確認する。</p>
+
+<pre><code>SQL&gt; col sql_text for a60
+     col sql_handle for a30
+     col plan_name for a30
+     set lines 200
+SQL&gt; SELECT SQL_TEXT, SQL_HANDLE, PLAN_NAME, ENABLED, ACCEPTED, FIXED
+     FROM   DBA_SQL_PLAN_BASELINES;
+
+SQL_TEXT                                                     SQL_HANDLE                     PLAN_NAME                      ENABLED   ACCEPTED  FIXED
+------------------------------------------------------------ ------------------------------ ------------------------------ --------- --------- ---------
+SELECT * FROM scott.emp WHERE empno = 7900                   SQL_84ec680ef31d6de4           SQL_PLAN_89v381vtjuvg4695cc014 YES       YES       NO
+</code></pre>
+
+<p>実行計画を確認する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM TABLE(
+       DBMS_XPLAN.DISPLAY_SQL_PLAN_BASELINE(
+         sql_handle=&gt;'SQL_84ec680ef31d6de4',
+         format=&gt;'basic'));
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SQL handle: SQL_84ec680ef31d6de4
+SQL text: SELECT * FROM scott.emp WHERE empno = 7900
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Plan name: SQL_PLAN_89v381vtjuvg4695cc014         Plan id: 1767686164
+Enabled: YES     Fixed: NO      Accepted: YES     Origin: AUTO-CAPTURE
+--------------------------------------------------------------------------------
+
+
+PLAN_TABLE_OUTPUT
+----------------------------------------------
+Plan hash value: 2949544139
+
+----------------------------------------------
+| Id  | Operation                   | Name   |
+----------------------------------------------
+|   0 | SELECT STATEMENT            |        |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |
+|   2 |   INDEX UNIQUE SCAN         | PK_EMP |
+----------------------------------------------
+
+20 rows selected.
+</code></pre>
+
+<ul>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_USE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>TRUE</code>)を <code>TRUE</code> に設定することで取得した SQL 計画を使用する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<p>あとは普通に SQL を時刻するだけで取得した SQL 計画が使用される。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2949544139
+
+--------------------------------------------------------------------------------------
+| Id  | Operation                   | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |        |     1 |    39 |     1   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |     1 |    39 |     1   (0)| 00:00:01 |
+|*  2 |   INDEX UNIQUE SCAN         | PK_EMP |     1 |       |     0   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("EMPNO"=7900)
+
+Note 
+-----
+   - SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          2  consistent gets
+          0  physical reads
+          0  redo size
+        889  bytes sent via SQL*Net to client
+        512  bytes received via SQL*Net from client
+          1  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>Note の <code>SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement</code> という出力から取得した SQL 計画が使用されていることが分かる。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] カーソルを無効にしない統計情報の取得]]></title>
@@ -618,103 +819,6 @@ TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_
 ------------------------------ ------------------------------ ------------------------------ ------------------------------ ----------
 EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
 </code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] 時間隔パーティション表]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-interval-partitioned-table/"/>
-    <updated>2012-09-16T16:46:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-interval-partitioned-table</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>時間隔パーティション表を作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>VLDBおよびパーティショニング・ガイド<br/>
--> 4 パーティションの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJHFFBE">時間隔パーティション表の作成</a></li>
-</ul>
-
-
-<h2>時間隔パーティション表の作成</h2>
-
-<p>時間隔パーティション表はレンジ・パーティションの一種で、例えば月単位の時間隔パーティション表を作成すると、パーティションを明示的に作成しなくても自動で必要な月のパーティションをデータ insert 時に作成してくれる。</p>
-
-<p><code>DATE</code> 型の <code>time_id</code> をパーティション・キーとして、2009年までは年単位でパーティション化し、2010年1月1日以降は月単位でパーティションを自動作成するような時間隔パーティション表を作成してみる。</p>
-
-<pre><code>SQL&gt; CREATE TABLE interval_sales
-         ( prod_id        NUMBER(6)
-         , cust_id        NUMBER
-         , time_id        DATE
-         , channel_id     CHAR(1)
-         , promo_id       NUMBER(6)
-         , quantity_sold  NUMBER(3)
-         , amount_sold    NUMBER(10,2)
-         ) 
-       PARTITION BY RANGE (time_id) 
-       INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
-         ( PARTITION p0 VALUES LESS THAN (TO_DATE('1-1-2008', 'DD-MM-YYYY')),
-           PARTITION p1 VALUES LESS THAN (TO_DATE('1-1-2009', 'DD-MM-YYYY')),
-           PARTITION p2 VALUES LESS THAN (TO_DATE('1-1-2010', 'DD-MM-YYYY')) );
-
-Table created.
-</code></pre>
-
-<p>ちなみに追加されるパーティションを日単位にする場合は、<code>NUMTODSINTERVAL(1, 'DAY')</code> 関数を利用する。</p>
-
-<p>パーティション情報の確認。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col partitioning_type for a20
-     set lines 200
-SQL&gt; SELECT table_name, partitioning_type FROM user_part_tables;
-
-TABLE_NAME                     PARTITIONING_TYPE   
------------------------------- --------------------
-INTERVAL_SALES                 RANGE
-
-SQL&gt; col partition_name for a30
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p>最初はパーティションは作られていないが、上記の範囲を超える行を insert するとパーティションが自動で作成される。</p>
-
-<pre><code>SQL&gt; INSERT INTO interval_sales(prod_id, time_id) VALUES(1, TO_DATE('2012-09-16', 'YYYY-MM-DD'));
-
-1 row created.
-
-SQL&gt; COMMIT;
-
-Commit complete.
-
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p><code>SYS_P41</code> というパーティションが自動で作成された。</p>
 ]]></content>
   </entry>
   
