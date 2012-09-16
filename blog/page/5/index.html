@@ -9,9 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 RMAN の構成を変更して、以下ができるようにする。 制御ファイルと SPFILE の自動バックアップ取得
-バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)
-ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、 &hellip;">
+  <meta name="description" content="目的 マルチセクション・バックアップにより効率的にバックアップを行う。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップおよびリカバリ・ユーザーズ・ガイド
+-> &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,161 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-multisection-backup/">[Oracle] マルチセクション・バックアップ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T03:25:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>マルチセクション・バックアップにより効率的にバックアップを行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 10 データベースのバックアップ: 高度なトピック<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckad.htm#CHDBAHAD">セクションへの大規模なデータファイルのバックアップの分割</a></li>
+</ul>
+
+
+<h2>マルチセクション・バックアップの実行</h2>
+
+<p>マルチセクション・バックアップにより、ファイルサイズが大きいデータ・ファイルを複数のバックアップ・ピースに分割してバックアップすることができる。パラレル化の設定がされていれば、複数のチャネルを使用して平行でバックアップされるためパフォーマンスが向上する。</p>
+
+<p>マルチセクション・バックアップを行うためには、<code>SECTION SIZE</code> パラメータを指定して <code>BACKUP</code> を実行すればよい。</p>
+
+<ul>
+<li>必要に応じて、パラレル化の設定をする。(パラレル化の設定がされていないとマルチセクション・バックアップを実施しても複数バックアップ・ピースに分割されるがシリアルにバックアップされてあまり意味がない。)</li>
+</ul>
+
+
+<p><code>CONFIGURE</code> コマンドで設定</p>
+
+<pre><code>RMAN&gt; CONFIGURE DEVICE TYPE DISK PARALLELISM 2;
+
+new RMAN configuration parameters:
+CONFIGURE DEVICE TYPE DISK PARALLELISM 2 BACKUP TYPE TO BACKUPSET;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<ul>
+<li>マルチセクション・バックアップ実施</li>
+</ul>
+
+
+<p>以下の例では 約 350M の 1 つデータファイルからなる example 表領域のバックアップを行っている。パラレル度を 2 にしたので、チャネルが 2 つ(<code>ORA_DISK_1</code> と <code>ORA_DISK_2</code>)割り当てられてパラレルで動作する。また、セクションサイズを 100M で指定したので、データファイルを 100M に分けて 4 つのバックアップ・ピースでバックアップしている。(1 つのピースは 12800 blocks * 8k = 100M)</p>
+
+<pre><code>RMAN&gt; BACKUP
+      SECTION SIZE 100M
+      TABLESPACE example;
+
+Starting backup at 12-09-09
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=145 device type=DISK
+allocated channel: ORA_DISK_2
+channel ORA_DISK_2: SID=140 device type=DISK
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 1 through 12800
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 12801 through 25600
+channel ORA_DISK_2: starting piece 2 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 25601 through 38400
+channel ORA_DISK_1: starting piece 3 at 12-09-09
+channel ORA_DISK_2: finished piece 2 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+backing up blocks 38401 through 44240
+channel ORA_DISK_2: starting piece 4 at 12-09-09
+channel ORA_DISK_1: finished piece 3 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:02
+channel ORA_DISK_2: finished piece 4 at 12-09-09
+piece handle=/u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp tag=TAG20120909T035001 comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:01
+Finished backup at 12-09-09
+</code></pre>
+
+<p>バックアップの確認。確かに 4 つのバックアップ・ピースに分かれている。</p>
+
+<pre><code>RMAN&gt; list backup;
+...(*snip*)
+
+BS Key  Type LV Size       Device Type Elapsed Time Completion Time
+------- ---- -- ---------- ----------- ------------ ---------------
+956     Full    69.01M     DISK        00:00:02     12-09-09
+  List of Datafiles in backup set 956
+  File LV Type Ckp SCN    Ckp Time Name
+  ---- -- ---- ---------- -------- ----
+  5       Full 1160848    12-09-09 /u01/app/oracle/oradata/PROD1/example01.dbf
+
+  Backup Set Copy #1 of backup set 956
+  Device Type Elapsed Time Completion Time Compressed Tag
+  ----------- ------------ --------------- ---------- ---
+  DISK        00:00:02     12-09-09        NO         TAG20120909T035001
+
+    List of Backup Pieces for backup set 956 Copy #1
+    BP Key  Pc# Status      Piece Name
+    ------- --- ----------- ----------
+    958     1   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsts_.bkp
+    959     2   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tsws_.bkp
+    960     3   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4ttyy_.bkp
+    961     4   AVAILABLE   /u01/app/oracle/fast_recovery_area/PROD1/backupset/2012_09_09/o1_mf_nnndf_TAG20120909T035001_84q4tv1o_.bkp
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -380,188 +535,6 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-em-agent-installation/">[Oracle] EM エージェントのインストール</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T23:28:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>EM エージェントをインストールする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>EM エージェントのインストール</h2>
-
-<p>EM からインストールする。
-事前に EM エージェントをインストールするサーバに ssh 接続できることを確認しておくこと。</p>
-
-<ul>
-<li>&#8220;デプロイ&#8221; タブから &#8220;エージェントのインストール&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;フレッシュ・インストール&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-2.png" width="720" height="450"></p>
-
-<ul>
-<li>以下のように設定
-
-<ul>
-<li>&#8220;ホスト・リストの指定&#8221; : DB サーバのホスト名</li>
-<li>&#8220;OS 資格証明&#8221; : DB サーバの OS ユーザ</li>
-<li>&#8220;root.sh の実行&#8221; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
-<li>&#8220;インストールのベース・ディレクトリ&#8221; : /u01/app/oracle/Middleware</li>
-<li>&#8220;管理サーバの登録パスワード&#8221; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
-</ul>
-</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-3.png" width="720" height="450">
-<img src="/images/2012-09-07-oracle-em-agent-installation/em-4.png" width="720" height="450">
-<img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&#8221; のチェックははずす。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;はい&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-7.png" width="720" height="450"></p>
-
-<ul>
-<li>インストール中</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-8.png" width="720" height="450"></p>
-
-<ul>
-<li>インストール完了。&#8221;完了&#8221; をクリック。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-9.png" width="720" height="450"></p>
-
-<ul>
-<li>DB サーバ上で root.sh を実行する。</li>
-</ul>
-
-
-<p>DB サーバ上で実行。</p>
-
-<pre><code>$ cd /u01/app/oracle/Middleware/agent11g
-$ su
-# ./root.sh
-</code></pre>
-
-<h2>DB インスタンスを EM に登録する</h2>
-
-<p>EM エージェントをインストールしただけでは DB インスタンスのステータスが保留状態なので構成する必要がある。</p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
-
-<ul>
-<li>DB インスタンスを選択して &#8220;構成&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-11.png" width="720" height="450"></p>
-
-<ul>
-<li>dbsnmp のパスワードを変更</li>
-</ul>
-
-
-<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &#8220;接続テスト&#8221; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-13.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
-
-<p>dbsnmp のパスワードを変更したらもう一度 &#8220;接続テスト&#8221; を行い成功することを確認して &#8220;次へ&#8221; をクリック</p>
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
-
-<ul>
-<li>確認して &#8220;発行&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-16.png" width="720" height="450"></p>
-
-<ul>
-<li>構成中</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
-
-<ul>
-<li>&#8220;OK&#8221;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-18.png" width="720" height="450"></p>
-
-<ul>
-<li>他の DB がある場合は同様に構成して、ステータスが正常になることを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/6/">&larr; Older</a>
@@ -579,6 +552,10 @@ $ su
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/16/oracle-reference-partitioned-table/">[Oracle] 参照パーティション表</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/16/oracle-securefiles-lob/">[Oracle] BasicFiles LOB から SecureFiles LOB への移行</a>
       </li>
     
@@ -592,10 +569,6 @@ $ su
     
       <li class="post">
         <a href="/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/">[Oracle] マテリアライズド・ビューの高速リフレッシュ</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a>
       </li>
     
   </ul>

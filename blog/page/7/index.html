@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 暗号化された表領域を作成する。
-&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g &hellip;">
+  <meta name="description" content="目的 OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +63,118 @@ DB: Oracle Database 11g &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>インストレーション・ガイド for Linux<br/>
+-> 5 Oracle Databaseのインストール後の作業<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
+</ul>
+
+
+<h2>ダイレクト NFS クライアントの有効化</h2>
+
+<ul>
+<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
+<li><p>libodm11.so の置き換え</p></li>
+</ul>
+
+
+<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_on
+</code></pre>
+
+<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
+
+<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
+if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
+        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
+        fi
+rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>ダイレクト NFS クライアントの無効化</h2>
+
+<ul>
+<li>libodm11.so の置き換え</li>
+</ul>
+
+
+<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_off
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>確認方法</h2>
+
+<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
+
+<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -577,166 +688,9 @@ SQL&gt;
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/04/setup-octopress/">Octopress をセットアップ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-04T23:15:00+09:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
-<a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
-ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
-
-<h2>使用マシン</h2>
-
-<ul>
-<li>MacBook Pro Retina ディスプレイモデル(Mid 2012)</li>
-<li>Mountain Lion (OS X 10.8.1)</li>
-</ul>
-
-
-<h2>JRuby のインストール</h2>
-
-<p>~/local 配下に zip を解凍してインストール</p>
-
-<pre><code>$ cd ~/local/
-$ curl -O http://jruby.org.s3.amazonaws.com/downloads/1.7.0.preview2/jruby-bin-1.7.0.preview2.zip
-$ unzip jruby-bin-1.7.0.preview2.zip
-$ cd ~/local/bin/
-$ ln -s ../jruby-1.7.0.preview2/bin/jruby .
-</code></pre>
-
-<h2>Octopress のセットアップ</h2>
-
-<p><a href="http://octopress.org/docs/setup/">Octopress のセットアップ手順</a> に従う。</p>
-
-<pre><code>$ cd ~/Documents/
-$ git clone git://github.com/imathis/octopress.git octopress
-$ cd octopress/
-$ jruby -S gem install bundler
-expr: syntax error
-Fetching gem metadata from http://rubygems.org/.......
-Using rake (0.9.2.2)
-Using RedCloth (4.2.9)
-Installing posix-spawn (0.3.6) with native extensions
-Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension.
-
-        /Users/hashi/local/bin/../jruby-1.7.0.preview2/bin/jruby extconf.rb
-NotImplementedError: C extension support is not enabled. Pass -Xcext.enabled=true to JRuby or set JRUBY_OPTS or modify .jrubyrc to enable.
-
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/mkmf.rb:8
-  require at org/jruby/RubyKernel.java:1024
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/rubygems/custom_require.rb:1
-   (root) at extconf.rb:1
-
-
-Gem files will remain installed in /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6 for inspection.
-Results logged to /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6/ext/gem_make.out
-An error occurred while installing posix-spawn (0.3.6), and Bundler cannot continue.
-Make sure that `gem install posix-spawn -v '0.3.6'` succeeds before bundling.
-</code></pre>
-
-<p>なんかエラーとなったので、エラーメッセージの指示通りに <code>JRUBY_OPTS</code> を設定したらうまくいった。</p>
-
-<pre><code>$ export JRUBY_OPTS="-Xcext.enabled=true"
-$ jruby -S bundle install
-$ jruby -S rake install
-</code></pre>
-
-<p>追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
-(もちろん、JRuby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
-
-<pre><code>$ cd ~/local/bin
-$ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
-$ ln -s ../jruby-1.7.0.preview2/bin/compass .
-$ ln -s ../jruby-1.7.0.preview2/bin/rackup .
-</code></pre>
-
-<h2>Github Pages の設定</h2>
-
-<p>引き続き <a href="http://octopress.org/docs/deploying/github/">Octopress の Github Pages へのデプロイ手順</a> に従う。
-まず、<code>username.github.com</code> というレポジトリを<a href="https://github.com/repositories/new">新規で作成</a>する。
-ここで、次の <code>rake setup_github_pages</code> の <code>Repository url:</code> で HTTPS での指定(<code>https://github.com/username/username.github.com.git</code>)ができなかったため、レポジトリに <a href="https://help.github.com/articles/generating-ssh-keys">SSH key でのアクセス設定</a>した上で、<code>git@github.com:username/username.github.com.git</code> を指定する必要があった。</p>
-
-<pre><code>$ cd ~/Documents/octopress
-$ jruby -S rake setup_github_pages
-expr: syntax error
-Enter the read/write url for your repository
-(For example, 'git@github.com:your_username/your_username.github.com)
-Repository url: git@github.com:th0x4c/th0x4c.github.com.git
-...
-</code></pre>
-
-<p>これで次のことが行われるとのこと。</p>
-
-<ol>
-<li>Ask you for your Github Pages repository url.</li>
-<li>Rename the remote pointing to imathis/octopress from ‘origin’ to ‘octopress’</li>
-<li>Add your Github Pages repository as the default origin remote.</li>
-<li>Switch the active branch from master to source.</li>
-<li>Configure your blog’s url according to your repository.</li>
-<li>Setup a master branch in the _deploy directory for deployment.</li>
-</ol>
-
-
-<p>最後に以下を実行すれば <code>_deploy/</code> ディレクトリにファイルが生成され、Github のレポジトリに push され、Github Pages に反映される。</p>
-
-<pre><code>$ jruby -S rake generate
-$ jruby -S rake deploy
-</code></pre>
-
-<p>あとは、Octopress の以下のページを参照のこと。</p>
-
-<ul>
-<li><a href="http://octopress.org/docs/configuring/">Configure your blog</a></li>
-</ul>
-
-
-<p>とりあえず、<code>_config.yml</code> の <code>title:</code>, <code>author:</code> ぐらいを変更した。</p>
-
-<h2>ブログ発行</h2>
-
-<p><a href="http://octopress.org/docs/blogging/">Start blogging with Octopress</a>を参照。</p>
-
-<p>基本的に <code>rake new_post["Zombie Ninjas Attack: A survivor's retrospective"]</code> (<code>Zombie ...</code>はタイトル)を実行して、<code>source/_posts</code> 配下のファイルを編集すればよい。</p>
-
-<p><code>rake preview</code> で <code>http://localhost:4000</code> でプレビューを確認して、<code>rake gen_deploy</code> で Github Pages にデプロイ。</p>
-
-<pre><code>$ jruby -S rake new_post["Setup Octopress"]
-$ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
-$ jruby -S rake preview
-$ jruby -S gen_deploy
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/8/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -749,6 +703,10 @@ $ jruby -S gen_deploy
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-reference-partitioned-table/">[Oracle] 参照パーティション表</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/09/16/oracle-securefiles-lob/">[Oracle] BasicFiles LOB から SecureFiles LOB への移行</a>
@@ -764,10 +722,6 @@ $ jruby -S gen_deploy
     
       <li class="post">
         <a href="/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/">[Oracle] マテリアライズド・ビューの高速リフレッシュ</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a>
       </li>
     
   </ul>

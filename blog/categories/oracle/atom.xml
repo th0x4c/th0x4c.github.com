@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Oracle | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/oracle/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-16T15:56:03+09:00</updated>
+  <updated>2012-09-16T16:35:11+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,74 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] 参照パーティション表]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/"/>
+    <updated>2012-09-16T16:13:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>参照パーティション表を作成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>VLDBおよびパーティショニング・ガイド<br/>
+-> 4 パーティションの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJDDEEC">参照パーティション表の作成</a></li>
+</ul>
+
+
+<h2>参照パーティション表の作成</h2>
+
+<p>参照パーティション表は、例えば次のようなケースで役立つ。注文を管理する orders 表に注文日が格納される order_date 列がある。また、注文に含まれる品目を管理する order_items 表があり、orders 表を order_id 列で外部参照しているとする。orders 表が order_date 列をキー値としてパーティション化されている場合、order_items 表も同じように注文日によりパーティション化したかったら、従来ならば order_date 列を order_itmes 表にも加える必要があった。参照パーティション表を使えば、order_items 列に余計な order_date 列を加えることなく、外部参照している orders と同じ単位でパーティション化することができる。</p>
+
+<p>実際に上記シナリオで参照パーティション表を作成してみる。</p>
+
+<pre><code>SQL&gt; CREATE TABLE orders
+         ( order_id           NUMBER(12),
+           order_date         DATE,
+           order_mode         VARCHAR2(8),
+           customer_id        NUMBER(6),
+           order_status       NUMBER(2),
+           order_total        NUMBER(8,2),
+           sales_rep_id       NUMBER(6),
+           promotion_id       NUMBER(6),
+           CONSTRAINT orders_pk PRIMARY KEY(order_id)
+         )
+       PARTITION BY RANGE(order_date)
+         ( PARTITION Q1_2005 VALUES LESS THAN (TO_DATE('01-APR-2005','DD-MON-YYYY')),
+           PARTITION Q2_2005 VALUES LESS THAN (TO_DATE('01-JUL-2005','DD-MON-YYYY')),
+           PARTITION Q3_2005 VALUES LESS THAN (TO_DATE('01-OCT-2005','DD-MON-YYYY')),
+           PARTITION Q4_2005 VALUES LESS THAN (TO_DATE('01-JAN-2006','DD-MON-YYYY'))
+         );
+
+Table created.
+
+SQL&gt; CREATE TABLE order_items
+         ( order_id           NUMBER(12) NOT NULL,
+           line_item_id       NUMBER(3)  NOT NULL,
+           product_id         NUMBER(6)  NOT NULL,
+           unit_price         NUMBER(8,2),
+           quantity           NUMBER(8),
+           CONSTRAINT order_items_fk
+           FOREIGN KEY(order_id) REFERENCES orders(order_id)
+         )
+         PARTITION BY REFERENCE(order_items_fk);
+
+Table created. 
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] BasicFiles LOB から SecureFiles LOB への移行]]></title>
@@ -1216,200 +1284,6 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 </code></pre>
 
 <p><code>PCT*</code> 以外は <code>possible</code> 列が <code>Y</code> になっているので高速リフレッシュ可能。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] Data Guard ファスト・スタート・フェイルオーバー]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/11/oracle-data-guard-fast-start-failover/"/>
-    <updated>2012-09-11T19:54:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/11/oracle-data-guard-fast-start-failover</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>ファスト・スタート・フェイルオーバーの構成</h2>
-
-<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにできる。
-ファスト・スタート・フェイルオーバーには、プライマリ DB、スタンバイ DB を監視する"オブザーバ"が必要。オブザーバはプライマリ DB、スタンバイ DB とは別のサーバに配置することが望ましいが、今回はスタンバイ DB と同じサーバに構成する。</p>
-
-<p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>"ファスト・スタート・フェイルオーバー" の "無効" をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
-
-<ul>
-<li>"オブザーバの構成" をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-2.png" width="720" height="450"></p>
-
-<ul>
-<li>オブザーバの場所として今回はスタンバイ DB と同じサーバを指定。ORACLE_HOME の位置も入力する。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
-
-<ul>
-<li>"続行"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-4.png" width="720" height="450"></p>
-
-<ul>
-<li>オブザーバを起動する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
-
-<ul>
-<li>"続行"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
-
-<ul>
-<li>"はい"</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-8.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>Data Guard の構成画面に戻ると "ファスト・スタート・フェイルオーバー" が "stdby1.localに対して有効" になり、"オブザーバの場所" が "sv2.local" になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-10.png" width="720" height="450"></p>
-
-<h2>ファスト・スタート・フェイルオーバーの検証</h2>
-
-<p>ファスト・スタート・フェイルオーバーが動作するか検証してみる。
-<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#BCGHEJFH">マニュアル Data Guard Broker</a> によると次の場合にファスト・スタート・フェイルオーバーが試行される。</p>
-
-<ul>
-<li>プライマリ・データベースと、オブザーバおよびターゲット・スタンバイ・データベースの両方との接続が失われた場合</li>
-<li>インスタンス障害</li>
-<li>強制終了(ABORT オプションでの停止)</li>
-</ul>
-
-
-<p>正常にデータベースを停止した場合(NORMAL, IMMEDIATE, TRANSACTIONAL)では、ファスト・スタート・フェイルオーバーは試行されないので、プライマリ DB を停止するときは通常通り ABORT 以外のオプションで SHUTDOWN すればいい。</p>
-
-<p>ファスト・スタート・フェイルオーバーを検証するためにプライマリ DB を <code>shutdown abort</code> で強制終了する。</p>
-
-<pre><code># プライマリ側で実施
-$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; shutdown abort
-ORACLE instance shut down.
-</code></pre>
-
-<p>これで、プライマリ DB の異常をオブザーバが検知して、フェイルオーバーが自動で開始される。
-オブザーバは Data Guard Broker の dgmgrl コマンドで実行されているので、ログは <code>$ORACLE_HOME/rdbms/log/dgmgrl_XXXX_XXXX.log</code> に出力されている。</p>
-
-<pre><code># オブザーバ配置サーバで実施
-$ ps -ef | grep dgmgrl
-oracle   12805     1  0 20:27 ?        00:00:01 /u01/app/oracle/product/11.2.0/dbhome_1/bin/dgmgrl -logfile /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/log/dgmgrl_PROD1_12804.log
-
-$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
-Observer started
-[W000 09/11 20:27:30.89] Observer started.
-
-21:07:33.37  2012年9月11日 Tuesday
-Initiating Fast-Start Failover to database "stdby1"...
-Performing failover NOW, please wait...
-Failover succeeded, new primary is "stdby1"
-21:07:35.66  2012年9月11日 Tuesday
-</code></pre>
-
-<p>これで、フェイルオーバーが実施された。EM の元スタンバイ DB 側を確認すると以下のようになっている。</p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-11.png" width="720" height="450"></p>
-
-<p>この後、元プライマリ DB を起動すると、自動でスタンバイ DB として構成してくれる。</p>
-
-<pre><code># 元プライマリ側で実施
-$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; shutdown abort
-ORACLE instance shut down.
-SQL&gt; startup
-ORACLE instance started.
-
-Total System Global Area  835104768 bytes
-Fixed Size                  2232960 bytes
-Variable Size             511708544 bytes
-Database Buffers          314572800 bytes
-Redo Buffers                6590464 bytes
-Database mounted.
-ORA-16649: possible failover to another database prevents this database from
-being opened
-</code></pre>
-
-<p>オブザーバのログを確認すると、元プライマリ DB が新たにスタンバイ DB としてマウントされたログ出力がある。</p>
-
-<pre><code># オブザーバ配置サーバで実施
-$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
-21:18:47.02  2012年9月11日 Tuesday
-Initiating reinstatement for database "PROD1"...
-Reinstating database "PROD1", please wait...
-Operation requires shutdown of instance "PROD1" on database "PROD1"
-Shutting down instance "PROD1"...
-ORA-01109: database not open
-
-Database dismounted.
-ORACLE instance shut down.
-Operation requires startup of instance "PROD1" on database "PROD1"
-Starting instance "PROD1"...
-ORACLE instance started.
-Database mounted.
-Continuing to reinstate database "PROD1" ...
-Reinstatement of database "PROD1" succeeded
-21:19:33.19  2012年9月11日 Tuesday
-</code></pre>
-
-<p>EM の元スタンバイ DB 側を確認すると以下のように元プライマリ DB が新たにスタンバイ DB として構成されていることが分かる。</p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
-
-<p>この後、スイッチオーバすれば、元の構成に戻る。</p>
 ]]></content>
   </entry>
   
