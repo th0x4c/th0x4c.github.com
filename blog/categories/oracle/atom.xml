@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Oracle | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/oracle/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-13T03:10:38+09:00</updated>
+  <updated>2012-09-16T15:56:03+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,267 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] BasicFiles LOB から SecureFiles LOB への移行]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob/"/>
+    <updated>2012-09-16T14:15:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>従来型の LOB (BasicFiles LOB) から、Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB へ移行する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>SecureFilesおよびラージ・オブジェクト開発者ガイド<br/>
+-> 4 Oracle SecureFiles LOBの使用<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABDIEGE">BasicFiles LOBからSecureFiles LOBへの列の移行</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABJFEBB">SecureFiles LOBの初期化パラメータdb_securefile</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHGHEFA">SecureFiles LOBを含んだCREATE TABLEの使用</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHJJBIJ">SecureFiles LOBを含んだALTER TABLEの使用</a></p></li>
+<li><p>管理者ガイド<br/>
+-> 20 表の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tables007.htm#i1006754">表のオンライン再定義</a></p></li>
+</ul>
+
+
+<h2>BasicFiles LOB から SecureFiles LOB への移行</h2>
+
+<p>Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB を使用すると、以下のようなことが可能になる。</p>
+
+<ul>
+<li>圧縮(LOB データの圧縮)</li>
+<li>重複除外(列内で重複する LOB データのコピーを1つのみ格納)</li>
+<li>暗号化(透過的データ暗号化により LOB データを暗号化)</li>
+</ul>
+
+
+<p>従来型の LOB は、BasicFiles と呼ばれる。BasicFiles を使用した既存の LOB 列を SecureFiles に移行する。<code>ALTER TABLE</code> での BasicFiles から SecureFiles への変更はできないため、変更するためには表の再作成を行うか、オンライン再定義を行う必要がある。今回は、マニュアルに例があるように、オンライン再定義により行う。</p>
+
+<ul>
+<li>検証用に BasicFiles LOB 列を持つ表、データを準備</li>
+</ul>
+
+
+<p>BasicFiles LOB 列を持つ <code>cust</code> 表を作成してデータを insert。今回この表を SecureFiles LOB に移行してみる。</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+SQL&gt; CREATE TABLE cust
+     (
+       c_id  NUMBER PRIMARY KEY,
+       c_zip NUMBER,
+       c_name VARCHAR(30) DEFAULT NULL,
+       c_lob CLOB
+     );
+
+Table created.
+
+SQL&gt; INSERT INTO cust VALUES(1, 94065, 'hhh', 'ttt');
+
+1 row created.
+
+SQL&gt; COMMIT;
+
+Commit complete.
+</code></pre>
+
+<ul>
+<li>オンライン再定義に必要な権限の付与</li>
+</ul>
+
+
+<p>オンライン再定義に必要な権限を与える</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+SQL&gt; -- Grant privileges required for online redefinition.
+SQL&gt; GRANT EXECUTE ON DBMS_REDEFINITION TO scott;
+SQL&gt; GRANT ALTER ANY TABLE TO scott;
+SQL&gt; GRANT DROP ANY TABLE TO scott;
+SQL&gt; GRANT LOCK ANY TABLE TO scott;
+SQL&gt; GRANT CREATE ANY TABLE TO scott;
+SQL&gt; GRANT SELECT ANY TABLE TO scott;
+SQL&gt; -- Privileges required to perform cloning of dependent objects.
+SQL&gt; GRANT CREATE ANY TRIGGER TO scott;
+SQL&gt; GRANT CREATE ANY INDEX TO scott;
+</code></pre>
+
+<ul>
+<li>初期化パラメータ <code>db_securefile</code> パラメータの変更</li>
+</ul>
+
+
+<p>SecureFiles LOB の初期化パラメータ <code>db_securefile</code> パラメータを変更する。
+SecureFiles LOB を使用するためには <code>PERMITTED</code> (デフォルト) または <code>ALWAYS</code> である必要がある。</p>
+
+<p>例えば、<code>NEVER</code> に設定されている場合に SecureFiles LOB の列を作成しようとすると、<code>ORA-43856</code> が発生する。</p>
+
+<pre><code>SQL&gt; CREATE TABLE test_lob (c_lob CLOB) LOB(c_lob) STORE AS SECUREFILE (compress high);
+CREATE TABLE test_lob (c_lob CLOB) LOB(c_lob) STORE AS SECUREFILE (compress high)
+*
+ERROR at line 1:
+ORA-43856: Unsupported LOB type for SECUREFILE LOB operation
+</code></pre>
+
+<p><code>db_securefile</code> を <code>ALTER SYSTEM</code> で変更する。</p>
+
+<pre><code>SQL&gt; conn /as sysdba
+Connected.
+SQL&gt; ALTER SYSTEM SET db_securefile = PERMITTED SCOPE=both;
+
+System altered.
+</code></pre>
+
+<ul>
+<li>仮表を作成</li>
+</ul>
+
+
+<p>オンライン再定義のための仮表を SecureFiles LOB 列を持つようにして作成。元表からコピーされるので主キーなどの制約の指定は不要。</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; CREATE TABLE cust_int
+     (
+       c_id  NUMBER,
+       c_zip NUMBER,
+       c_name VARCHAR(30) DEFAULT NULL,
+       c_lob CLOB
+     )
+     LOB(c_lob) STORE AS SECUREFILE;
+
+Table created.
+</code></pre>
+
+<ul>
+<li>表のオンライン再定義</li>
+</ul>
+
+
+<p>表のオンライン再定義を実行する。</p>
+
+<pre><code>SQL&gt; DECLARE
+       col_mapping VARCHAR2(1000);
+     BEGIN
+       -- map all the columns in the interim table to the original table
+       col_mapping :=
+         'c_id c_id , '||
+         'c_zip c_zip , '||
+         'c_name c_name, '||
+         'c_lob c_lob';
+       DBMS_REDEFINITION.START_REDEF_TABLE('scott', 'cust', 'cust_int', col_mapping);
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set serveroutput on
+SQL&gt; DECLARE
+       error_count pls_integer := 0;
+     BEGIN
+       DBMS_REDEFINITION.COPY_TABLE_DEPENDENTS('scott', 'cust', 'cust_int',
+         1, TRUE,TRUE,TRUE,FALSE, error_count);
+       DBMS_OUTPUT.PUT_LINE('errors := ' || TO_CHAR(error_count));
+     END;
+     /
+errors := 0
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; EXEC DBMS_REDEFINITION.FINISH_REDEF_TABLE('scott', 'cust', 'cust_int');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; DROP TABLE cust_int;
+
+Table dropped.
+</code></pre>
+
+<ul>
+<li>SecureFiles LOB に移行されたことを確認</li>
+</ul>
+
+
+<p><code>USER_LOBS.SECUREFILE</code> 列が <code>YES</code> であれば SecureFiles になっている。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+SQL&gt; col column_name for a30
+SQL&gt; SELECT table_name, column_name, securefile FROM user_lobs;
+
+TABLE_NAME                     COLUMN_NAME                    SECUREFIL
+------------------------------ ------------------------------ ---------
+CUST                           C_LOB                          YES
+</code></pre>
+
+<h2>SecureFiles LOB の変更</h2>
+
+<p><code>ALTER TABLE</code> 文により既存の SecureFiles LOB 列を変更して、圧縮や重複除外の設定を行う。</p>
+
+<ul>
+<li>現在の設定の確認</li>
+</ul>
+
+
+<p><code>USER_LOBS</code> にて確認できる。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col column_name for a30
+     col encrypt for a10
+     col compression for a15
+     col deduplication for a15
+     set lines 200
+SQL&gt; SELECT table_name, column_name, encrypt, compression, deduplication FROM user_lobs;
+
+TABLE_NAME                     COLUMN_NAME                    ENCRYPT    COMPRESSION     DEDUPLICATION
+------------------------------ ------------------------------ ---------- --------------- ---------------
+CUST                           C_LOB                          NO         NO              NO
+</code></pre>
+
+<ul>
+<li>設定の変更</li>
+</ul>
+
+
+<p><code>ALTER TABLE</code> により圧縮、重複除外の設定を行う。</p>
+
+<pre><code>SQL&gt; ALTER TABLE cust MODIFY LOB(c_lob) (COMPRESS HIGH);
+
+Table altered.
+
+SQL&gt; ALTER TABLE cust MODIFY LOB(c_lob) (DEDUPLICATE);
+
+Table altered.
+</code></pre>
+
+<ul>
+<li>設定変更の確認</li>
+</ul>
+
+
+<p><code>USER_LOBS</code> にて確認。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col column_name for a30
+     col encrypt for a10
+     col compression for a15
+     col deduplication for a15
+     set lines 200
+SQL&gt; SELECT table_name, column_name, encrypt, compression, deduplication FROM user_lobs;
+
+TABLE_NAME                     COLUMN_NAME                    ENCRYPT    COMPRESSION     DEDUPLICATION
+------------------------------ ------------------------------ ---------- --------------- ---------------
+CUST                           C_LOB                          NO         HIGH            LOB
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] スター型変換の使用]]></title>
@@ -1149,94 +1410,6 @@ Reinstatement of database "PROD1" succeeded
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
 
 <p>この後、スイッチオーバすれば、元の構成に戻る。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[[Oracle] Data Guard 環境での RMAN の構成]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration/"/>
-    <updated>2012-09-09T23:00:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration</id>
-    <content type="html"><![CDATA[<h2>目的</h2>
-
-<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>Data Guard概要および管理<br/>
--> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
-</ul>
-
-
-<h2>Data Guard 環境での RMAN の構成</h2>
-
-<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
-
-<ul>
-<li>現在の設定の確認</li>
-</ul>
-
-
-<p>プライマリ DB をターゲットとして接続し、<code>show all</code> コマンドで現在の設定を確認</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target /
-RMAN&gt; show all;
-
-using target database control file instead of recovery catalog
-RMAN configuration parameters for database with db_unique_name PROD1 are:
-CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
-CONFIGURE BACKUP OPTIMIZATION OFF; # default
-CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
-CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
-CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
-CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
-CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
-CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
-CONFIGURE MAXSETSIZE TO UNLIMITED; # default
-CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
-CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
-CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
-CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
-CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
-</code></pre>
-
-<p>アーカイブ・ログの削除方針(<code>CONFIGURE ARCHIVELOG DELETION POLICY</code>)はデフォルトの <code>NONE</code> になっている。</p>
-
-<ul>
-<li>アーカイブ・ログの削除方針を変更する。</li>
-</ul>
-
-
-<p><code>CONFIGURE ARCHIVELOG DELETION POLICY</code> コマンドによりアーカイブ・ログの削除方針を変更する。</p>
-
-<p>すべてのスタンバイ DB への<strong>送信(SHIPPED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
-
-<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
-
-new RMAN configuration parameters:
-CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
-new RMAN configuration parameters are successfully stored
-</code></pre>
-
-<p>すべてのスタンバイ DB への<strong>適用(APPLIED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
-
-<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
-
-new RMAN configuration parameters:
-CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
-new RMAN configuration parameters are successfully stored
-</code></pre>
 ]]></content>
   </entry>
   

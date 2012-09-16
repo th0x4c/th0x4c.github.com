@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-13T03:10:38+09:00</updated>
+  <updated>2012-09-16T15:56:03+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,267 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] BasicFiles LOB から SecureFiles LOB への移行]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob/"/>
+    <updated>2012-09-16T14:15:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>従来型の LOB (BasicFiles LOB) から、Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB へ移行する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>SecureFilesおよびラージ・オブジェクト開発者ガイド<br/>
+-> 4 Oracle SecureFiles LOBの使用<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABDIEGE">BasicFiles LOBからSecureFiles LOBへの列の移行</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABJFEBB">SecureFiles LOBの初期化パラメータdb_securefile</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHGHEFA">SecureFiles LOBを含んだCREATE TABLEの使用</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHJJBIJ">SecureFiles LOBを含んだALTER TABLEの使用</a></p></li>
+<li><p>管理者ガイド<br/>
+-> 20 表の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tables007.htm#i1006754">表のオンライン再定義</a></p></li>
+</ul>
+
+
+<h2>BasicFiles LOB から SecureFiles LOB への移行</h2>
+
+<p>Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB を使用すると、以下のようなことが可能になる。</p>
+
+<ul>
+<li>圧縮(LOB データの圧縮)</li>
+<li>重複除外(列内で重複する LOB データのコピーを1つのみ格納)</li>
+<li>暗号化(透過的データ暗号化により LOB データを暗号化)</li>
+</ul>
+
+
+<p>従来型の LOB は、BasicFiles と呼ばれる。BasicFiles を使用した既存の LOB 列を SecureFiles に移行する。<code>ALTER TABLE</code> での BasicFiles から SecureFiles への変更はできないため、変更するためには表の再作成を行うか、オンライン再定義を行う必要がある。今回は、マニュアルに例があるように、オンライン再定義により行う。</p>
+
+<ul>
+<li>検証用に BasicFiles LOB 列を持つ表、データを準備</li>
+</ul>
+
+
+<p>BasicFiles LOB 列を持つ <code>cust</code> 表を作成してデータを insert。今回この表を SecureFiles LOB に移行してみる。</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+SQL&gt; CREATE TABLE cust
+     (
+       c_id  NUMBER PRIMARY KEY,
+       c_zip NUMBER,
+       c_name VARCHAR(30) DEFAULT NULL,
+       c_lob CLOB
+     );
+
+Table created.
+
+SQL&gt; INSERT INTO cust VALUES(1, 94065, 'hhh', 'ttt');
+
+1 row created.
+
+SQL&gt; COMMIT;
+
+Commit complete.
+</code></pre>
+
+<ul>
+<li>オンライン再定義に必要な権限の付与</li>
+</ul>
+
+
+<p>オンライン再定義に必要な権限を与える</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+SQL&gt; -- Grant privileges required for online redefinition.
+SQL&gt; GRANT EXECUTE ON DBMS_REDEFINITION TO scott;
+SQL&gt; GRANT ALTER ANY TABLE TO scott;
+SQL&gt; GRANT DROP ANY TABLE TO scott;
+SQL&gt; GRANT LOCK ANY TABLE TO scott;
+SQL&gt; GRANT CREATE ANY TABLE TO scott;
+SQL&gt; GRANT SELECT ANY TABLE TO scott;
+SQL&gt; -- Privileges required to perform cloning of dependent objects.
+SQL&gt; GRANT CREATE ANY TRIGGER TO scott;
+SQL&gt; GRANT CREATE ANY INDEX TO scott;
+</code></pre>
+
+<ul>
+<li>初期化パラメータ <code>db_securefile</code> パラメータの変更</li>
+</ul>
+
+
+<p>SecureFiles LOB の初期化パラメータ <code>db_securefile</code> パラメータを変更する。
+SecureFiles LOB を使用するためには <code>PERMITTED</code> (デフォルト) または <code>ALWAYS</code> である必要がある。</p>
+
+<p>例えば、<code>NEVER</code> に設定されている場合に SecureFiles LOB の列を作成しようとすると、<code>ORA-43856</code> が発生する。</p>
+
+<pre><code>SQL&gt; CREATE TABLE test_lob (c_lob CLOB) LOB(c_lob) STORE AS SECUREFILE (compress high);
+CREATE TABLE test_lob (c_lob CLOB) LOB(c_lob) STORE AS SECUREFILE (compress high)
+*
+ERROR at line 1:
+ORA-43856: Unsupported LOB type for SECUREFILE LOB operation
+</code></pre>
+
+<p><code>db_securefile</code> を <code>ALTER SYSTEM</code> で変更する。</p>
+
+<pre><code>SQL&gt; conn /as sysdba
+Connected.
+SQL&gt; ALTER SYSTEM SET db_securefile = PERMITTED SCOPE=both;
+
+System altered.
+</code></pre>
+
+<ul>
+<li>仮表を作成</li>
+</ul>
+
+
+<p>オンライン再定義のための仮表を SecureFiles LOB 列を持つようにして作成。元表からコピーされるので主キーなどの制約の指定は不要。</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; CREATE TABLE cust_int
+     (
+       c_id  NUMBER,
+       c_zip NUMBER,
+       c_name VARCHAR(30) DEFAULT NULL,
+       c_lob CLOB
+     )
+     LOB(c_lob) STORE AS SECUREFILE;
+
+Table created.
+</code></pre>
+
+<ul>
+<li>表のオンライン再定義</li>
+</ul>
+
+
+<p>表のオンライン再定義を実行する。</p>
+
+<pre><code>SQL&gt; DECLARE
+       col_mapping VARCHAR2(1000);
+     BEGIN
+       -- map all the columns in the interim table to the original table
+       col_mapping :=
+         'c_id c_id , '||
+         'c_zip c_zip , '||
+         'c_name c_name, '||
+         'c_lob c_lob';
+       DBMS_REDEFINITION.START_REDEF_TABLE('scott', 'cust', 'cust_int', col_mapping);
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set serveroutput on
+SQL&gt; DECLARE
+       error_count pls_integer := 0;
+     BEGIN
+       DBMS_REDEFINITION.COPY_TABLE_DEPENDENTS('scott', 'cust', 'cust_int',
+         1, TRUE,TRUE,TRUE,FALSE, error_count);
+       DBMS_OUTPUT.PUT_LINE('errors := ' || TO_CHAR(error_count));
+     END;
+     /
+errors := 0
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; EXEC DBMS_REDEFINITION.FINISH_REDEF_TABLE('scott', 'cust', 'cust_int');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; DROP TABLE cust_int;
+
+Table dropped.
+</code></pre>
+
+<ul>
+<li>SecureFiles LOB に移行されたことを確認</li>
+</ul>
+
+
+<p><code>USER_LOBS.SECUREFILE</code> 列が <code>YES</code> であれば SecureFiles になっている。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+SQL&gt; col column_name for a30
+SQL&gt; SELECT table_name, column_name, securefile FROM user_lobs;
+
+TABLE_NAME                     COLUMN_NAME                    SECUREFIL
+------------------------------ ------------------------------ ---------
+CUST                           C_LOB                          YES
+</code></pre>
+
+<h2>SecureFiles LOB の変更</h2>
+
+<p><code>ALTER TABLE</code> 文により既存の SecureFiles LOB 列を変更して、圧縮や重複除外の設定を行う。</p>
+
+<ul>
+<li>現在の設定の確認</li>
+</ul>
+
+
+<p><code>USER_LOBS</code> にて確認できる。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col column_name for a30
+     col encrypt for a10
+     col compression for a15
+     col deduplication for a15
+     set lines 200
+SQL&gt; SELECT table_name, column_name, encrypt, compression, deduplication FROM user_lobs;
+
+TABLE_NAME                     COLUMN_NAME                    ENCRYPT    COMPRESSION     DEDUPLICATION
+------------------------------ ------------------------------ ---------- --------------- ---------------
+CUST                           C_LOB                          NO         NO              NO
+</code></pre>
+
+<ul>
+<li>設定の変更</li>
+</ul>
+
+
+<p><code>ALTER TABLE</code> により圧縮、重複除外の設定を行う。</p>
+
+<pre><code>SQL&gt; ALTER TABLE cust MODIFY LOB(c_lob) (COMPRESS HIGH);
+
+Table altered.
+
+SQL&gt; ALTER TABLE cust MODIFY LOB(c_lob) (DEDUPLICATE);
+
+Table altered.
+</code></pre>
+
+<ul>
+<li>設定変更の確認</li>
+</ul>
+
+
+<p><code>USER_LOBS</code> にて確認。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col column_name for a30
+     col encrypt for a10
+     col compression for a15
+     col deduplication for a15
+     set lines 200
+SQL&gt; SELECT table_name, column_name, encrypt, compression, deduplication FROM user_lobs;
+
+TABLE_NAME                     COLUMN_NAME                    ENCRYPT    COMPRESSION     DEDUPLICATION
+------------------------------ ------------------------------ ---------- --------------- ---------------
+CUST                           C_LOB                          NO         HIGH            LOB
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[Oracle] スター型変換の使用]]></title>
@@ -3060,138 +3321,6 @@ Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
 With the Partitioning, OLAP, Data Mining and Real Application Testing options
 
 SQL&gt; 
-</code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Octopress をセットアップ]]></title>
-    <link href="http://th0x4c.github.com/blog/2012/09/04/setup-octopress/"/>
-    <updated>2012-09-04T23:15:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2012/09/04/setup-octopress</id>
-    <content type="html"><![CDATA[<p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
-<a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
-ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
-
-<h2>使用マシン</h2>
-
-<ul>
-<li>MacBook Pro Retina ディスプレイモデル(Mid 2012)</li>
-<li>Mountain Lion (OS X 10.8.1)</li>
-</ul>
-
-
-<h2>JRuby のインストール</h2>
-
-<p>~/local 配下に zip を解凍してインストール</p>
-
-<pre><code>$ cd ~/local/
-$ curl -O http://jruby.org.s3.amazonaws.com/downloads/1.7.0.preview2/jruby-bin-1.7.0.preview2.zip
-$ unzip jruby-bin-1.7.0.preview2.zip
-$ cd ~/local/bin/
-$ ln -s ../jruby-1.7.0.preview2/bin/jruby .
-</code></pre>
-
-<h2>Octopress のセットアップ</h2>
-
-<p><a href="http://octopress.org/docs/setup/">Octopress のセットアップ手順</a> に従う。</p>
-
-<pre><code>$ cd ~/Documents/
-$ git clone git://github.com/imathis/octopress.git octopress
-$ cd octopress/
-$ jruby -S gem install bundler
-expr: syntax error
-Fetching gem metadata from http://rubygems.org/.......
-Using rake (0.9.2.2)
-Using RedCloth (4.2.9)
-Installing posix-spawn (0.3.6) with native extensions
-Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension.
-
-        /Users/hashi/local/bin/../jruby-1.7.0.preview2/bin/jruby extconf.rb
-NotImplementedError: C extension support is not enabled. Pass -Xcext.enabled=true to JRuby or set JRUBY_OPTS or modify .jrubyrc to enable.
-
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/mkmf.rb:8
-  require at org/jruby/RubyKernel.java:1024
-   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/rubygems/custom_require.rb:1
-   (root) at extconf.rb:1
-
-
-Gem files will remain installed in /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6 for inspection.
-Results logged to /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6/ext/gem_make.out
-An error occurred while installing posix-spawn (0.3.6), and Bundler cannot continue.
-Make sure that `gem install posix-spawn -v '0.3.6'` succeeds before bundling.
-</code></pre>
-
-<p>なんかエラーとなったので、エラーメッセージの指示通りに <code>JRUBY_OPTS</code> を設定したらうまくいった。</p>
-
-<pre><code>$ export JRUBY_OPTS="-Xcext.enabled=true"
-$ jruby -S bundle install
-$ jruby -S rake install
-</code></pre>
-
-<p>追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
-(もちろん、JRuby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
-
-<pre><code>$ cd ~/local/bin
-$ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
-$ ln -s ../jruby-1.7.0.preview2/bin/compass .
-$ ln -s ../jruby-1.7.0.preview2/bin/rackup .
-</code></pre>
-
-<h2>Github Pages の設定</h2>
-
-<p>引き続き <a href="http://octopress.org/docs/deploying/github/">Octopress の Github Pages へのデプロイ手順</a> に従う。
-まず、<code>username.github.com</code> というレポジトリを<a href="https://github.com/repositories/new">新規で作成</a>する。
-ここで、次の <code>rake setup_github_pages</code> の <code>Repository url:</code> で HTTPS での指定(<code>https://github.com/username/username.github.com.git</code>)ができなかったため、レポジトリに <a href="https://help.github.com/articles/generating-ssh-keys">SSH key でのアクセス設定</a>した上で、<code>git@github.com:username/username.github.com.git</code> を指定する必要があった。</p>
-
-<pre><code>$ cd ~/Documents/octopress
-$ jruby -S rake setup_github_pages
-expr: syntax error
-Enter the read/write url for your repository
-(For example, 'git@github.com:your_username/your_username.github.com)
-Repository url: git@github.com:th0x4c/th0x4c.github.com.git
-...
-</code></pre>
-
-<p>これで次のことが行われるとのこと。</p>
-
-<ol>
-<li>Ask you for your Github Pages repository url.</li>
-<li>Rename the remote pointing to imathis/octopress from ‘origin’ to ‘octopress’</li>
-<li>Add your Github Pages repository as the default origin remote.</li>
-<li>Switch the active branch from master to source.</li>
-<li>Configure your blog’s url according to your repository.</li>
-<li>Setup a master branch in the _deploy directory for deployment.</li>
-</ol>
-
-
-<p>最後に以下を実行すれば <code>_deploy/</code> ディレクトリにファイルが生成され、Github のレポジトリに push され、Github Pages に反映される。</p>
-
-<pre><code>$ jruby -S rake generate
-$ jruby -S rake deploy
-</code></pre>
-
-<p>あとは、Octopress の以下のページを参照のこと。</p>
-
-<ul>
-<li><a href="http://octopress.org/docs/configuring/">Configure your blog</a></li>
-</ul>
-
-
-<p>とりあえず、<code>_config.yml</code> の <code>title:</code>, <code>author:</code> ぐらいを変更した。</p>
-
-<h2>ブログ発行</h2>
-
-<p><a href="http://octopress.org/docs/blogging/">Start blogging with Octopress</a>を参照。</p>
-
-<p>基本的に <code>rake new_post["Zombie Ninjas Attack: A survivor's retrospective"]</code> (<code>Zombie ...</code>はタイトル)を実行して、<code>source/_posts</code> 配下のファイルを編集すればよい。</p>
-
-<p><code>rake preview</code> で <code>http://localhost:4000</code> でプレビューを確認して、<code>rake gen_deploy</code> で Github Pages にデプロイ。</p>
-
-<pre><code>$ jruby -S rake new_post["Setup Octopress"]
-$ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
-$ jruby -S rake preview
-$ jruby -S gen_deploy
 </code></pre>
 ]]></content>
   </entry>
