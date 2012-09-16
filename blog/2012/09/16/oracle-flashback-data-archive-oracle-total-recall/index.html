@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>[Oracle] Data Guard スナップショット・スタンバイ・データベース - th0x4c 備忘録</title>
+  <title>[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall) - th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB を一時的に更新可能にする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 &hellip;">
+  <meta name="description" content="目的 フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -19,7 +19,7 @@ DB: Oracle Database 11g Release 2 &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -66,7 +66,7 @@ DB: Oracle Database 11g Release 2 &hellip;">
   
   <header>
     
-      <h1 class="entry-title">[Oracle] Data Guard スナップショット・スタンバイ・データベース</h1>
+      <h1 class="entry-title">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</h1>
     
     
       <p class="meta">
@@ -82,7 +82,7 @@ DB: Oracle Database 11g Release 2 &hellip;">
   
 
 
-<time datetime="2012-09-09T21:51:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
         
       </p>
     
@@ -91,71 +91,88 @@ DB: Oracle Database 11g Release 2 &hellip;">
 
 <div class="entry-content"><h2>目的</h2>
 
-<p>Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB を一時的に更新可能にする。</p>
+<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。</p>
 
 <h2>環境</h2>
 
 <ul>
 <li>OS: Oracle Enterprise Linux 5.8</li>
 <li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
 </ul>
 
 
-<h2>スナップショット・スタンバイ・データベースへの変換</h2>
-
-<p>Data Guard の &#8220;スナップショット・スタンバイ・データベース&#8221; 機能により、スタンバイ DB が一時的に更新可能にできる。&#8221;スナップショット・スタンバイ・データベース&#8221; となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
-
-<p>EM Grid Control を使用すると変換が楽にできる。(&#8220;変換&#8221; をクリックするだけ)</p>
+<h2>マニュアル</h2>
 
 <ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
+<li>アドバンスト・アプリケーション開発者ガイド<br/>
+-> 12 Oracle Flashback Technologyの使用<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56259/adfns_flashback.htm#BJFFDCEH">フラッシュバック・データ・アーカイブの使用(Oracle Total Recall)</a></li>
 </ul>
 
 
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+<h2>フラッシュバック・データ・アーカイブの使用</h2>
+
+<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存できる。例えば、コンプライアンス上変更履歴を年単位で長時間保存しておく必要がある場合などに有効。</p>
 
 <ul>
-<li>&#8220;変換&#8221; をクリック</li>
+<li>フラッシュバック・データ・アーカイブの作成</li>
 </ul>
 
 
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
+<p><code>CREATE FLASHBACK ARCHIVE</code> 文を使用してフラッシュバック・データ・アーカイブを作成する。
+データを1年間保持するデフォルトのフラッシュバック・データ・アーカイブ <code>fla1</code> を <code>USERS</code> 表領域に作成。
+作成するには <code>FLASHBACK ARCHIVE ADMINISTER</code> システム権限を持つユーザか、SYSDBA として接続する必要がある。</p>
 
-<ul>
-<li>&#8220;はい&#8221;</li>
-</ul>
+<pre><code>SQL&gt; connect /as sysdba
+Connected.
+SQL&gt; CREATE FLASHBACK ARCHIVE DEFAULT fla1 TABLESPACE users
+     RETENTION 1 YEAR;
 
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 -> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>ロールが &#8220;スナップショット・スタンバイ&#8221; になる。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
-
-<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
-
-<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
-SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
-
-Table created.
+Flashback archive created.
 </code></pre>
 
-<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から &#8220;変換&#8221; をクリックすればよい。</p>
+<ul>
+<li>表のフラッシュバック・アーカイブの有効化</li>
+</ul>
+
+
+<p><code>scott.emp</code> 表のフラッシュバック・アーカイブを有効にして、フラッシュバック・データ・アーカイブ <code>fla1</code> に履歴データを格納するようにする。
+<code>scott</code> スキーマに <code>fla1</code> に対する <code>FLASHBACK ARCHIVE</code> オブジェクト権限を与えて、<code>ALTER TABLE</code> 文を発行する。</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+Connected.
+SQL&gt; GRANT FLASHBACK ARCHIVE ON fla1 TO scott;
+
+Grant succeeded.
+
+SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; ALTER TABLE scott.emp FLASHBACK ARCHIVE fla1;
+
+Table altered.
+</code></pre>
+
+<ul>
+<li>フラッシュバック・データ・アーカイブが有効になっていることの確認</li>
+</ul>
+
+
+<p><code>scott</code> スキーマで <code>emp</code> 表のフラッシュバック・データ・アーカイブが有効になっていることの確認</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; col table_name for a30
+     col owner_name for a30
+     col flashback_archive_name for a30
+     col archive_table_name for a30
+     col status for a10
+     set lines 200
+SQL&gt; SELECT * FROM USER_FLASHBACK_ARCHIVE_TABLES;
+
+TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_NAME         ARCHIVE_TABLE_NAME             STATUS
+------------------------------ ------------------------------ ------------------------------ ------------------------------ ----------
+EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
+</code></pre>
 </div>
 
 
@@ -178,21 +195,15 @@ Table created.
   
 
 
-<time datetime="2012-09-09T21:51:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
       
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/data-guard/'>Data Guard</a>, <a class='category' href='/blog/categories/em/'>EM</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
-  
-</span>
 
 
     </p>
     
       <div class="sharing">
   
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/" >Tweet</a>
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/" >Tweet</a>
   
   
   
@@ -201,10 +212,8 @@ Table created.
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2012/09/09/oracle-data-guard-switchover/" title="Previous Post: [Oracle] Data Guard スイッチオーバー">&laquo; [Oracle] Data Guard スイッチオーバー</a>
+        <a class="basic-alignment left" href="/blog/2012/09/16/oracle-interval-partitioned-table/" title="Previous Post: [Oracle] 時間隔パーティション表">&laquo; [Oracle] 時間隔パーティション表</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2012/09/09/oracle-data-guard-real-time-query/" title="Next Post: [Oracle] Data Guard リアルタイム問い合わせ">[Oracle] Data Guard リアルタイム問い合わせ &raquo;</a>
       
     </p>
   </footer>

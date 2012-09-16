@@ -9,8 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Oracle DB にネットワーク接続できるように構成する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) サーバー側のネットワーク構成 netca により構成する。 netca &hellip;">
+  <meta name="description" content="目的 暗号化された表領域を作成する。
+&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -63,6 +64,186 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) サーバー側のネットワー�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>暗号化された表領域を作成する。<br/>
+&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>2日でセキュリティ・ガイド<br/>
+-> 6 データの保護<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
+<li><p>管理者ガイド<br/>
+-> 14 表領域の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
+</ul>
+
+
+<h2>作成</h2>
+
+<p>&#8220;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
+
+<ol>
+<li>ウォレット(マスター暗号化キーが格納される)を DB 外の OS 上のファイルとして作成</li>
+<li>ウォレットを開く(データの暗号化が開始される)</li>
+<li>表領域の作成</li>
+</ol>
+
+
+<p>以下、マニュアルの手順に従い作成する。</p>
+
+<ul>
+<li>ウォレットを格納するディレクトリを作成</li>
+</ul>
+
+
+<p>OS 上でディレクトリ作成</p>
+
+<pre><code>$ mkdir /home/oracle/ORA_WALLETS
+</code></pre>
+
+<ul>
+<li>sqlnet.ora ファイルにウォレットを格納するディレクトリを指定</li>
+</ul>
+
+
+<p>sqlnet.ora ファイルを編集</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora
+$ cat $ORACLE_HOME/network/admin/sqlnet.ora
+ENCRYPTION_WALLET_LOCATION=
+ (SOURCE=
+  (METHOD=file)
+   (METHOD_DATA=
+    (DIRECTORY=/home/oracle/ORA_WALLETS)))
+</code></pre>
+
+<ul>
+<li><p>(ここで compatible 初期化バラメータの値が 10.2 より小さい場合は DB 再起動が必要)</p></li>
+<li><p>ウォレットを作成</p></li>
+</ul>
+
+
+<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&#8220;)で囲む必要がある。
+これでウォレット格納ディレクトリにウォレットの OS ファイルができる。</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; ALTER SYSTEM SET ENCRYPTION KEY IDENTIFIED BY "oracle";
+
+System altered.
+
+$ ls /home/oracle/ORA_WALLETS
+ewallet.p12
+</code></pre>
+
+<ul>
+<li>ウォレットを開く</li>
+</ul>
+
+
+<p>以下の <code>ALTER SYSTEM</code> によりウォレットを開く。この場合もパスワードは二重引用符で囲む必要がある。
+ちなみにウォレット作成直後は開かれた状態となっている。</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET ENCRYPTION WALLET OPEN IDENTIFIED BY "oracle";
+
+System altered.
+</code></pre>
+
+<ul>
+<li>暗号化された表領域の作成</li>
+</ul>
+
+
+<p>以下のように、デフォルトの暗号化アルゴリズムを使用して暗号化された表領域を作成。暗号化アルゴリズムを指定する場合は <code>ENCRYPTION USING 'AES256'</code> などとする。</p>
+
+<pre><code>SQL&gt; CREATE TABLESPACE securespace
+     DATAFILE '/u01/app/oracle/oradata/PROD1/secure01.dbf' SIZE 100M
+     ENCRYPTION
+     DEFAULT STORAGE(ENCRYPT);
+
+Tablespace created.
+</code></pre>
+
+<h2>確認方法</h2>
+
+<ul>
+<li>ウォレットが開いているか閉じているかのチェック</li>
+</ul>
+
+
+<p><code>V$ENCRYPTION_VIEW</code> ビューを問い合わせる。</p>
+
+<pre><code>SQL&gt; SELECT * FROM V$ENCRYPTION_WALLET;
+
+WRL_TYPE   WRL_PARAMETER                  STATUS
+---------- ------------------------------ ----------
+file       /home/oracle/ORA_WALLETS       OPEN
+</code></pre>
+
+<ul>
+<li>表領域が暗号化されているかのチェック</li>
+</ul>
+
+
+<p><code>DBA_TABLESPACES.ENCRYPTED</code> 列を確認する。</p>
+
+<pre><code>SQL&gt; SELECT TABLESPACE_NAME, ENCRYPTED FROM DBA_TABLESPACES;
+
+TABLESPACE_NAME      ENCRYPTED
+-------------------- ----------
+SYSTEM               NO
+SYSAUX               NO
+UNDOTBS1             NO
+TEMP                 NO
+USERS                NO
+EXAMPLE              NO
+SECURESPACE          YES
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -570,6 +751,10 @@ $ jruby -S gen_deploy
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/16/oracle-interval-partitioned-table/">[Oracle] 時間隔パーティション表</a>
       </li>
     
@@ -583,10 +768,6 @@ $ jruby -S gen_deploy
     
       <li class="post">
         <a href="/blog/2012/09/13/oracle-star-transformation/">[Oracle] スター型変換の使用</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/12/oracle-transportable-tablespace/">Oracle トランスポータブル表領域</a>
       </li>
     
   </ul>
