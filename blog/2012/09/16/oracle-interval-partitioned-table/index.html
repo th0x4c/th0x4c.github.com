@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>[Oracle] 参照パーティション表 - th0x4c 備忘録</title>
+  <title>[Oracle] 時間隔パーティション表 - th0x4c 備忘録</title>
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 参照パーティション表を作成する。 環境 OS: Oracle Enterprise Linux 5.8
+  <meta name="description" content="目的 時間隔パーティション表を作成する。 環境 OS: Oracle Enterprise Linux 5.8
 DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパーティショニング・ガイド
 -> 4 パーティションの管理
 -> &hellip;">
@@ -21,7 +21,7 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパー
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-interval-partitioned-table/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -68,7 +68,7 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパー
   
   <header>
     
-      <h1 class="entry-title">[Oracle] 参照パーティション表</h1>
+      <h1 class="entry-title">[Oracle] 時間隔パーティション表</h1>
     
     
       <p class="meta">
@@ -84,7 +84,7 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパー
   
 
 
-<time datetime="2012-09-16T16:13:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+<time datetime="2012-09-16T16:46:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
         
       </p>
     
@@ -93,7 +93,7 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパー
 
 <div class="entry-content"><h2>目的</h2>
 
-<p>参照パーティション表を作成する。</p>
+<p>時間隔パーティション表を作成する。</p>
 
 <h2>環境</h2>
 
@@ -108,77 +108,78 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパー
 <ul>
 <li>VLDBおよびパーティショニング・ガイド<br/>
 -> 4 パーティションの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJDDEEC">参照パーティション表の作成</a></li>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJHFFBE">時間隔パーティション表の作成</a></li>
 </ul>
 
 
-<h2>参照パーティション表の作成</h2>
+<h2>時間隔パーティション表の作成</h2>
 
-<p>参照パーティション表は、例えば次のようなケースで役立つ。注文を管理する orders 表に注文日が格納される order_date 列がある。また、注文に含まれる品目を管理する order_items 表があり、orders 表を order_id 列で外部参照しているとする。orders 表が order_date 列をキー値としてパーティション化されている場合、order_items 表も同じように注文日によりパーティション化したかったら、従来ならば order_date 列を order_itmes 表にも加える必要があった。参照パーティション表を使えば、order_items 列に余計な order_date 列を加えることなく、外部参照している orders と同じ単位でパーティション化することができる。</p>
+<p>時間隔パーティション表はレンジ・パーティションの一種で、例えば月単位の時間隔パーティション表を作成すると、パーティションを明示的に作成しなくても自動で必要な月のパーティションをデータ insert 時に作成してくれる。</p>
 
-<p>実際に上記シナリオで参照パーティション表を作成してみる。</p>
+<p><code>DATE</code> 型の <code>time_id</code> をパーティション・キーとして、2009年までは年単位でパーティション化し、2010年1月1日以降は月単位でパーティションを自動作成するような時間隔パーティション表を作成してみる。</p>
 
-<pre><code>SQL&gt; CREATE TABLE orders
-         ( order_id           NUMBER(12),
-           order_date         DATE,
-           order_mode         VARCHAR2(8),
-           customer_id        NUMBER(6),
-           order_status       NUMBER(2),
-           order_total        NUMBER(8,2),
-           sales_rep_id       NUMBER(6),
-           promotion_id       NUMBER(6),
-           CONSTRAINT orders_pk PRIMARY KEY(order_id)
-         )
-       PARTITION BY RANGE(order_date)
-         ( PARTITION Q1_2005 VALUES LESS THAN (TO_DATE('01-APR-2005','DD-MON-YYYY')),
-           PARTITION Q2_2005 VALUES LESS THAN (TO_DATE('01-JUL-2005','DD-MON-YYYY')),
-           PARTITION Q3_2005 VALUES LESS THAN (TO_DATE('01-OCT-2005','DD-MON-YYYY')),
-           PARTITION Q4_2005 VALUES LESS THAN (TO_DATE('01-JAN-2006','DD-MON-YYYY'))
-         );
+<pre><code>SQL&gt; CREATE TABLE interval_sales
+         ( prod_id        NUMBER(6)
+         , cust_id        NUMBER
+         , time_id        DATE
+         , channel_id     CHAR(1)
+         , promo_id       NUMBER(6)
+         , quantity_sold  NUMBER(3)
+         , amount_sold    NUMBER(10,2)
+         ) 
+       PARTITION BY RANGE (time_id) 
+       INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
+         ( PARTITION p0 VALUES LESS THAN (TO_DATE('1-1-2008', 'DD-MM-YYYY')),
+           PARTITION p1 VALUES LESS THAN (TO_DATE('1-1-2009', 'DD-MM-YYYY')),
+           PARTITION p2 VALUES LESS THAN (TO_DATE('1-1-2010', 'DD-MM-YYYY')) );
 
 Table created.
-
-SQL&gt; CREATE TABLE order_items
-         ( order_id           NUMBER(12) NOT NULL,
-           line_item_id       NUMBER(3)  NOT NULL,
-           product_id         NUMBER(6)  NOT NULL,
-           unit_price         NUMBER(8,2),
-           quantity           NUMBER(8),
-           CONSTRAINT order_items_fk
-           FOREIGN KEY(order_id) REFERENCES orders(order_id)
-         )
-         PARTITION BY REFERENCE(order_items_fk);
-
-Table created. 
 </code></pre>
+
+<p>ちなみに追加されるパーティションを日単位にする場合は、<code>NUMTODSINTERVAL(1, 'DAY')</code> 関数を利用する。</p>
 
 <p>パーティション情報の確認。</p>
 
 <pre><code>SQL&gt; col table_name for a30
      col partitioning_type for a20
-     col ref_ptn_constraint_name for a30
      set lines 200
-SQL&gt; SELECT table_name, partitioning_type, ref_ptn_constraint_name FROM user_part_tables;
+SQL&gt; SELECT table_name, partitioning_type FROM user_part_tables;
 
-TABLE_NAME                     PARTITIONING_TYPE    REF_PTN_CONSTRAINT_NAME
------------------------------- -------------------- ------------------------------
-ORDERS                         RANGE
-ORDER_ITEMS                    REFERENCE            ORDER_ITEMS_FK
+TABLE_NAME                     PARTITIONING_TYPE   
+------------------------------ --------------------
+INTERVAL_SALES                 RANGE
 
 SQL&gt; col partition_name for a30
 SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
 
 TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
 ------------------------------ ------------------------------ --------------------------------------------------------------------------------
-ORDERS                         Q1_2005                        TO_DATE(' 2005-04-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDERS                         Q2_2005                        TO_DATE(' 2005-07-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDERS                         Q3_2005                        TO_DATE(' 2005-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDERS                         Q4_2005                        TO_DATE(' 2006-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-ORDER_ITEMS                    Q1_2005
-ORDER_ITEMS                    Q2_2005
-ORDER_ITEMS                    Q3_2005
-ORDER_ITEMS                    Q4_2005
+INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
 </code></pre>
+
+<p>最初はパーティションは作られていないが、上記の範囲を超える行を insert するとパーティションが自動で作成される。</p>
+
+<pre><code>SQL&gt; INSERT INTO interval_sales(prod_id, time_id) VALUES(1, TO_DATE('2012-09-16', 'YYYY-MM-DD'));
+
+1 row created.
+
+SQL&gt; COMMIT;
+
+Commit complete.
+
+SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
+
+TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
+------------------------------ ------------------------------ --------------------------------------------------------------------------------
+INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+</code></pre>
+
+<p><code>SYS_P41</code> というパーティションが自動で作成された。</p>
 </div>
 
 
@@ -201,7 +202,7 @@ ORDER_ITEMS                    Q4_2005
   
 
 
-<time datetime="2012-09-16T16:13:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+<time datetime="2012-09-16T16:46:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
       
 
 <span class="categories">
@@ -215,7 +216,7 @@ ORDER_ITEMS                    Q4_2005
     
       <div class="sharing">
   
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/" >Tweet</a>
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/16/oracle-interval-partitioned-table/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/16/oracle-interval-partitioned-table/" >Tweet</a>
   
   
   
@@ -224,10 +225,8 @@ ORDER_ITEMS                    Q4_2005
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2012/09/16/oracle-securefiles-lob/" title="Previous Post: [Oracle] BasicFiles LOB から SecureFiles LOB への移行">&laquo; [Oracle] BasicFiles LOB から SecureFiles LOB への移行</a>
+        <a class="basic-alignment left" href="/blog/2012/09/16/oracle-reference-partitioned-table/" title="Previous Post: [Oracle] 参照パーティション表">&laquo; [Oracle] 参照パーティション表</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2012/09/16/oracle-interval-partitioned-table/" title="Next Post: [Oracle] 時間隔パーティション表">[Oracle] 時間隔パーティション表 &raquo;</a>
       
     </p>
   </footer>
