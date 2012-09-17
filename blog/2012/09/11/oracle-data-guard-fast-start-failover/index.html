@@ -275,6 +275,59 @@ Reinstatement of database "PROD1" succeeded
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
 
 <p>この後、スイッチオーバすれば、元の構成に戻る。</p>
+
+<h2>ファスト・スタート・フェイルオーバー環境でのデータベースの停止</h2>
+
+<p><a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#CHDJCDDB">マニュアル</a> に記載があるように、ファスト・スタート・フェイルオーバー環境でのデータベースの停止する場合は次のようにする。</p>
+
+<ol>
+<li><p>オブザーバを停止し、プライマリ DB およびターゲット・スタンバイ DB の両方について、V$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になるまで待機する。こうすると、プライマリ DB の停止中に、ファスト・スタート・フェイルオーバーは実行されない。</p></li>
+<li><p>プライマリ DB およびターゲット・スタンバイ DB を停止(<code>SHUTDOWN</code>)する。</p></li>
+</ol>
+
+
+<p>以下が実行例。</p>
+
+<p><code>dgmgrl</code> にてオブザーバを停止</p>
+
+<pre><code>$ export ORACLE_SID=stdby1
+$ dgmgrl
+DGMGRL for Linux: Version 11.2.0.3.0 - 64bit Production
+
+Copyright (c) 2000, 2009, Oracle. All rights reserved.
+
+Welcome to DGMGRL, type "help" for information.
+DGMGRL&gt; connect sys/oracle
+Connected.
+DGMGRL&gt; stop observer;
+Done.
+DGMGRL&gt; exit
+</code></pre>
+
+<p>プライマリ DB およびスタンバイ DB にてV$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になることを確認して <code>SHUTDOWN</code> する。</p>
+
+<pre><code># プライマリ DB および スタンバイ DB でそれぞれ実施
+$ sqlplus 'as sysdba'
+SQL&gt; SELECT FS_FAILOVER_OBSERVER_PRESENT FROM V$DATABASE;
+
+FS_FAILOVER_OBSERVER_
+---------------------
+YES
+
+SQL&gt; /
+
+FS_FAILOVER_OBSERVER_
+---------------------
+NO
+
+SQL&gt; shutdown immediate
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL&gt; exit
+</code></pre>
+
+<p>起動時はプライマリ DB およびスタンバイ DB を起動した後に、<code>dgmgrl</code> でオブザーバを起動(<code>start observer</code>)する。</p>
 </div>
 
 
