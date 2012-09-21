@@ -7,14 +7,14 @@ categories:
 ---
 Jekyll + Octopress を使って Github Pages にブログを開設してみた。
 [Octopress](http://octopress.org) の [Documentation のページ](http://octopress.org/docs/) に従えばよい。
-ruby 1.9.3 が必要だが、今回は [Jruby](http://jruby.org) を使用した。
+ruby 1.9.3 が必要だが、今回は [JRuby](http://jruby.org) を使用した。
 
 ## 使用マシン
 
 * MacBook Pro Retina ディスプレイモデル(Mid 2012)
 * Mountain Lion (OS X 10.8.1)
 
-## Jruby のインストール
+## JRuby のインストール
 
 ~/local 配下に zip を解凍してインストール
 
@@ -60,7 +60,7 @@ ruby 1.9.3 が必要だが、今回は [Jruby](http://jruby.org) を使用した
     $ jruby -S rake install
 
 追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
-(もちろん、Jruby を解凍したフォルダ配下の `bin` ディレクトリに `PATH` が通ってれば不要。)
+(もちろん、JRuby を解凍したフォルダ配下の `bin` ディレクトリに `PATH` が通ってれば不要。)
 
     $ cd ~/local/bin
     $ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
