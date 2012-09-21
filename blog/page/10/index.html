@@ -217,6 +217,15 @@ $ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
 $ jruby -S rake preview
 $ jruby -S gen_deploy
 </code></pre>
+
+<p><code>source</code> ディレクトリも Github に push するためには <a href="http://octopress.org/docs/deploying/github/">Deploying to Github Pages</a> に従い、以下を実行</p>
+
+<pre><code>$ git add.
+$ git commit -m 'your message'
+$ git push origin source
+</code></pre>
+
+<p>これで Github 上の source ブランチに push される。</p>
 </div>
   
   
