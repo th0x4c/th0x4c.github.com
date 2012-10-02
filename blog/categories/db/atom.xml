@@ -4,7 +4,7 @@
   <title><![CDATA[Category: DB | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/db/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-09-21T22:46:54+09:00</updated>
+  <updated>2012-10-02T23:05:54+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -163,7 +163,7 @@ Plan hash value: 2949544139
 Session altered.
 </code></pre>
 
-<p>あとは普通に SQL を時刻するだけで取得した SQL 計画が使用される。</p>
+<p>あとは普通に SQL を実行するだけで取得した SQL 計画が使用される。</p>
 
 <pre><code>SQL&gt; set autotrace on
 SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
