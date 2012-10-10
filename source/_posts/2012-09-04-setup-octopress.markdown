@@ -116,7 +116,7 @@ ruby 1.9.3 が必要だが、今回は [JRuby](http://jruby.org) を使用した
 
 `source` ディレクトリも Github に push するためには [Deploying to Github Pages](http://octopress.org/docs/deploying/github/) に従い、以下を実行
 
-    $ git add.
+    $ git add .
     $ git commit -m 'your message'
     $ git push origin source
 

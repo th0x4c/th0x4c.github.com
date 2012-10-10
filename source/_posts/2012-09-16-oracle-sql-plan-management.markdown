@@ -120,7 +120,7 @@ SQL 計画の自動取得を無効化する。
 
     Session altered.
 
-あとは普通に SQL を時刻するだけで取得した SQL 計画が使用される。
+あとは普通に SQL を実行するだけで取得した SQL 計画が使用される。
 
     SQL> set autotrace on
     SQL> SELECT * FROM scott.emp WHERE empno = 7900;
