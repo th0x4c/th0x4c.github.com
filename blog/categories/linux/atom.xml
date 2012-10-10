@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Linux | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2012-10-11T01:54:03+09:00</updated>
+  <updated>2012-10-11T02:02:26+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -402,8 +402,6 @@ Total            0xde2
 |  (ld-2.5.so, libc-2.5.so)    |
 +------------------------------+  0x00000037be753000
 | ???                          |
-|                              |
-|                              |
 +------------------------------+  0x00000037be758000
 |                              |
 :                              :
@@ -423,8 +421,6 @@ Total            0xde2
 |                              |
 +------------------------------+  0x00007f2eeea0f000
 |???                           |
-|                              |
-|                              |
 +------------------------------+  0x00007f2eeea11000
 |                              |
 :                              :
@@ -440,8 +436,6 @@ Total            0xde2
 :                              :
 +------------------------------+  0x00007ffff730e000
 |???                           |
-|                              |  
-|                              |
 +------------------------------+  0x00007ffff730f000
 |                              |
 :                              :
