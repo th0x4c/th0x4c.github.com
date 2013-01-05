@@ -1,0 +1,619 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 &#8220;結果キャッシュ&#8221; 機能を使用する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング・ガイド
+-> 7 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T18:40:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>&#8220;結果キャッシュ&#8221; 機能を使用する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 7 メモリーの構成および使用方法<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
+</ul>
+
+
+<h2>結果キャッシュの使用</h2>
+
+<p>&#8220;結果キャッシュ&#8221; 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
+
+<ul>
+<li>初期化パラメータの設定</li>
+</ul>
+
+
+<p>結果キャッシュを有効にするためには初期化パラメータ <code>RESULT_CACHE_MAX_SIZE</code> を 0 より大きくする必要がある。</p>
+
+<p>0 の場合は結果キャッシュは無効となる。(以下のように <code>DBMS_RESULT_CACHE.STATUS</code> の結果が <code>DISABLED</code> となっている。)</p>
+
+<pre><code>SQL&gt; show parameter result_cache_max_size
+
+NAME                                 TYPE                              VALUE
+------------------------------------ --------------------------------- ------------------------------
+result_cache_max_size                big integer                       0
+SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
+
+STATUS
+----------
+DISABLED
+</code></pre>
+
+<p>初期化パラメータ <code>RESULT_CACHE_MAX_SIZE</code> は以下のように動的に変更できるが、実際はインスタンスを再起動しないと有効にならなかった。</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET result_cache_max_size = 15M SCOPE=both;
+
+System altered.
+
+SQL&gt; show parameter result_cache_max_size
+
+NAME                                 TYPE                              VALUE
+------------------------------------ --------------------------------- ------------------------------
+result_cache_max_size                big integer                       15M
+SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
+
+STATUS
+----------
+DISABLED
+</code></pre>
+
+<p>インスタンスを再起動すると、有効になり、<code>DBMS_RESULT_CACHE.STATUS</code> も <code>ENABLED</code> に変わる。</p>
+
+<pre><code>SQL&gt; shutdown immediate
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL&gt; startup
+ORACLE instance started.
+
+Total System Global Area  835104768 bytes
+Fixed Size                  2232960 bytes
+Variable Size             734006656 bytes
+Database Buffers           92274688 bytes
+Redo Buffers                6590464 bytes
+Database mounted.
+Database opened.
+SQL&gt; show parameter result_cache_max_size
+
+NAME                                 TYPE                              VALUE
+------------------------------------ --------------------------------- ------------------------------
+result_cache_max_size                big integer                       15M
+SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
+
+STATUS
+----------
+ENABLED
+</code></pre>
+
+<ul>
+<li>結果キャッシュの使用</li>
+</ul>
+
+
+<p>結果キャッシュを使用するには <code>/*+ RESULT_CACHE */</code> ヒントを付与して問い合わせを実行すればよい。</p>
+
+<pre><code>SQL&gt; SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp;
+</code></pre>
+
+<ul>
+<li>結果キャッシュの確認</li>
+</ul>
+
+
+<p>実行計画で、<code>RESULT CACHE</code> と出ていると結果キャッシュが使われている。</p>
+
+<pre><code>SQL&gt; set lines 200
+SQL&gt; set autotrace on
+SQL&gt; SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp;
+
+  AVG(SAL)
+----------
+2083.21429
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2083865914
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name                       | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |                            |     1 |     4 |     3   (0)| 00:00:01 |
+|   1 |  RESULT CACHE       | 4z1ag1pqa9zqm704zf4nuj9tq4 |       |       |            |          |
+|   2 |   SORT AGGREGATE    |                            |     1 |     4 |            |          |
+|   3 |    TABLE ACCESS FULL| EMP                        |    14 |    56 |     3   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------------------
+
+Result Cache Information (identified by operation id):
+------------------------------------------------------
+
+   1 - column-count=1; dependencies=(SCOTT.EMP); attributes=(single-row); name="SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp"
+
+
+Statistics
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+          0  consistent gets
+          0  physical reads
+          0  redo size
+        545  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>また、<code>V$RESULT_CACHE_OBJECTS</code> からも結果キャッシュについて確認できる。</p>
+
+<pre><code>SQL&gt; SELECT type, status, name FROM v$result_cache_objects;
+
+TYPE                           STATUS
+------------------------------ ---------------------------
+NAME
+--------------------------------------------------------------------------------
+Dependency                     Published
+SCOTT.EMP
+
+Result                         Published
+SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>アドバンスト・アプリケーション開発者ガイド<br/>
+-> 12 Oracle Flashback Technologyの使用<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56259/adfns_flashback.htm#BJFFDCEH">フラッシュバック・データ・アーカイブの使用(Oracle Total Recall)</a></li>
+</ul>
+
+
+<h2>フラッシュバック・データ・アーカイブの使用</h2>
+
+<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存できる。例えば、コンプライアンス上変更履歴を年単位で長時間保存しておく必要がある場合などに有効。</p>
+
+<ul>
+<li>フラッシュバック・データ・アーカイブの作成</li>
+</ul>
+
+
+<p><code>CREATE FLASHBACK ARCHIVE</code> 文を使用してフラッシュバック・データ・アーカイブを作成する。
+データを1年間保持するデフォルトのフラッシュバック・データ・アーカイブ <code>fla1</code> を <code>USERS</code> 表領域に作成。
+作成するには <code>FLASHBACK ARCHIVE ADMINISTER</code> システム権限を持つユーザか、SYSDBA として接続する必要がある。</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+Connected.
+SQL&gt; CREATE FLASHBACK ARCHIVE DEFAULT fla1 TABLESPACE users
+     RETENTION 1 YEAR;
+
+Flashback archive created.
+</code></pre>
+
+<ul>
+<li>表のフラッシュバック・アーカイブの有効化</li>
+</ul>
+
+
+<p><code>scott.emp</code> 表のフラッシュバック・アーカイブを有効にして、フラッシュバック・データ・アーカイブ <code>fla1</code> に履歴データを格納するようにする。
+<code>scott</code> スキーマに <code>fla1</code> に対する <code>FLASHBACK ARCHIVE</code> オブジェクト権限を与えて、<code>ALTER TABLE</code> 文を発行する。</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+Connected.
+SQL&gt; GRANT FLASHBACK ARCHIVE ON fla1 TO scott;
+
+Grant succeeded.
+
+SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; ALTER TABLE scott.emp FLASHBACK ARCHIVE fla1;
+
+Table altered.
+</code></pre>
+
+<ul>
+<li>フラッシュバック・データ・アーカイブが有効になっていることの確認</li>
+</ul>
+
+
+<p><code>scott</code> スキーマで <code>emp</code> 表のフラッシュバック・データ・アーカイブが有効になっていることの確認</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; col table_name for a30
+     col owner_name for a30
+     col flashback_archive_name for a30
+     col archive_table_name for a30
+     col status for a10
+     set lines 200
+SQL&gt; SELECT * FROM USER_FLASHBACK_ARCHIVE_TABLES;
+
+TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_NAME         ARCHIVE_TABLE_NAME             STATUS
+------------------------------ ------------------------------ ------------------------------ ------------------------------ ----------
+EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-interval-partitioned-table/">[Oracle] 時間隔パーティション表</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T16:46:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>時間隔パーティション表を作成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>VLDBおよびパーティショニング・ガイド<br/>
+-> 4 パーティションの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJHFFBE">時間隔パーティション表の作成</a></li>
+</ul>
+
+
+<h2>時間隔パーティション表の作成</h2>
+
+<p>時間隔パーティション表はレンジ・パーティションの一種で、例えば月単位の時間隔パーティション表を作成すると、パーティションを明示的に作成しなくても自動で必要な月のパーティションをデータ insert 時に作成してくれる。</p>
+
+<p><code>DATE</code> 型の <code>time_id</code> をパーティション・キーとして、2009年までは年単位でパーティション化し、2010年1月1日以降は月単位でパーティションを自動作成するような時間隔パーティション表を作成してみる。</p>
+
+<pre><code>SQL&gt; CREATE TABLE interval_sales
+         ( prod_id        NUMBER(6)
+         , cust_id        NUMBER
+         , time_id        DATE
+         , channel_id     CHAR(1)
+         , promo_id       NUMBER(6)
+         , quantity_sold  NUMBER(3)
+         , amount_sold    NUMBER(10,2)
+         ) 
+       PARTITION BY RANGE (time_id) 
+       INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
+         ( PARTITION p0 VALUES LESS THAN (TO_DATE('1-1-2008', 'DD-MM-YYYY')),
+           PARTITION p1 VALUES LESS THAN (TO_DATE('1-1-2009', 'DD-MM-YYYY')),
+           PARTITION p2 VALUES LESS THAN (TO_DATE('1-1-2010', 'DD-MM-YYYY')) );
+
+Table created.
+</code></pre>
+
+<p>ちなみに追加されるパーティションを日単位にする場合は、<code>NUMTODSINTERVAL(1, 'DAY')</code> 関数を利用する。</p>
+
+<p>パーティション情報の確認。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col partitioning_type for a20
+     set lines 200
+SQL&gt; SELECT table_name, partitioning_type FROM user_part_tables;
+
+TABLE_NAME                     PARTITIONING_TYPE   
+------------------------------ --------------------
+INTERVAL_SALES                 RANGE
+
+SQL&gt; col partition_name for a30
+SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
+
+TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
+------------------------------ ------------------------------ --------------------------------------------------------------------------------
+INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+</code></pre>
+
+<p>最初はパーティションは作られていないが、上記の範囲を超える行を insert するとパーティションが自動で作成される。</p>
+
+<pre><code>SQL&gt; INSERT INTO interval_sales(prod_id, time_id) VALUES(1, TO_DATE('2012-09-16', 'YYYY-MM-DD'));
+
+1 row created.
+
+SQL&gt; COMMIT;
+
+Commit complete.
+
+SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
+
+TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
+------------------------------ ------------------------------ --------------------------------------------------------------------------------
+INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+</code></pre>
+
+<p><code>SYS_P41</code> というパーティションが自動で作成された。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/3/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,798 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/9/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>インストレーション・ガイド for Linux<br/>
+-> 5 Oracle Databaseのインストール後の作業<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
+</ul>
+
+
+<h2>ダイレクト NFS クライアントの有効化</h2>
+
+<ul>
+<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
+<li><p>libodm11.so の置き換え</p></li>
+</ul>
+
+
+<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_on
+</code></pre>
+
+<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
+
+<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
+if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
+        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
+        fi
+rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>ダイレクト NFS クライアントの無効化</h2>
+
+<ul>
+<li>libodm11.so の置き換え</li>
+</ul>
+
+
+<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
+
+<pre><code>$ cd $ORACLE_HOME/rdbms/lib
+$ make -f ins_rdbms.mk dnfs_off
+</code></pre>
+
+<ul>
+<li>DB 再起動</li>
+</ul>
+
+
+<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
+
+<h2>確認方法</h2>
+
+<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
+
+<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>暗号化された表領域を作成する。<br/>
+&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>2日でセキュリティ・ガイド<br/>
+-> 6 データの保護<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
+<li><p>管理者ガイド<br/>
+-> 14 表領域の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
+</ul>
+
+
+<h2>作成</h2>
+
+<p>&#8220;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
+
+<ol>
+<li>ウォレット(マスター暗号化キーが格納される)を DB 外の OS 上のファイルとして作成</li>
+<li>ウォレットを開く(データの暗号化が開始される)</li>
+<li>表領域の作成</li>
+</ol>
+
+
+<p>以下、マニュアルの手順に従い作成する。</p>
+
+<ul>
+<li>ウォレットを格納するディレクトリを作成</li>
+</ul>
+
+
+<p>OS 上でディレクトリ作成</p>
+
+<pre><code>$ mkdir /home/oracle/ORA_WALLETS
+</code></pre>
+
+<ul>
+<li>sqlnet.ora ファイルにウォレットを格納するディレクトリを指定</li>
+</ul>
+
+
+<p>sqlnet.ora ファイルを編集</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora
+$ cat $ORACLE_HOME/network/admin/sqlnet.ora
+ENCRYPTION_WALLET_LOCATION=
+ (SOURCE=
+  (METHOD=file)
+   (METHOD_DATA=
+    (DIRECTORY=/home/oracle/ORA_WALLETS)))
+</code></pre>
+
+<ul>
+<li><p>(ここで compatible 初期化バラメータの値が 10.2 より小さい場合は DB 再起動が必要)</p></li>
+<li><p>ウォレットを作成</p></li>
+</ul>
+
+
+<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&#8220;)で囲む必要がある。
+これでウォレット格納ディレクトリにウォレットの OS ファイルができる。</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; ALTER SYSTEM SET ENCRYPTION KEY IDENTIFIED BY "oracle";
+
+System altered.
+
+$ ls /home/oracle/ORA_WALLETS
+ewallet.p12
+</code></pre>
+
+<ul>
+<li>ウォレットを開く</li>
+</ul>
+
+
+<p>以下の <code>ALTER SYSTEM</code> によりウォレットを開く。この場合もパスワードは二重引用符で囲む必要がある。
+ちなみにウォレット作成直後は開かれた状態となっている。</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET ENCRYPTION WALLET OPEN IDENTIFIED BY "oracle";
+
+System altered.
+</code></pre>
+
+<ul>
+<li>暗号化された表領域の作成</li>
+</ul>
+
+
+<p>以下のように、デフォルトの暗号化アルゴリズムを使用して暗号化された表領域を作成。暗号化アルゴリズムを指定する場合は <code>ENCRYPTION USING 'AES256'</code> などとする。</p>
+
+<pre><code>SQL&gt; CREATE TABLESPACE securespace
+     DATAFILE '/u01/app/oracle/oradata/PROD1/secure01.dbf' SIZE 100M
+     ENCRYPTION
+     DEFAULT STORAGE(ENCRYPT);
+
+Tablespace created.
+</code></pre>
+
+<h2>確認方法</h2>
+
+<ul>
+<li>ウォレットが開いているか閉じているかのチェック</li>
+</ul>
+
+
+<p><code>V$ENCRYPTION_VIEW</code> ビューを問い合わせる。</p>
+
+<pre><code>SQL&gt; SELECT * FROM V$ENCRYPTION_WALLET;
+
+WRL_TYPE   WRL_PARAMETER                  STATUS
+---------- ------------------------------ ----------
+file       /home/oracle/ORA_WALLETS       OPEN
+</code></pre>
+
+<ul>
+<li>表領域が暗号化されているかのチェック</li>
+</ul>
+
+
+<p><code>DBA_TABLESPACES.ENCRYPTED</code> 列を確認する。</p>
+
+<pre><code>SQL&gt; SELECT TABLESPACE_NAME, ENCRYPTED FROM DBA_TABLESPACES;
+
+TABLESPACE_NAME      ENCRYPTED
+-------------------- ----------
+SYSTEM               NO
+SYSAUX               NO
+UNDOTBS1             NO
+TEMP                 NO
+USERS                NO
+EXAMPLE              NO
+SECURESPACE          YES
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/05/oracle-net-services/">[Oracle] ネットワーク構成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-05T21:50:00+09:00" pubdate data-updated="true">Sep 5<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Oracle DB にネットワーク接続できるように構成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>サーバー側のネットワーク構成</h2>
+
+<p><code>netca</code> により構成する。</p>
+
+<ul>
+<li><p><code>netca</code> を起動</p>
+
+<p>  $ netca</p></li>
+<li><p>&#8220;リスナー構成&#8221; を選択</p></li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-1.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;追加&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-2.png" width="600" height="400"></p>
+
+<ul>
+<li>リスナー名の設定。今回はリスナー名はデフォルトの&#8221;LISTENER&#8221;のまま。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-3.png" width="600" height="400"></p>
+
+<ul>
+<li>プロトコルの選択</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-4.png" width="600" height="400"></p>
+
+<ul>
+<li>ポート番号の指定。今回は標準ポート 1521 を使用。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-5.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;いいえ&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-6.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;次へ&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-7.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;完了&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-8.png" width="600" height="400"></p>
+
+<p>これでリスナーの設定ファイル <code>$ORACLE_HOME/network/admin/listener.ora</code> が作成される。</p>
+
+<pre><code>$ cat $ORACLE_HOME/network/admin/listener.ora
+# listener.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
+# Generated by Oracle configuration tools.
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+</code></pre>
+
+<h2>クライアント側のネットワーク構成</h2>
+
+<p>同じく <code>netca</code> により構成する。</p>
+
+<ul>
+<li><p><code>netca</code> を起動</p>
+
+<p>  $ netca</p></li>
+<li><p>&#8220;ローカル・ネット・サービス名構成&#8221; を選択</p></li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-9.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;追加&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-10.png" width="600" height="400"></p>
+
+<ul>
+<li>サービス名を設定。通常は DB のグローバル・データベース名(db_name.db_domain)を入力。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-11.png" width="600" height="400"></p>
+
+<ul>
+<li>プロトコルの選択</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-12.png" width="600" height="400"></p>
+
+<ul>
+<li>ホスト名, ポート番号を設定</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-13.png" width="600" height="400"></p>
+
+<ul>
+<li>接続テスト。今回は行わない。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-14.png" width="600" height="400"></p>
+
+<ul>
+<li>ネット・サービス名の設定。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-15.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;いいえ&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-16.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;次へ&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-17.png" width="600" height="400"></p>
+
+<ul>
+<li>&#8220;完了&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-05-oracle-net-services/netca-18.png" width="600" height="400"></p>
+
+<p>これでクライアントのネットワーク設定ファイル <code>$ORACLE_HOME/network/admin/tnsnames.ora</code> が作成される。</p>
+
+<pre><code>$ cat $ORACLE_HOME/network/admin/tnsnames.ora 
+# tnsnames.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/tnsnames.ora
+# Generated by Oracle configuration tools.
+
+PROD1 =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = PROD1.local)
+    )
+  )
+</code></pre>
+
+<h2>接続テスト</h2>
+
+<p>クライアントから DB にネットワーク接続できるか確認する。</p>
+
+<ul>
+<li>リスナーの起動</li>
+</ul>
+
+
+<p><code>lsnrctl start</code> を実行</p>
+
+<pre><code>$ lsnrctl start
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:02:48
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Starting /u01/app/oracle/product/11.2.0/dbhome_1/bin/tnslsnr: please wait...
+
+TNSLSNR for Linux: Version 11.2.0.3.0 - Production
+System parameter file is /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
+Log messages written to /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
+Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
+Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
+Start Date                05-SEP-2012 23:02:48
+Uptime                    0 days 0 hr. 0 min. 0 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
+Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+The listener supports no services
+The command completed successfully
+</code></pre>
+
+<ul>
+<li>DB インスタンスの起動</li>
+</ul>
+
+
+<p><code>sqlplus</code> からインスタンスの起動</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; startup
+</code></pre>
+
+<ul>
+<li>インスタンスがリスナーに登録されていることを確認</li>
+</ul>
+
+
+<p><code>lsnrctl status</code> でサービスが登録されていることを確認する。</p>
+
+<pre><code>$ lsnrctl status
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:05:17
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
+Start Date                05-SEP-2012 23:02:48
+Uptime                    0 days 0 hr. 2 min. 28 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
+Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+Services Summary...
+Service "PROD1.local" has 1 instance(s).
+  Instance "PROD1", status READY, has 1 handler(s) for this service...
+Service "PROD1XDB.local" has 1 instance(s).
+  Instance "PROD1", status READY, has 1 handler(s) for this service...
+The command completed successfully
+</code></pre>
+
+<ul>
+<li>クライアントからネットワーク接続できることを確認</li>
+</ul>
+
+
+<p>クライアント側のネットワーク構成で指定したネット・サービス名で接続できることを確認する。</p>
+
+<pre><code>$ sqlplus scott/tiger@PROD1
+
+SQL*Plus: Release 11.2.0.3.0 Production on Wed Sep 5 23:07:13 2012
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL&gt; 
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/10/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/8/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

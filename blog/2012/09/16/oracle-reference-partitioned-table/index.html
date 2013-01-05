@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] 参照パーティション表 - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 参照パーティション表を作成する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパーティショニング・ガイド
+-> 4 パーティションの管理
+-> &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] 参照パーティション表</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T16:13:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>参照パーティション表を作成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>VLDBおよびパーティショニング・ガイド<br/>
+-> 4 パーティションの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJDDEEC">参照パーティション表の作成</a></li>
+</ul>
+
+
+<h2>参照パーティション表の作成</h2>
+
+<p>参照パーティション表は、例えば次のようなケースで役立つ。注文を管理する orders 表に注文日が格納される order_date 列がある。また、注文に含まれる品目を管理する order_items 表があり、orders 表を order_id 列で外部参照しているとする。orders 表が order_date 列をキー値としてパーティション化されている場合、order_items 表も同じように注文日によりパーティション化したかったら、従来ならば order_date 列を order_itmes 表にも加える必要があった。参照パーティション表を使えば、order_items 列に余計な order_date 列を加えることなく、外部参照している orders と同じ単位でパーティション化することができる。</p>
+
+<p>実際に上記シナリオで参照パーティション表を作成してみる。</p>
+
+<pre><code>SQL&gt; CREATE TABLE orders
+         ( order_id           NUMBER(12),
+           order_date         DATE,
+           order_mode         VARCHAR2(8),
+           customer_id        NUMBER(6),
+           order_status       NUMBER(2),
+           order_total        NUMBER(8,2),
+           sales_rep_id       NUMBER(6),
+           promotion_id       NUMBER(6),
+           CONSTRAINT orders_pk PRIMARY KEY(order_id)
+         )
+       PARTITION BY RANGE(order_date)
+         ( PARTITION Q1_2005 VALUES LESS THAN (TO_DATE('01-APR-2005','DD-MON-YYYY')),
+           PARTITION Q2_2005 VALUES LESS THAN (TO_DATE('01-JUL-2005','DD-MON-YYYY')),
+           PARTITION Q3_2005 VALUES LESS THAN (TO_DATE('01-OCT-2005','DD-MON-YYYY')),
+           PARTITION Q4_2005 VALUES LESS THAN (TO_DATE('01-JAN-2006','DD-MON-YYYY'))
+         );
+
+Table created.
+
+SQL&gt; CREATE TABLE order_items
+         ( order_id           NUMBER(12) NOT NULL,
+           line_item_id       NUMBER(3)  NOT NULL,
+           product_id         NUMBER(6)  NOT NULL,
+           unit_price         NUMBER(8,2),
+           quantity           NUMBER(8),
+           CONSTRAINT order_items_fk
+           FOREIGN KEY(order_id) REFERENCES orders(order_id)
+         )
+         PARTITION BY REFERENCE(order_items_fk);
+
+Table created. 
+</code></pre>
+
+<p>パーティション情報の確認。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col partitioning_type for a20
+     col ref_ptn_constraint_name for a30
+     set lines 200
+SQL&gt; SELECT table_name, partitioning_type, ref_ptn_constraint_name FROM user_part_tables;
+
+TABLE_NAME                     PARTITIONING_TYPE    REF_PTN_CONSTRAINT_NAME
+------------------------------ -------------------- ------------------------------
+ORDERS                         RANGE
+ORDER_ITEMS                    REFERENCE            ORDER_ITEMS_FK
+
+SQL&gt; col partition_name for a30
+SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
+
+TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
+------------------------------ ------------------------------ --------------------------------------------------------------------------------
+ORDERS                         Q1_2005                        TO_DATE(' 2005-04-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q2_2005                        TO_DATE(' 2005-07-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q3_2005                        TO_DATE(' 2005-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q4_2005                        TO_DATE(' 2006-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDER_ITEMS                    Q1_2005
+ORDER_ITEMS                    Q2_2005
+ORDER_ITEMS                    Q3_2005
+ORDER_ITEMS                    Q4_2005
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T16:13:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/16/oracle-securefiles-lob/" title="Previous Post: [Oracle] BasicFiles LOB から SecureFiles LOB への移行">&laquo; [Oracle] BasicFiles LOB から SecureFiles LOB への移行</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/09/16/oracle-interval-partitioned-table/" title="Next Post: [Oracle] 時間隔パーティション表">[Oracle] 時間隔パーティション表 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

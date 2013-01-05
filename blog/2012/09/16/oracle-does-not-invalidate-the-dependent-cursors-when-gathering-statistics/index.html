@@ -1,0 +1,324 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] カーソルを無効にしない統計情報の取得 - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 カーソルを無効化せずに統計情報を取得する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス
+-> 141 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] カーソルを無効にしない統計情報の取得</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T21:34:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス<br/>
+-> 141 DBMS_STATS<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#BEIBJJHC">SET_TABLE_PREFSプロシージャ</a></li>
+</ul>
+
+
+<h2>カーソルを無効にしない統計情報の取得</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。
+方法としては、以下の2つがある。</p>
+
+<ol>
+<li><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</li>
+<li><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</li>
+</ol>
+
+
+<h2><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</h2>
+
+<p><code>DBMS_STATS.GATHER_TABLE_STATS</code> 実行時に指定する場合は、<code>no_invalidate</code> パラメータを <code>TRUE</code> にする。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp', no_invalidate =&gt; TRUE);
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<h2><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</h2>
+
+<p>表単位でデフォルト値を変更する場合は <code>SET_TABLE_PREFS</code> プロシージャを使う。</p>
+
+<p><code>GET_PREFS</code> プロシージャで現在の設定の確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+DBMS_STATS.AUTO_INVALIDATE
+</code></pre>
+
+<p><code>SET_TABLE_PREFS</code> プロシージャにて設定の変更。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.SET_TABLE_PREFS('scott', 'emp', 'NO_INVALIDATE', 'TRUE');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p><code>GET_PREFS</code> プロシージャで設定が変更されたことを確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+TRUE
+</code></pre>
+
+<p>あとは <code>no_invalidate</code> オプションを明示的に指定せずに統計情報を採取すると変更した内容がデフォルトとして採用される。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T21:34:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>, <a class='category' href='/blog/categories/performance-tuning/'>Performance Tuning</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/16/oracle-multicolumn-statistics/" title="Previous Post: [Oracle] 複数列の統計">&laquo; [Oracle] 複数列の統計</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/09/16/oracle-sql-plan-management/" title="Next Post: [Oracle] SQL 計画管理">[Oracle] SQL 計画管理 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

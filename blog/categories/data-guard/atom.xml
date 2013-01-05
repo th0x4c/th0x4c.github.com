@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Data Guard | th0x4c 備忘録]]></title>
+  <link href="http://th0x4c.github.com/blog/categories/data-guard/atom.xml" rel="self"/>
+  <link href="http://th0x4c.github.com/"/>
+  <updated>2013-01-06T04:30:54+09:00</updated>
+  <id>http://th0x4c.github.com/</id>
+  <author>
+    <name><![CDATA[Takashi Hashizume]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard ファスト・スタート・フェイルオーバー]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/11/oracle-data-guard-fast-start-failover/"/>
+    <updated>2012-09-11T19:54:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/11/oracle-data-guard-fast-start-failover</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>ファスト・スタート・フェイルオーバーの構成</h2>
+
+<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにできる。
+ファスト・スタート・フェイルオーバーには、プライマリ DB、スタンバイ DB を監視する"オブザーバ"が必要。オブザーバはプライマリ DB、スタンバイ DB とは別のサーバに配置することが望ましいが、今回はスタンバイ DB と同じサーバに構成する。</p>
+
+<p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>"ファスト・スタート・フェイルオーバー" の "無効" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
+
+<ul>
+<li>"オブザーバの構成" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-2.png" width="720" height="450"></p>
+
+<ul>
+<li>オブザーバの場所として今回はスタンバイ DB と同じサーバを指定。ORACLE_HOME の位置も入力する。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
+
+<ul>
+<li>"続行"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-4.png" width="720" height="450"></p>
+
+<ul>
+<li>オブザーバを起動する OS ユーザを入力</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
+
+<ul>
+<li>"続行"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
+
+<ul>
+<li>"はい"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-8.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>Data Guard の構成画面に戻ると "ファスト・スタート・フェイルオーバー" が "stdby1.localに対して有効" になり、"オブザーバの場所" が "sv2.local" になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-10.png" width="720" height="450"></p>
+
+<h2>ファスト・スタート・フェイルオーバーの検証</h2>
+
+<p>ファスト・スタート・フェイルオーバーが動作するか検証してみる。
+<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#BCGHEJFH">マニュアル Data Guard Broker</a> によると次の場合にファスト・スタート・フェイルオーバーが試行される。</p>
+
+<ul>
+<li>プライマリ・データベースと、オブザーバおよびターゲット・スタンバイ・データベースの両方との接続が失われた場合</li>
+<li>インスタンス障害</li>
+<li>強制終了(ABORT オプションでの停止)</li>
+</ul>
+
+
+<p>正常にデータベースを停止した場合(NORMAL, IMMEDIATE, TRANSACTIONAL)では、ファスト・スタート・フェイルオーバーは試行されないので、プライマリ DB を停止するときは通常通り ABORT 以外のオプションで SHUTDOWN すればいい。</p>
+
+<p>ファスト・スタート・フェイルオーバーを検証するためにプライマリ DB を <code>shutdown abort</code> で強制終了する。</p>
+
+<pre><code># プライマリ側で実施
+$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; shutdown abort
+ORACLE instance shut down.
+</code></pre>
+
+<p>これで、プライマリ DB の異常をオブザーバが検知して、フェイルオーバーが自動で開始される。
+オブザーバは Data Guard Broker の dgmgrl コマンドで実行されているので、ログは <code>$ORACLE_HOME/rdbms/log/dgmgrl_XXXX_XXXX.log</code> に出力されている。</p>
+
+<pre><code># オブザーバ配置サーバで実施
+$ ps -ef | grep dgmgrl
+oracle   12805     1  0 20:27 ?        00:00:01 /u01/app/oracle/product/11.2.0/dbhome_1/bin/dgmgrl -logfile /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/log/dgmgrl_PROD1_12804.log
+
+$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
+Observer started
+[W000 09/11 20:27:30.89] Observer started.
+
+21:07:33.37  2012年9月11日 Tuesday
+Initiating Fast-Start Failover to database "stdby1"...
+Performing failover NOW, please wait...
+Failover succeeded, new primary is "stdby1"
+21:07:35.66  2012年9月11日 Tuesday
+</code></pre>
+
+<p>これで、フェイルオーバーが実施された。EM の元スタンバイ DB 側を確認すると以下のようになっている。</p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-11.png" width="720" height="450"></p>
+
+<p>この後、元プライマリ DB を起動すると、自動でスタンバイ DB として構成してくれる。</p>
+
+<pre><code># 元プライマリ側で実施
+$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; shutdown abort
+ORACLE instance shut down.
+SQL&gt; startup
+ORACLE instance started.
+
+Total System Global Area  835104768 bytes
+Fixed Size                  2232960 bytes
+Variable Size             511708544 bytes
+Database Buffers          314572800 bytes
+Redo Buffers                6590464 bytes
+Database mounted.
+ORA-16649: possible failover to another database prevents this database from
+being opened
+</code></pre>
+
+<p>オブザーバのログを確認すると、元プライマリ DB が新たにスタンバイ DB としてマウントされたログ出力がある。</p>
+
+<pre><code># オブザーバ配置サーバで実施
+$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
+21:18:47.02  2012年9月11日 Tuesday
+Initiating reinstatement for database "PROD1"...
+Reinstating database "PROD1", please wait...
+Operation requires shutdown of instance "PROD1" on database "PROD1"
+Shutting down instance "PROD1"...
+ORA-01109: database not open
+
+Database dismounted.
+ORACLE instance shut down.
+Operation requires startup of instance "PROD1" on database "PROD1"
+Starting instance "PROD1"...
+ORACLE instance started.
+Database mounted.
+Continuing to reinstate database "PROD1" ...
+Reinstatement of database "PROD1" succeeded
+21:19:33.19  2012年9月11日 Tuesday
+</code></pre>
+
+<p>EM の元スタンバイ DB 側を確認すると以下のように元プライマリ DB が新たにスタンバイ DB として構成されていることが分かる。</p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
+
+<p>この後、スイッチオーバすれば、元の構成に戻る。</p>
+
+<h2>ファスト・スタート・フェイルオーバー環境でのデータベースの停止</h2>
+
+<p><a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#CHDJCDDB">マニュアル</a> に記載があるように、ファスト・スタート・フェイルオーバー環境でのデータベースの停止する場合は次のようにする。</p>
+
+<ol>
+<li><p>オブザーバを停止し、プライマリ DB およびターゲット・スタンバイ DB の両方について、V$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になるまで待機する。こうすると、プライマリ DB の停止中に、ファスト・スタート・フェイルオーバーは実行されない。</p></li>
+<li><p>プライマリ DB およびターゲット・スタンバイ DB を停止(<code>SHUTDOWN</code>)する。</p></li>
+</ol>
+
+
+<p>以下が実行例。</p>
+
+<p><code>dgmgrl</code> にてオブザーバを停止</p>
+
+<pre><code>$ export ORACLE_SID=stdby1
+$ dgmgrl
+DGMGRL for Linux: Version 11.2.0.3.0 - 64bit Production
+
+Copyright (c) 2000, 2009, Oracle. All rights reserved.
+
+Welcome to DGMGRL, type "help" for information.
+DGMGRL&gt; connect sys/oracle
+Connected.
+DGMGRL&gt; stop observer;
+Done.
+DGMGRL&gt; exit
+</code></pre>
+
+<p>プライマリ DB およびスタンバイ DB にてV$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になることを確認して <code>SHUTDOWN</code> する。</p>
+
+<pre><code># プライマリ DB および スタンバイ DB でそれぞれ実施
+$ sqlplus 'as sysdba'
+SQL&gt; SELECT FS_FAILOVER_OBSERVER_PRESENT FROM V$DATABASE;
+
+FS_FAILOVER_OBSERVER_
+---------------------
+YES
+
+SQL&gt; /
+
+FS_FAILOVER_OBSERVER_
+---------------------
+NO
+
+SQL&gt; shutdown immediate
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL&gt; exit
+</code></pre>
+
+<p>起動時はプライマリ DB およびスタンバイ DB を起動した後に、<code>dgmgrl</code> でオブザーバを起動(<code>start observer</code>)する。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard 環境での RMAN の構成]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration/"/>
+    <updated>2012-09-09T23:00:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>Data Guard概要および管理<br/>
+-> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
+</ul>
+
+
+<h2>Data Guard 環境での RMAN の構成</h2>
+
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
+
+<ul>
+<li>現在の設定の確認</li>
+</ul>
+
+
+<p>プライマリ DB をターゲットとして接続し、<code>show all</code> コマンドで現在の設定を確認</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target /
+RMAN&gt; show all;
+
+using target database control file instead of recovery catalog
+RMAN configuration parameters for database with db_unique_name PROD1 are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
+</code></pre>
+
+<p>アーカイブ・ログの削除方針(<code>CONFIGURE ARCHIVELOG DELETION POLICY</code>)はデフォルトの <code>NONE</code> になっている。</p>
+
+<ul>
+<li>アーカイブ・ログの削除方針を変更する。</li>
+</ul>
+
+
+<p><code>CONFIGURE ARCHIVELOG DELETION POLICY</code> コマンドによりアーカイブ・ログの削除方針を変更する。</p>
+
+<p>すべてのスタンバイ DB への<strong>送信(SHIPPED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
+
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
+
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
+new RMAN configuration parameters are successfully stored
+</code></pre>
+
+<p>すべてのスタンバイ DB への<strong>適用(APPLIED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
+
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
+
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
+new RMAN configuration parameters are successfully stored
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard リアルタイム問い合わせ]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-real-time-query/"/>
+    <updated>2012-09-09T22:28:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-real-time-query</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard の "リアルタイム問い合わせ" 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>リアルタイム問い合わせ</h2>
+
+<p>Data Guard の "リアルタイム問い合わせ" 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
+
+<p>今回は EM Grid Control を使用してこの機能を有効にする。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>"リアルタイム問い合わせ" の "無効" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-1.png" width="720" height="450"></p>
+
+<ul>
+<li>"リアルタイム問い合わせの有効化" をチェックして、"適用" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 正常に適用された</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-4.png" width="720" height="450"></p>
+
+<ul>
+<li>Data Guard の構成画面に戻ると "リアルタイム問い合わせ" が "有効" になっている</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-5.png" width="720" height="450"></p>
+
+<p>実際にスタンバイ DB に接続すると、SELECT が実行可能でプライマリの変更が REDO 適用された時点で即時反映されることが確認できる。</p>
+
+<pre><code>SQL&gt; connect scott/tiger@PROD1 -- プライマリに接続
+Connected.
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+
+SQL&gt; connect scott/tiger@STDBY1_DGMGRL -- スタンバイに接続
+Connected.
+SQL&gt; SELECT * FROM emp2 WHERE ROWNUM = 1; -- プライマリの更新が反映されている
+
+     EMPNO ENAME                          JOB                                MGR
+---------- ------------------------------ --------------------------- ----------
+HIREDATE        SAL       COMM     DEPTNO
+-------- ---------- ---------- ----------
+      7369 SMITH                          CLERK                             7902
+80-12-17        800                    20
+
+
+SQL&gt; UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369; -- スタンバイの更新はできない
+UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369
+       *
+ERROR at line 1:
+ORA-16000: database open for read-only access
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard スナップショット・スタンバイ・データベース]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/"/>
+    <updated>2012-09-09T21:51:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard の "スナップショット・スタンバイ・データベース" 機能により、スタンバイ DB を一時的に更新可能にする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>スナップショット・スタンバイ・データベースへの変換</h2>
+
+<p>Data Guard の "スナップショット・スタンバイ・データベース" 機能により、スタンバイ DB が一時的に更新可能にできる。"スナップショット・スタンバイ・データベース" となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
+
+<p>EM Grid Control を使用すると変換が楽にできる。("変換" をクリックするだけ)</p>
+
+<ul>
+<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>"変換" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
+
+<ul>
+<li>"はい"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>ロールが "スナップショット・スタンバイ" になる。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
+
+<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
+
+<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+</code></pre>
+
+<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から "変換" をクリックすればよい。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[[Oracle] Data Guard スイッチオーバー]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover/"/>
+    <updated>2012-09-09T21:19:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>スイッチオーバーの実施</h2>
+
+<p>EM Grid Control を使用してスイッチオーバーを行う。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>"スイッチオーバー" をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-1.png" width="720" height="450"></p>
+
+<ul>
+<li>スタンバイ・サイト に接続する OS ユーザを入力</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-2.png" width="720" height="450"></p>
+
+<ul>
+<li>プライマリ・サイト に接続する OS ユーザを入力</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-3.png" width="720" height="450"></p>
+
+<ul>
+<li>"はい"</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-4.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-5.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-6.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>今度は元スタンバイでプライマリになったインスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-7.png" width="720" height="450"></p>
+]]></content>
+  </entry>
+  
+</feed>

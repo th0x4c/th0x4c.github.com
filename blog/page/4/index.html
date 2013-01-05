@@ -1,0 +1,1124 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 トランスポータブル表領域により DB 間で表領域の移動を行う。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
+-> 14 表領域の管理
+-> &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/4/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/12/oracle-transportable-tablespace/">Oracle トランスポータブル表領域</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-12T23:18:00+09:00" pubdate data-updated="true">Sep 12<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>トランスポータブル表領域により DB 間で表領域の移動を行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>管理者ガイド<br/>
+-> 14 表領域の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces013.htm#i1007252">データベース間で表領域をトランスポートする手順および例</a></li>
+</ul>
+
+
+<h2>トランスポータブル表領域</h2>
+
+<p>マニュアルに記載の手順に従い、トランスポータブル表領域により DB 間で表領域の移動を行う。</p>
+
+<ul>
+<li>今回の検証用に表領域を作成</li>
+</ul>
+
+
+<p><code>tt_emp</code> 表領域を作成する。</p>
+
+<pre><code>SQL&gt; CREATE TABLESPACE tt_emp
+     DATAFILE '/u01/app/oracle/oradata/PROD1/tt_emp01.dbf'
+     SIZE 10M REUSE AUTOEXTEND ON;
+
+Tablespace created.
+
+SQL&gt; CREATE TABLE scott.tt_emp TABLESPACE tt_emp AS SELECT * FROM scott.emp;
+
+Table created.
+</code></pre>
+
+<ul>
+<li>endianness の確認</li>
+</ul>
+
+
+<p>異なるプラットフォーム間で表領域のトランスポートを行う場合は endianness が異なると変換が必要になる。
+endianness を確認する。</p>
+
+<pre><code>SQL&gt; set pages 100
+     col platform_name for a40
+     col endian_format for a15
+SQL&gt; SELECT * FROM V$TRANSPORTABLE_PLATFORM;
+
+PLATFORM_ID PLATFORM_NAME                            ENDIAN_FORMAT
+----------- ---------------------------------------- ---------------
+          1 Solaris[tm] OE (32-bit)                  Big
+          2 Solaris[tm] OE (64-bit)                  Big
+          7 Microsoft Windows IA (32-bit)            Little
+         10 Linux IA (32-bit)                        Little
+          6 AIX-Based Systems (64-bit)               Big
+          3 HP-UX (64-bit)                           Big
+          5 HP Tru64 UNIX                            Little
+          4 HP-UX IA (64-bit)                        Big
+         11 Linux IA (64-bit)                        Little
+         15 HP Open VMS                              Little
+          8 Microsoft Windows IA (64-bit)            Little
+          9 IBM zSeries Based Linux                  Big
+         13 Linux x86 64-bit                         Little
+         16 Apple Mac OS                             Big
+         12 Microsoft Windows x86 64-bit             Little
+         17 Solaris Operating System (x86)           Little
+         18 IBM Power Based Linux                    Big
+         19 HP IA Open VMS                           Little
+         20 Solaris Operating System (x86-64)        Little
+         21 Apple Mac OS (x86-64)                    Little
+
+20 rows selected.
+
+SQL&gt; SELECT PLATFORM_NAME FROM V$DATABASE;
+
+PLATFORM_NAME
+----------------------------------------
+Linux x86 64-bit
+
+SQL&gt; SELECT d.PLATFORM_NAME, ENDIAN_FORMAT
+     FROM V$TRANSPORTABLE_PLATFORM tp, V$DATABASE d
+     WHERE tp.PLATFORM_NAME = d.PLATFORM_NAME;
+
+PLATFORM_NAME                            ENDIAN_FORMAT
+---------------------------------------- ---------------
+Linux x86 64-bit                         Little
+</code></pre>
+
+<ul>
+<li>表領域が自己完結型かどうかの確認</li>
+</ul>
+
+
+<p>表領域内に別の表領域の表の索引が含まれている場合などは自己完結型でないためトランスポートできない。
+表領域が自己完結型かどうかチェックする。</p>
+
+<pre><code>SQL&gt; EXECUTE DBMS_TTS.TRANSPORT_SET_CHECK('tt_emp', TRUE);
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT * FROM TRANSPORT_SET_VIOLATIONS;
+
+no rows selected
+</code></pre>
+
+<p>もし、違反している場合は <code>TRANSPORT_SET_VIOLATIONS</code> ビューに違反している内容が表示される。</p>
+
+<ul>
+<li>表領域を読み取り専用にする</li>
+</ul>
+
+
+<p>表領域を読取り専用にする。</p>
+
+<pre><code>SQL&gt; ALTER TABLESPACE tt_emp READ ONLY;
+
+Tablespace altered.
+</code></pre>
+
+<ul>
+<li>データ・ポンプによりエクスポート</li>
+</ul>
+
+
+<p><code>expdp</code> によりエクスポートする。</p>
+
+<pre><code>$ expdp system/oracle dumpfile=expdat.dmp directory=data_pump_dir \
+        transport_tablespaces=tt_emp logfile=tts_export.log
+
+Export: Release 11.2.0.3.0 - Production on Wed Sep 12 23:53:49 2012
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+FLASHBACK automatically enabled to preserve database integrity.
+Starting "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01":  system/******** dumpfile=expdat.dmp directory=data_pump_dir transport_tablespaces=tt_emp logfile=tts_export.log 
+Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
+Processing object type TRANSPORTABLE_EXPORT/TABLE
+Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
+Master table "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully loaded/unloaded
+******************************************************************************
+Dump file set for SYSTEM.SYS_EXPORT_TRANSPORTABLE_01 is:
+  /u01/app/oracle/admin/PROD1/dpdump/expdat.dmp
+******************************************************************************
+Datafiles required for transportable tablespace TT_EMP:
+  /u01/app/oracle/oradata/PROD1/tt_emp01.dbf
+Job "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully completed at 23:54:17
+</code></pre>
+
+<ul>
+<li>endianness の変換</li>
+</ul>
+
+
+<p>もし、endianness の異なるプラットフォームにトランスポートする場合は、RMAN でデータファイルの変換を行う。</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target /
+RMAN&gt; CONVERT TABLESPACE tt_emp
+      TO PLATFORM 'Apple Mac OS'
+      FORMAT '/tmp/%U';
+
+Starting conversion at source at 12-09-12
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=43 device type=DISK
+channel ORA_DISK_1: starting datafile conversion
+input datafile file number=00006 name=/u01/app/oracle/oradata/PROD1/tt_emp01.dbf
+converted datafile=/tmp/data_D-PROD1_I-2014160803_TS-TT_EMP_FNO-6_07nl25cg
+channel ORA_DISK_1: datafile conversion complete, elapsed time: 00:00:01
+Finished conversion at source at 12-09-12  
+</code></pre>
+
+<ul>
+<li>表領域のデータファイルと、エクスポート・ダンプ・ファイルをトランスポート先に移動</li>
+</ul>
+
+
+<p>今回は同一サーバ上の別 DB にした。</p>
+
+<pre><code># エクスポート・ダンプ・ファイル をトランスポート先 DB の DATA_PUMP_DIR にコピー
+$ cp -i /u01/app/oracle/admin/PROD1/dpdump/expdat.dmp /u01/app/oracle/admin/PROD2/dpdump/
+
+# 通常はデータファイルをトランスポート先のデータファイルの位置にコピー
+# 今回はテストとして endianness を変換したファイルをコピーした
+$ cp -i /tmp/data_D-PROD1_I-2014160803_TS-TT_EMP_FNO-6_07nl25cg /tmp/tt_emp01.dbf
+</code></pre>
+
+<ul>
+<li>endianness の変換</li>
+</ul>
+
+
+<p>もし、endianness の異なるプラットフォームにトランスポートする場合でトランスポート元で変換を行っていない場合は、RMAN でデータファイルの変換を行う。</p>
+
+<pre><code>$ export ORACLE_SID=PROD2
+$ rman target /
+RMAN&gt; CONVERT DATAFILE
+      '/tmp/tt_emp01.dbf'
+      TO PLATFORM 'Linux x86 64-bit'
+      FROM PLATFORM 'Apple Mac OS'
+      DB_FILE_NAME_CONVERT='/tmp/', '/u01/app/oracle/oradata/PROD2/';
+
+Starting conversion at target at 12-09-13
+using target database control file instead of recovery catalog
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=36 device type=DISK
+channel ORA_DISK_1: starting datafile conversion
+input file name=/tmp/tt_emp01.dbf
+converted datafile=/u01/app/oracle/oradata/PROD2/tt_emp01.dbf
+channel ORA_DISK_1: datafile conversion complete, elapsed time: 00:00:01
+Finished conversion at target at 12-09-13
+</code></pre>
+
+<ul>
+<li>トランスポート元の表領域を読取り/書込みモードに戻す。</li>
+</ul>
+
+
+<p><code>ALTER TABLESPACE</code> にて戻す。</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; ALTER TABLESPACE tt_emp READ WRITE;
+
+Tablespace altered.
+</code></pre>
+
+<ul>
+<li>データ・ポンプによりインポート</li>
+</ul>
+
+
+<p><code>impdp</code> によりインポートする。</p>
+
+<pre><code>$ export ORACLE_SID=PROD2
+$ impdp system/oracle dumpfile=expdat.dmp directory=data_pump_dir \
+        transport_datafiles='/u01/app/oracle/oradata/PROD2/tt_emp01.dbf' \
+        logfile=tts_import.log
+
+Import: Release 11.2.0.3.0 - Production on Thu Sep 13 00:22:31 2012
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+Connected to: Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+Master table "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01" successfully loaded/unloaded
+Starting "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01":  system/******** dumpfile=expdat.dmp directory=data_pump_dir transport_datafiles=/u01/app/oracle/oradata/PROD2/tt_emp01.dbf logfile=tts_import.log 
+Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
+Processing object type TRANSPORTABLE_EXPORT/TABLE
+Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
+Job "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01" successfully completed at 00:22:34
+</code></pre>
+
+<ul>
+<li>トランスポート先の表領域を読取り/書込みモードに戻す。</li>
+</ul>
+
+
+<p><code>ALTER TABLESPACE</code> にて戻す。</p>
+
+<pre><code>$ export ORACLE_SID=PROD2
+$ sqlplus '/as sysdba'
+SQL&gt; ALTER TABLESPACE tt_emp READ WRITE;
+
+Tablespace altered.
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/">[Oracle] マテリアライズド・ビューの高速リフレッシュ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-12T21:14:00+09:00" pubdate data-updated="true">Sep 12<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>集計(<code>AVG(sal)</code> など)や結合(<code>emp.deptno = dept.deptno</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>データ・ウェアハウス・ガイド<br/>
+-> 9 基本的なマテリアライズド・ビュー<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006519">集計を含むマテリアライズド・ビュー</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007028">集計を含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006674">結合のみを含むマテリアライズド・ビュー</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007013">結合のみを含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#sthref257">DBMS_MVIEW.EXPLAIN_MVIEWプロシージャの使用</a></li>
+</ul>
+
+
+<h2>集計を含むマテリアライズド・ビュー</h2>
+
+<p>集計(<code>AVG(sal)</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<p>マニュアルから、集計関数(<code>SUM</code>, <code>COUNT(*)</code>, <code>AVG</code> など)を含むマテリアライズド・ビューを高速リフレッシュ可能にするためにはいくつか制限がある。
+ざっくり含める必要がある要件をまとめると以下。</p>
+
+<ul>
+<li><p>マテリアライズド・ビュー・ログの要件</p>
+
+<ul>
+<li>マテリアライズド・ビューで参照される列をすべて含める</li>
+<li><code>ROWID</code> および <code>INCLUDING NEW VALUES</code> 句を指定</li>
+<li>表の更新を行う場合は <code>SEQUENCE</code> 句を指定</li>
+</ul>
+</li>
+<li><p>マテリアライズド・ビューの SELECT 文に含める要件</p>
+
+<ul>
+<li><code>COUNT(*)</code> を含める</li>
+<li><code>AVG(expr)</code> などの集計ごとに、対応する <code>COUNT(expr)</code> および <code>SUM(expr)</code> を含める。(<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#sthref182">集計関数によって要件は異なる</a>)</li>
+</ul>
+</li>
+</ul>
+
+
+<p>例えば以下の SELECT を含むマテリアライズド・ビューを考える。</p>
+
+<pre><code>SELECT d.dname, AVG(e.sal) avg_sal
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+GROUP BY d.dname;
+</code></pre>
+
+<p>高速リフレッシュ可能なマテリアライズド・ビューを作成する。</p>
+
+<ul>
+<li>マテリアライズド・ビュー・ログの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW LOG</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW LOG ON emp
+     WITH SEQUENCE, ROWID
+     (sal, deptno)
+     INCLUDING NEW VALUES;
+
+Materialized view log created.
+
+SQL&gt; CREATE MATERIALIZED VIEW LOG ON dept
+     WITH SEQUENCE, ROWID
+     (deptno, dname)
+     INCLUDING NEW VALUES;
+
+Materialized view log created.
+</code></pre>
+
+<ul>
+<li>マテリアライズド・ビューの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW emp_dept_mv
+     BUILD IMMEDIATE
+     REFRESH FAST
+     ENABLE QUERY REWRITE
+     AS SELECT d.dname, AVG(e.sal) avg_sal,
+               COUNT(*) cnt, COUNT(e.sal) cnt_sal, SUM(e.sal) sum_sal
+     FROM emp e, dept d
+     WHERE e.deptno = d.deptno
+     GROUP BY d.dname;
+
+Materialized view created.
+</code></pre>
+
+<h2>高速リフレッシュ可能か確認する方法</h2>
+
+<p><code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャを使用することで簡単にマテリアライズド・ビューに関して次のことを確認できる。</p>
+
+<ul>
+<li>高速リフレッシュ可能かどうか</li>
+<li>実行できるクエリー・リライトのタイプ</li>
+<li>PCT リフレッシュ(パーティション単位での高速リフレッシュ)が可能かどうか(パーティション表でないと意味なし)</li>
+</ul>
+
+
+<p>使い方は以下</p>
+
+<ol>
+<li><code>$ORACLE_HOME/rdbms/admin/utlxmv.sql</code> を流して <code>MV_CAPABILITIES_TABLE</code> 表を作成</li>
+<li><code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャの引数にマテリアライズド・ビュー名かマテリアライズド・ビューで使用している SELECT 文を与えて実行</li>
+<li><code>MV_CAPABILITIES_TABLE</code> 表を SELECT して確認</li>
+<li>再度 <code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャを実行する場合は <code>TRUNCATE TABLE MV_CAPABILITIES_TABLE</code> で結果をクリア</li>
+</ol>
+
+
+<p>先ほど作成したマテリアライズド・ビューで確認してみる。</p>
+
+<pre><code>SQL&gt; @?/rdbms/admin/utlxmv.sql
+
+Table created.
+
+SQL&gt; EXEC DBMS_MVIEW.EXPLAIN_MVIEW('emp_dept_mv');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set lines 200
+     set pages 100
+     col capability_name for a30
+     col rel_text for a10
+     col msgtxt for a60
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   Y
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      Y
+REFRESH_FAST_AFTER_ONETAB_DML  Y
+REFRESH_FAST_AFTER_ANY_DML     Y
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p><code>possible</code> 列が <code>Y</code> であることから高速リフレッシュ可能であることが分かる。(<code>PCT*</code> に関してはパーティション表ではないので無視)</p>
+
+<p>例えば、以下のようにマテリアライズド・ビュー作成前に高速リフレッシュ可能か確認でき、可能でない場合は理由を表示してくれる。</p>
+
+<pre><code>SQL&gt; TRUNCATE TABLE MV_CAPABILITIES_TABLE;
+
+Table truncated.
+
+SQL&gt; -- わざと COUNT(e.sal), SUM(e.sal) を外してみる
+SQL&gt; BEGIN
+       DBMS_MVIEW.EXPLAIN_MVIEW('
+         SELECT d.dname, AVG(e.sal) avg_sal,
+                COUNT(*) cnt
+         FROM emp e, dept d
+         WHERE e.deptno = d.deptno
+         GROUP BY d.dname');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   N
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      N   AVG_SAL    agg(expr) requires correspondng COUNT(expr) function
+REFRESH_FAST_AFTER_ONETAB_DML  N              see the reason why REFRESH_FAST_AFTER_INSERT is disabled
+REFRESH_FAST_AFTER_ANY_DML     N              see the reason why REFRESH_FAST_AFTER_ONETAB_DML is disabled
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p>高速リフレッシュが不可で、<code>AVG_SAL</code> 列に関して対応する <code>COUNT(expr)</code> が必要なことを指摘してくれる。</p>
+
+<h2>結合のみを含むマテリアライズド・ビュー</h2>
+
+<p>集計関数は含まずに結合(<code>emp.deptno = dept.deptno</code> など)のみを含むマテリアライズド・ビューを高速リフレッシュ可能にする。</p>
+
+<p>マニュアルから、結合のみを含むマテリアライズド・ビューを高速リフレッシュ可能にするためにはいくつか制限がある。
+ざっくり含める必要がある要件をまとめると以下。</p>
+
+<ul>
+<li><p>マテリアライズド・ビュー・ログの要件</p>
+
+<ul>
+<li><code>ROWID</code> 句を指定</li>
+</ul>
+</li>
+<li><p>マテリアライズド・ビューの SELECT 文に含める要件</p>
+
+<ul>
+<li><code>FROM</code> 内の全ての表の ROWID を含める</li>
+</ul>
+</li>
+</ul>
+
+
+<p>例えば以下の SELECT を含むマテリアライズド・ビューを考える。</p>
+
+<pre><code>SELECT e.ename, d.loc
+FROM emp e, dept d
+WHERE e.deptno = d.deptno;
+</code></pre>
+
+<p>高速リフレッシュ可能なマテリアライズド・ビューを作成する。</p>
+
+<ul>
+<li>マテリアライズド・ビュー・ログの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW LOG</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW LOG ON emp
+     WITH ROWID;
+
+Materialized view log created.
+
+SQL&gt; CREATE MATERIALIZED VIEW LOG ON dept
+     WITH ROWID;
+
+Materialized view log created.
+</code></pre>
+
+<ul>
+<li>マテリアライズド・ビューの作成</li>
+</ul>
+
+
+<p><code>CREATE MATERIALIZED VIEW</code> 文を実行</p>
+
+<pre><code>SQL&gt; CREATE MATERIALIZED VIEW emp_dept_mv
+     BUILD IMMEDIATE
+     REFRESH FAST
+     ENABLE QUERY REWRITE
+     AS SELECT e.ename, d.loc,
+               e.rowid e_rowid, d.rowid d_rowid
+     FROM emp e, dept d
+     WHERE e.deptno = d.deptno;
+
+Materialized view created.
+</code></pre>
+
+<ul>
+<li>高速リフレッシュ可能か確認</li>
+</ul>
+
+
+<p>先ほど行ったように <code>DBMS_MVIEW.EXPLAIN_MVIEW</code> プロシージャで確認する。</p>
+
+<pre><code>SQL&gt; TRUNCATE TABLE MV_CAPABILITIES_TABLE;
+
+Table truncated.
+
+SQL&gt; EXEC DBMS_MVIEW.EXPLAIN_MVIEW('emp_dept_mv');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; SELECT capability_name,  possible, SUBSTR(related_text,1,8)
+       AS rel_text, SUBSTR(msgtxt,1,60) AS msgtxt
+     FROM MV_CAPABILITIES_TABLE
+     ORDER BY seq;
+
+CAPABILITY_NAME                POS REL_TEXT   MSGTXT
+------------------------------ --- ---------- ------------------------------------------------------------
+PCT                            N
+REFRESH_COMPLETE               Y
+REFRESH_FAST                   Y
+REWRITE                        Y
+PCT_TABLE                      N   EMP        relation is not a partitioned table
+PCT_TABLE                      N   DEPT       relation is not a partitioned table
+REFRESH_FAST_AFTER_INSERT      Y
+REFRESH_FAST_AFTER_ONETAB_DML  Y
+REFRESH_FAST_AFTER_ANY_DML     Y
+REFRESH_FAST_PCT               N              PCT is not possible on any of the detail tables in the mater
+REWRITE_FULL_TEXT_MATCH        Y
+REWRITE_PARTIAL_TEXT_MATCH     Y
+REWRITE_GENERAL                Y
+REWRITE_PCT                    N              general rewrite is not possible or PCT is not possible on an
+PCT_TABLE_REWRITE              N   EMP        relation is not a partitioned table
+PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned table
+
+16 rows selected.
+</code></pre>
+
+<p><code>PCT*</code> 以外は <code>possible</code> 列が <code>Y</code> になっているので高速リフレッシュ可能。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-11T19:54:00+09:00" pubdate data-updated="true">Sep 11<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>ファスト・スタート・フェイルオーバーの構成</h2>
+
+<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにできる。
+ファスト・スタート・フェイルオーバーには、プライマリ DB、スタンバイ DB を監視する&#8221;オブザーバ&#8221;が必要。オブザーバはプライマリ DB、スタンバイ DB とは別のサーバに配置することが望ましいが、今回はスタンバイ DB と同じサーバに構成する。</p>
+
+<p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;ファスト・スタート・フェイルオーバー&#8221; の &#8220;無効&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;オブザーバの構成&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-2.png" width="720" height="450"></p>
+
+<ul>
+<li>オブザーバの場所として今回はスタンバイ DB と同じサーバを指定。ORACLE_HOME の位置も入力する。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;続行&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-4.png" width="720" height="450"></p>
+
+<ul>
+<li>オブザーバを起動する OS ユーザを入力</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;続行&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 -> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-8.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>Data Guard の構成画面に戻ると &#8220;ファスト・スタート・フェイルオーバー&#8221; が &#8220;stdby1.localに対して有効&#8221; になり、&#8221;オブザーバの場所&#8221; が &#8220;sv2.local&#8221; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
+</ul>
+
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-10.png" width="720" height="450"></p>
+
+<h2>ファスト・スタート・フェイルオーバーの検証</h2>
+
+<p>ファスト・スタート・フェイルオーバーが動作するか検証してみる。
+<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#BCGHEJFH">マニュアル Data Guard Broker</a> によると次の場合にファスト・スタート・フェイルオーバーが試行される。</p>
+
+<ul>
+<li>プライマリ・データベースと、オブザーバおよびターゲット・スタンバイ・データベースの両方との接続が失われた場合</li>
+<li>インスタンス障害</li>
+<li>強制終了(ABORT オプションでの停止)</li>
+</ul>
+
+
+<p>正常にデータベースを停止した場合(NORMAL, IMMEDIATE, TRANSACTIONAL)では、ファスト・スタート・フェイルオーバーは試行されないので、プライマリ DB を停止するときは通常通り ABORT 以外のオプションで SHUTDOWN すればいい。</p>
+
+<p>ファスト・スタート・フェイルオーバーを検証するためにプライマリ DB を <code>shutdown abort</code> で強制終了する。</p>
+
+<pre><code># プライマリ側で実施
+$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; shutdown abort
+ORACLE instance shut down.
+</code></pre>
+
+<p>これで、プライマリ DB の異常をオブザーバが検知して、フェイルオーバーが自動で開始される。
+オブザーバは Data Guard Broker の dgmgrl コマンドで実行されているので、ログは <code>$ORACLE_HOME/rdbms/log/dgmgrl_XXXX_XXXX.log</code> に出力されている。</p>
+
+<pre><code># オブザーバ配置サーバで実施
+$ ps -ef | grep dgmgrl
+oracle   12805     1  0 20:27 ?        00:00:01 /u01/app/oracle/product/11.2.0/dbhome_1/bin/dgmgrl -logfile /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/log/dgmgrl_PROD1_12804.log
+
+$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
+Observer started
+[W000 09/11 20:27:30.89] Observer started.
+
+21:07:33.37  2012年9月11日 Tuesday
+Initiating Fast-Start Failover to database "stdby1"...
+Performing failover NOW, please wait...
+Failover succeeded, new primary is "stdby1"
+21:07:35.66  2012年9月11日 Tuesday
+</code></pre>
+
+<p>これで、フェイルオーバーが実施された。EM の元スタンバイ DB 側を確認すると以下のようになっている。</p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-11.png" width="720" height="450"></p>
+
+<p>この後、元プライマリ DB を起動すると、自動でスタンバイ DB として構成してくれる。</p>
+
+<pre><code># 元プライマリ側で実施
+$ export ORACLE_SID=PROD1
+$ sqlplus '/as sysdba'
+SQL&gt; shutdown abort
+ORACLE instance shut down.
+SQL&gt; startup
+ORACLE instance started.
+
+Total System Global Area  835104768 bytes
+Fixed Size                  2232960 bytes
+Variable Size             511708544 bytes
+Database Buffers          314572800 bytes
+Redo Buffers                6590464 bytes
+Database mounted.
+ORA-16649: possible failover to another database prevents this database from
+being opened
+</code></pre>
+
+<p>オブザーバのログを確認すると、元プライマリ DB が新たにスタンバイ DB としてマウントされたログ出力がある。</p>
+
+<pre><code># オブザーバ配置サーバで実施
+$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
+21:18:47.02  2012年9月11日 Tuesday
+Initiating reinstatement for database "PROD1"...
+Reinstating database "PROD1", please wait...
+Operation requires shutdown of instance "PROD1" on database "PROD1"
+Shutting down instance "PROD1"...
+ORA-01109: database not open
+
+Database dismounted.
+ORACLE instance shut down.
+Operation requires startup of instance "PROD1" on database "PROD1"
+Starting instance "PROD1"...
+ORACLE instance started.
+Database mounted.
+Continuing to reinstate database "PROD1" ...
+Reinstatement of database "PROD1" succeeded
+21:19:33.19  2012年9月11日 Tuesday
+</code></pre>
+
+<p>EM の元スタンバイ DB 側を確認すると以下のように元プライマリ DB が新たにスタンバイ DB として構成されていることが分かる。</p>
+
+<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
+
+<p>この後、スイッチオーバすれば、元の構成に戻る。</p>
+
+<h2>ファスト・スタート・フェイルオーバー環境でのデータベースの停止</h2>
+
+<p><a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#CHDJCDDB">マニュアル</a> に記載があるように、ファスト・スタート・フェイルオーバー環境でのデータベースの停止する場合は次のようにする。</p>
+
+<ol>
+<li><p>オブザーバを停止し、プライマリ DB およびターゲット・スタンバイ DB の両方について、V$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になるまで待機する。こうすると、プライマリ DB の停止中に、ファスト・スタート・フェイルオーバーは実行されない。</p></li>
+<li><p>プライマリ DB およびターゲット・スタンバイ DB を停止(<code>SHUTDOWN</code>)する。</p></li>
+</ol>
+
+
+<p>以下が実行例。</p>
+
+<p><code>dgmgrl</code> にてオブザーバを停止</p>
+
+<pre><code>$ export ORACLE_SID=stdby1
+$ dgmgrl
+DGMGRL for Linux: Version 11.2.0.3.0 - 64bit Production
+
+Copyright (c) 2000, 2009, Oracle. All rights reserved.
+
+Welcome to DGMGRL, type "help" for information.
+DGMGRL&gt; connect sys/oracle
+Connected.
+DGMGRL&gt; stop observer;
+Done.
+DGMGRL&gt; exit
+</code></pre>
+
+<p>プライマリ DB およびスタンバイ DB にてV$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になることを確認して <code>SHUTDOWN</code> する。</p>
+
+<pre><code># プライマリ DB および スタンバイ DB でそれぞれ実施
+$ sqlplus 'as sysdba'
+SQL&gt; SELECT FS_FAILOVER_OBSERVER_PRESENT FROM V$DATABASE;
+
+FS_FAILOVER_OBSERVER_
+---------------------
+YES
+
+SQL&gt; /
+
+FS_FAILOVER_OBSERVER_
+---------------------
+NO
+
+SQL&gt; shutdown immediate
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL&gt; exit
+</code></pre>
+
+<p>起動時はプライマリ DB およびスタンバイ DB を起動した後に、<code>dgmgrl</code> でオブザーバを起動(<code>start observer</code>)する。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/5/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/3/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

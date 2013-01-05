@@ -1,0 +1,797 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 SQL 計画管理により、実行計画を固定化する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング・ガイド
+-> 15 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T23:28:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>SQL 計画管理により、実行計画を固定化する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 15 SQL計画の管理の使用方法<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/optplanmgmt.htm#BABEGJGB">15.2 SQL計画ベースラインの管理</a></li>
+</ul>
+
+
+<h2>SQL 計画管理</h2>
+
+<p>SQL 計画管理により、実行計画を固定化することができる。具体的には次のステップで行う。</p>
+
+<ol>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+<li>実行計画を管理する SQL を 2 回以上実行</li>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ol>
+
+
+<p>実際に実行してみる。</p>
+
+<ul>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>FALSE</code>)を <code>TRUE</code> に設定することで SQL 計画の自動取得が有効になる。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL を 2 回以上実行</li>
+</ul>
+
+
+<p>SQL を 2 回以上実行して、SQL 計画ベースラインに保存する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+</code></pre>
+
+<ul>
+<li>SQL 計画の自動取得を無効化(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE</code>)</li>
+</ul>
+
+
+<p>SQL 計画の自動取得を無効化する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL が SQL 計画ベースラインに保存されたことを確認</li>
+</ul>
+
+
+<p><code>DBA_SQL_PLAN_BASELINES</code> を確認する。</p>
+
+<pre><code>SQL&gt; col sql_text for a60
+     col sql_handle for a30
+     col plan_name for a30
+     set lines 200
+SQL&gt; SELECT SQL_TEXT, SQL_HANDLE, PLAN_NAME, ENABLED, ACCEPTED, FIXED
+     FROM   DBA_SQL_PLAN_BASELINES;
+
+SQL_TEXT                                                     SQL_HANDLE                     PLAN_NAME                      ENABLED   ACCEPTED  FIXED
+------------------------------------------------------------ ------------------------------ ------------------------------ --------- --------- ---------
+SELECT * FROM scott.emp WHERE empno = 7900                   SQL_84ec680ef31d6de4           SQL_PLAN_89v381vtjuvg4695cc014 YES       YES       NO
+</code></pre>
+
+<p>実行計画を確認する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM TABLE(
+       DBMS_XPLAN.DISPLAY_SQL_PLAN_BASELINE(
+         sql_handle=&gt;'SQL_84ec680ef31d6de4',
+         format=&gt;'basic'));
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SQL handle: SQL_84ec680ef31d6de4
+SQL text: SELECT * FROM scott.emp WHERE empno = 7900
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Plan name: SQL_PLAN_89v381vtjuvg4695cc014         Plan id: 1767686164
+Enabled: YES     Fixed: NO      Accepted: YES     Origin: AUTO-CAPTURE
+--------------------------------------------------------------------------------
+
+
+PLAN_TABLE_OUTPUT
+----------------------------------------------
+Plan hash value: 2949544139
+
+----------------------------------------------
+| Id  | Operation                   | Name   |
+----------------------------------------------
+|   0 | SELECT STATEMENT            |        |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |
+|   2 |   INDEX UNIQUE SCAN         | PK_EMP |
+----------------------------------------------
+
+20 rows selected.
+</code></pre>
+
+<ul>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_USE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>TRUE</code>)を <code>TRUE</code> に設定することで取得した SQL 計画を使用する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<p>あとは普通に SQL を時刻するだけで取得した SQL 計画が使用される。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2949544139
+
+--------------------------------------------------------------------------------------
+| Id  | Operation                   | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |        |     1 |    39 |     1   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |     1 |    39 |     1   (0)| 00:00:01 |
+|*  2 |   INDEX UNIQUE SCAN         | PK_EMP |     1 |       |     0   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("EMPNO"=7900)
+
+Note 
+-----
+   - SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          2  consistent gets
+          0  physical reads
+          0  redo size
+        889  bytes sent via SQL*Net to client
+        512  bytes received via SQL*Net from client
+          1  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>Note の <code>SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement</code> という出力から取得した SQL 計画が使用されていることが分かる。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T21:34:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス<br/>
+-> 141 DBMS_STATS<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#BEIBJJHC">SET_TABLE_PREFSプロシージャ</a></li>
+</ul>
+
+
+<h2>カーソルを無効にしない統計情報の取得</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。
+方法としては、以下の2つがある。</p>
+
+<ol>
+<li><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</li>
+<li><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</li>
+</ol>
+
+
+<h2><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</h2>
+
+<p><code>DBMS_STATS.GATHER_TABLE_STATS</code> 実行時に指定する場合は、<code>no_invalidate</code> パラメータを <code>TRUE</code> にする。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp', no_invalidate =&gt; TRUE);
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<h2><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</h2>
+
+<p>表単位でデフォルト値を変更する場合は <code>SET_TABLE_PREFS</code> プロシージャを使う。</p>
+
+<p><code>GET_PREFS</code> プロシージャで現在の設定の確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+DBMS_STATS.AUTO_INVALIDATE
+</code></pre>
+
+<p><code>SET_TABLE_PREFS</code> プロシージャにて設定の変更。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.SET_TABLE_PREFS('scott', 'emp', 'NO_INVALIDATE', 'TRUE');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p><code>GET_PREFS</code> プロシージャで設定が変更されたことを確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+TRUE
+</code></pre>
+
+<p>あとは <code>no_invalidate</code> オプションを明示的に指定せずに統計情報を採取すると変更した内容がデフォルトとして採用される。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T20:21:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>相関のある複数列を列グループとして統計情報採取することでよりよい実行計画となるようにする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 13 オプティマイザ統計の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
+</ul>
+
+
+<h2>複数列の統計収集</h2>
+
+<p>相関のある複数列を列グループとして統計情報を採取することで、オプティマイザが個々の列でなく列グループとして実行計画を計算するようにする。</p>
+
+<ul>
+<li>検証で使用する表の作成</li>
+</ul>
+
+
+<p>C1 列、C2 列が同じになる(つまり相関がある)ような表を作成する。</p>
+
+<pre><code>SQL&gt; CREATE TABLE multi_col_tab (c1 NUMBER, c2 NUMBER);
+
+Table created.
+
+SQL&gt; BEGIN
+       FOR i IN 1..5 LOOP
+         FOR j IN 1..100 LOOP
+           INSERT INTO multi_col_tab VALUES(i, i);
+         END LOOP;
+       END LOOP;
+       COMMIT;
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>1 〜 5 までそれぞれ 100 行ずつ、計 500 行を INSERT。</p>
+
+<ul>
+<li>複数列統計を採取しない場合</li>
+</ul>
+
+
+<p>複数列統計を採取しない場合の実行計画</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 20 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> だが、相関があることを知らないので、選択行が <code>500行 * 1/5(c1 の選択率) * 1/5(c2 の選択率)</code> = 20行 となっていて正確でない。</p>
+
+<ul>
+<li>複数列統計を採取した場合</li>
+</ul>
+
+
+<p>複数列統計を採取する。<code>c1</code> および <code>c2</code> 列で構成させる列グループを追加して、統計情報取得。</p>
+
+<pre><code>SQL&gt; DECLARE
+       cg_name varchar2(30);
+     BEGIN
+       cg_name := dbms_stats.create_extended_stats(null,'multi_col_tab',  
+                 '(c1,c2)');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>なお、<code>DBMS_STATS.CREATE_EXTENDED_STATS</code> で明示的に列グループを作成しない場合は、以下のように統計情報収集時に <code>METHOD_OPT</code> で複数列を指定してもよい。</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY FOR COLUMNS (C1,C2) SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>先ほどと同じ SQL で実行計画を確認してみる。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 100 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> で相関があることを認識して正確に 100 行と計算している。</p>
+
+<ul>
+<li>複数列統計の確認</li>
+</ul>
+
+
+<p>拡張統計として、複数列が認識されていることを確認。</p>
+
+<pre><code>SQL&gt; col extension_name for a30
+     col extension for a30
+SQL&gt; Select extension_name, extension 
+     from user_stat_extensions 
+     where table_name='MULTI_COL_TAB';
+
+EXTENSION_NAME                 EXTENSION
+------------------------------ ------------------------------
+SYS_STUF3GLKIOP5F4B0BTTCFTMX0W ("C1","C2")
+</code></pre>
+
+<p>実際に複数列の統計が採られていることを確認</p>
+
+<pre><code>SQL&gt; col col_group for a30
+SQL&gt; select e.extension col_group, t.num_distinct, t.histogram
+     from user_stat_extensions e, user_tab_col_statistics t
+     where e.extension_name=t.column_name
+     and e.table_name=t.table_name
+     and t.table_name='MULTI_COL_TAB';
+
+COL_GROUP                      NUM_DISTINCT HISTOGRAM
+------------------------------ ------------ ---------------------------------------------
+("C1","C2")                               5 FREQUENCY
+</code></pre>
+
+<p><code>HISTGRAM</code> 列が <code>NONE</code> 以外であればヒストグラムが採られている。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/2/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

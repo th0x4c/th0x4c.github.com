@@ -1,0 +1,332 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="Jekyll + Octopress を使って Github Pages にブログを開設してみた。
+Octopress の Documentation のページ に従えばよい。
+ruby 1.9.3 が必要だが、今回は JRuby を使用した。 使用マシン MacBook Pro Retina &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/10/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/04/setup-octopress/">Octopress をセットアップ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-04T23:15:00+09:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Jekyll + Octopress を使って Github Pages にブログを開設してみた。
+<a href="http://octopress.org">Octopress</a> の <a href="http://octopress.org/docs/">Documentation のページ</a> に従えばよい。
+ruby 1.9.3 が必要だが、今回は <a href="http://jruby.org">JRuby</a> を使用した。</p>
+
+<h2>使用マシン</h2>
+
+<ul>
+<li>MacBook Pro Retina ディスプレイモデル(Mid 2012)</li>
+<li>Mountain Lion (OS X 10.8.1)</li>
+</ul>
+
+
+<h2>JRuby のインストール</h2>
+
+<p>~/local 配下に zip を解凍してインストール</p>
+
+<pre><code>$ cd ~/local/
+$ curl -O http://jruby.org.s3.amazonaws.com/downloads/1.7.0.preview2/jruby-bin-1.7.0.preview2.zip
+$ unzip jruby-bin-1.7.0.preview2.zip
+$ cd ~/local/bin/
+$ ln -s ../jruby-1.7.0.preview2/bin/jruby .
+</code></pre>
+
+<h2>Octopress のセットアップ</h2>
+
+<p><a href="http://octopress.org/docs/setup/">Octopress のセットアップ手順</a> に従う。</p>
+
+<pre><code>$ cd ~/Documents/
+$ git clone git://github.com/imathis/octopress.git octopress
+$ cd octopress/
+$ jruby -S gem install bundler
+expr: syntax error
+Fetching gem metadata from http://rubygems.org/.......
+Using rake (0.9.2.2)
+Using RedCloth (4.2.9)
+Installing posix-spawn (0.3.6) with native extensions
+Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension.
+
+        /Users/hashi/local/bin/../jruby-1.7.0.preview2/bin/jruby extconf.rb
+NotImplementedError: C extension support is not enabled. Pass -Xcext.enabled=true to JRuby or set JRUBY_OPTS or modify .jrubyrc to enable.
+
+   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/mkmf.rb:8
+  require at org/jruby/RubyKernel.java:1024
+   (root) at /Users/hashi/local/bin/../jruby-1.7.0.preview2/lib/ruby/shared/rubygems/custom_require.rb:1
+   (root) at extconf.rb:1
+
+
+Gem files will remain installed in /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6 for inspection.
+Results logged to /Users/hashi/local/jruby-1.7.0.preview2/lib/ruby/gems/shared/gems/posix-spawn-0.3.6/ext/gem_make.out
+An error occurred while installing posix-spawn (0.3.6), and Bundler cannot continue.
+Make sure that `gem install posix-spawn -v '0.3.6'` succeeds before bundling.
+</code></pre>
+
+<p>なんかエラーとなったので、エラーメッセージの指示通りに <code>JRUBY_OPTS</code> を設定したらうまくいった。</p>
+
+<pre><code>$ export JRUBY_OPTS="-Xcext.enabled=true"
+$ jruby -S bundle install
+$ jruby -S rake install
+</code></pre>
+
+<p>追加でインストールされたコマンドが使用できるようにシンボリックリンクを作成。
+(もちろん、JRuby を解凍したフォルダ配下の <code>bin</code> ディレクトリに <code>PATH</code> が通ってれば不要。)</p>
+
+<pre><code>$ cd ~/local/bin
+$ ln -s ../jruby-1.7.0.preview2/bin/jekyll .
+$ ln -s ../jruby-1.7.0.preview2/bin/compass .
+$ ln -s ../jruby-1.7.0.preview2/bin/rackup .
+</code></pre>
+
+<h2>Github Pages の設定</h2>
+
+<p>引き続き <a href="http://octopress.org/docs/deploying/github/">Octopress の Github Pages へのデプロイ手順</a> に従う。
+まず、<code>username.github.com</code> というレポジトリを<a href="https://github.com/repositories/new">新規で作成</a>する。
+ここで、次の <code>rake setup_github_pages</code> の <code>Repository url:</code> で HTTPS での指定(<code>https://github.com/username/username.github.com.git</code>)ができなかったため、レポジトリに <a href="https://help.github.com/articles/generating-ssh-keys">SSH key でのアクセス設定</a>した上で、<code>git@github.com:username/username.github.com.git</code> を指定する必要があった。</p>
+
+<pre><code>$ cd ~/Documents/octopress
+$ jruby -S rake setup_github_pages
+expr: syntax error
+Enter the read/write url for your repository
+(For example, 'git@github.com:your_username/your_username.github.com)
+Repository url: git@github.com:th0x4c/th0x4c.github.com.git
+...
+</code></pre>
+
+<p>これで次のことが行われるとのこと。</p>
+
+<ol>
+<li>Ask you for your Github Pages repository url.</li>
+<li>Rename the remote pointing to imathis/octopress from ‘origin’ to ‘octopress’</li>
+<li>Add your Github Pages repository as the default origin remote.</li>
+<li>Switch the active branch from master to source.</li>
+<li>Configure your blog’s url according to your repository.</li>
+<li>Setup a master branch in the _deploy directory for deployment.</li>
+</ol>
+
+
+<p>最後に以下を実行すれば <code>_deploy/</code> ディレクトリにファイルが生成され、Github のレポジトリに push され、Github Pages に反映される。</p>
+
+<pre><code>$ jruby -S rake generate
+$ jruby -S rake deploy
+</code></pre>
+
+<p>あとは、Octopress の以下のページを参照のこと。</p>
+
+<ul>
+<li><a href="http://octopress.org/docs/configuring/">Configure your blog</a></li>
+</ul>
+
+
+<p>とりあえず、<code>_config.yml</code> の <code>title:</code>, <code>author:</code> ぐらいを変更した。</p>
+
+<h2>ブログ発行</h2>
+
+<p><a href="http://octopress.org/docs/blogging/">Start blogging with Octopress</a>を参照。</p>
+
+<p>基本的に <code>rake new_post["Zombie Ninjas Attack: A survivor's retrospective"]</code> (<code>Zombie ...</code>はタイトル)を実行して、<code>source/_posts</code> 配下のファイルを編集すればよい。</p>
+
+<p><code>rake preview</code> で <code>http://localhost:4000</code> でプレビューを確認して、<code>rake gen_deploy</code> で Github Pages にデプロイ。</p>
+
+<pre><code>$ jruby -S rake new_post["Setup Octopress"]
+$ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
+$ jruby -S rake preview
+$ jruby -S gen_deploy
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/9/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

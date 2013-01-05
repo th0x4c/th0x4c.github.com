@@ -1,0 +1,392 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] 暗号化された表領域の作成 - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 暗号化された表領域を作成する。
+&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] 暗号化された表領域の作成</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>暗号化された表領域を作成する。<br/>
+&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>2日でセキュリティ・ガイド<br/>
+-> 6 データの保護<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
+<li><p>管理者ガイド<br/>
+-> 14 表領域の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
+</ul>
+
+
+<h2>作成</h2>
+
+<p>&#8220;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
+
+<ol>
+<li>ウォレット(マスター暗号化キーが格納される)を DB 外の OS 上のファイルとして作成</li>
+<li>ウォレットを開く(データの暗号化が開始される)</li>
+<li>表領域の作成</li>
+</ol>
+
+
+<p>以下、マニュアルの手順に従い作成する。</p>
+
+<ul>
+<li>ウォレットを格納するディレクトリを作成</li>
+</ul>
+
+
+<p>OS 上でディレクトリ作成</p>
+
+<pre><code>$ mkdir /home/oracle/ORA_WALLETS
+</code></pre>
+
+<ul>
+<li>sqlnet.ora ファイルにウォレットを格納するディレクトリを指定</li>
+</ul>
+
+
+<p>sqlnet.ora ファイルを編集</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora
+$ cat $ORACLE_HOME/network/admin/sqlnet.ora
+ENCRYPTION_WALLET_LOCATION=
+ (SOURCE=
+  (METHOD=file)
+   (METHOD_DATA=
+    (DIRECTORY=/home/oracle/ORA_WALLETS)))
+</code></pre>
+
+<ul>
+<li><p>(ここで compatible 初期化バラメータの値が 10.2 より小さい場合は DB 再起動が必要)</p></li>
+<li><p>ウォレットを作成</p></li>
+</ul>
+
+
+<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&#8220;)で囲む必要がある。
+これでウォレット格納ディレクトリにウォレットの OS ファイルができる。</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; ALTER SYSTEM SET ENCRYPTION KEY IDENTIFIED BY "oracle";
+
+System altered.
+
+$ ls /home/oracle/ORA_WALLETS
+ewallet.p12
+</code></pre>
+
+<ul>
+<li>ウォレットを開く</li>
+</ul>
+
+
+<p>以下の <code>ALTER SYSTEM</code> によりウォレットを開く。この場合もパスワードは二重引用符で囲む必要がある。
+ちなみにウォレット作成直後は開かれた状態となっている。</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET ENCRYPTION WALLET OPEN IDENTIFIED BY "oracle";
+
+System altered.
+</code></pre>
+
+<ul>
+<li>暗号化された表領域の作成</li>
+</ul>
+
+
+<p>以下のように、デフォルトの暗号化アルゴリズムを使用して暗号化された表領域を作成。暗号化アルゴリズムを指定する場合は <code>ENCRYPTION USING 'AES256'</code> などとする。</p>
+
+<pre><code>SQL&gt; CREATE TABLESPACE securespace
+     DATAFILE '/u01/app/oracle/oradata/PROD1/secure01.dbf' SIZE 100M
+     ENCRYPTION
+     DEFAULT STORAGE(ENCRYPT);
+
+Tablespace created.
+</code></pre>
+
+<h2>確認方法</h2>
+
+<ul>
+<li>ウォレットが開いているか閉じているかのチェック</li>
+</ul>
+
+
+<p><code>V$ENCRYPTION_VIEW</code> ビューを問い合わせる。</p>
+
+<pre><code>SQL&gt; SELECT * FROM V$ENCRYPTION_WALLET;
+
+WRL_TYPE   WRL_PARAMETER                  STATUS
+---------- ------------------------------ ----------
+file       /home/oracle/ORA_WALLETS       OPEN
+</code></pre>
+
+<ul>
+<li>表領域が暗号化されているかのチェック</li>
+</ul>
+
+
+<p><code>DBA_TABLESPACES.ENCRYPTED</code> 列を確認する。</p>
+
+<pre><code>SQL&gt; SELECT TABLESPACE_NAME, ENCRYPTED FROM DBA_TABLESPACES;
+
+TABLESPACE_NAME      ENCRYPTED
+-------------------- ----------
+SYSTEM               NO
+SYSAUX               NO
+UNDOTBS1             NO
+TEMP                 NO
+USERS                NO
+EXAMPLE              NO
+SECURESPACE          YES
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/05/oracle-net-services/" title="Previous Post: [Oracle] ネットワーク構成">&laquo; [Oracle] ネットワーク構成</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/09/07/oracle-direct-nfs-client/" title="Next Post: [Oracle] ダイレクト NFS クライアント">[Oracle] ダイレクト NFS クライアント &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

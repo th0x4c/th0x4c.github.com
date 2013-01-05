@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] RMAN の構成 - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 RMAN の構成を変更して、以下ができるようにする。 制御ファイルと SPFILE の自動バックアップ取得
+バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)
+ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-configure-rman/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] RMAN の構成</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T01:47:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>RMAN の構成を変更して、以下ができるようにする。</p>
+
+<ul>
+<li>制御ファイルと SPFILE の自動バックアップ取得</li>
+<li>バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)</li>
+<li>ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、増分バックアップ時のパフォーマンスが向上する。)</li>
+</ul>
+
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 5 Recovery Manager環境の構成<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1019739">Recovery Managerの永続的な構成の表示およびクリア</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1017907">制御ファイルおよびサーバー・パラメータ・ファイルの自動バックアップの構成</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#sthref449">バックアップの最適化の構成</a></p>
+
+<p>-> 9 データベースのバックアップ<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#sthref883">ブロック・チェンジ・トラッキングの有効化および無効化</a></p></li>
+</ul>
+
+
+<h2>RMAN 構成の確認</h2>
+
+<p>現在の RMAN 構成は <code>show all</code> にて確認できる。</p>
+
+<pre><code>$ rman target / catalog rman/rman@EMREP
+RMAN&gt; show all;
+
+RMAN configuration parameters for database with db_unique_name PROD1 are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
+</code></pre>
+
+<h2>制御ファイル, SPFILE の自動バックアップ</h2>
+
+<p><code>BACKUP</code> コマンドが実行されるときに、制御ファイルと SPFILE も自動的にバックアップするように設定する。</p>
+
+<pre><code>RMAN&gt; CONFIGURE CONTROLFILE AUTOBACKUP ON;
+
+new RMAN configuration parameters:
+CONFIGURE CONTROLFILE AUTOBACKUP ON;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<h2>バックアップの最適化</h2>
+
+<p>バックアップの最適化を有効にすると、保存方針によって同一ファイルの不要なバックアップをしなくなる。例えば、保存方針が <code>REDUNDANCY 1</code> として USERS 表領域を READ ONLY にして、<code>BACKUP DATABASE</code> を実行すると USERS 表領域のバックアップは 2 つ(REDUNDANCY + 1)あればよいので、3 回目以降の <code>BACKUP DATABASE</code> では USERS 表領域のバックアップが取得されなくなる。</p>
+
+<pre><code>RMAN&gt; CONFIGURE BACKUP OPTIMIZATION ON;
+
+new RMAN configuration parameters:
+CONFIGURE BACKUP OPTIMIZATION ON;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<h2>ブロック・チェンジ・トラッキングを有効化</h2>
+
+<p>DB で変更されたブロックをブロック・チェンジ・トラッキング・ファイル上に記録するようにする。このことで、増分バックアップ時に変更があったブロックだけを読むだけでよくなり、データファイルのすべてのブロックの読み込みが不要になり、パフォーマンスが向上する。</p>
+
+<p>マニュアルでは <code>DB_CREATE_FILE_DEST</code> の設定の記載があるが、ブロック・チェンジ・トラッキング・ファイルのパスをフルパスで指定する場合は <code>DB_CREATE_FILE_DEST</code> の設定は不要。</p>
+
+<pre><code>SQL&gt; ALTER DATABASE ENABLE BLOCK CHANGE TRACKING
+     USING FILE '/u01/app/oracle/oradata/PROD1/rman_change_track.f' REUSE;
+
+Database altered.
+
+SQL&gt; SELECT STATUS, FILENAME
+     FROM V$BLOCK_CHANGE_TRACKING;
+
+STATUS   FILENAME
+-------- ------------------------------------------------------------
+ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T01:47:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/11gr2/'>11gR2</a>, <a class='category' href='/blog/categories/backup-and-recovery/'>Backup and Recovery</a>, <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2012/09/09/oracle-configure-rman/" data-via="" data-counturl="http://th0x4c.github.com/blog/2012/09/09/oracle-configure-rman/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/08/oracle-setup-recovery-catalog/" title="Previous Post: [Oracle] リカバリ・カタログのセットアップ">&laquo; [Oracle] リカバリ・カタログのセットアップ</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/09/09/oracle-multisection-backup/" title="Next Post: [Oracle] マルチセクション・バックアップ">[Oracle] マルチセクション・バックアップ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
