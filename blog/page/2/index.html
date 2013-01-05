@@ -9,9 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 &#8220;結果キャッシュ&#8221; 機能を使用する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング・ガイド
--> 7 &hellip;">
+  <meta name="description" content="目的 カーソルを無効化せずに統計情報を取得する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス
+-> 141 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,402 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマン�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T21:34:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス<br/>
+-> 141 DBMS_STATS<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#BEIBJJHC">SET_TABLE_PREFSプロシージャ</a></li>
+</ul>
+
+
+<h2>カーソルを無効にしない統計情報の取得</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。
+方法としては、以下の2つがある。</p>
+
+<ol>
+<li><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</li>
+<li><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</li>
+</ol>
+
+
+<h2><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</h2>
+
+<p><code>DBMS_STATS.GATHER_TABLE_STATS</code> 実行時に指定する場合は、<code>no_invalidate</code> パラメータを <code>TRUE</code> にする。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp', no_invalidate =&gt; TRUE);
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<h2><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</h2>
+
+<p>表単位でデフォルト値を変更する場合は <code>SET_TABLE_PREFS</code> プロシージャを使う。</p>
+
+<p><code>GET_PREFS</code> プロシージャで現在の設定の確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+DBMS_STATS.AUTO_INVALIDATE
+</code></pre>
+
+<p><code>SET_TABLE_PREFS</code> プロシージャにて設定の変更。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.SET_TABLE_PREFS('scott', 'emp', 'NO_INVALIDATE', 'TRUE');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p><code>GET_PREFS</code> プロシージャで設定が変更されたことを確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+TRUE
+</code></pre>
+
+<p>あとは <code>no_invalidate</code> オプションを明示的に指定せずに統計情報を採取すると変更した内容がデフォルトとして採用される。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T20:21:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>相関のある複数列を列グループとして統計情報採取することでよりよい実行計画となるようにする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+-> 13 オプティマイザ統計の管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
+</ul>
+
+
+<h2>複数列の統計収集</h2>
+
+<p>相関のある複数列を列グループとして統計情報を採取することで、オプティマイザが個々の列でなく列グループとして実行計画を計算するようにする。</p>
+
+<ul>
+<li>検証で使用する表の作成</li>
+</ul>
+
+
+<p>C1 列、C2 列が同じになる(つまり相関がある)ような表を作成する。</p>
+
+<pre><code>SQL&gt; CREATE TABLE multi_col_tab (c1 NUMBER, c2 NUMBER);
+
+Table created.
+
+SQL&gt; BEGIN
+       FOR i IN 1..5 LOOP
+         FOR j IN 1..100 LOOP
+           INSERT INTO multi_col_tab VALUES(i, i);
+         END LOOP;
+       END LOOP;
+       COMMIT;
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>1 〜 5 までそれぞれ 100 行ずつ、計 500 行を INSERT。</p>
+
+<ul>
+<li>複数列統計を採取しない場合</li>
+</ul>
+
+
+<p>複数列統計を採取しない場合の実行計画</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 20 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> だが、相関があることを知らないので、選択行が <code>500行 * 1/5(c1 の選択率) * 1/5(c2 の選択率)</code> = 20行 となっていて正確でない。</p>
+
+<ul>
+<li>複数列統計を採取した場合</li>
+</ul>
+
+
+<p>複数列統計を採取する。<code>c1</code> および <code>c2</code> 列で構成させる列グループを追加して、統計情報取得。</p>
+
+<pre><code>SQL&gt; DECLARE
+       cg_name varchar2(30);
+     BEGIN
+       cg_name := dbms_stats.create_extended_stats(null,'multi_col_tab',  
+                 '(c1,c2)');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>なお、<code>DBMS_STATS.CREATE_EXTENDED_STATS</code> で明示的に列グループを作成しない場合は、以下のように統計情報収集時に <code>METHOD_OPT</code> で複数列を指定してもよい。</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY FOR COLUMNS (C1,C2) SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>先ほどと同じ SQL で実行計画を確認してみる。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 100 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> で相関があることを認識して正確に 100 行と計算している。</p>
+
+<ul>
+<li>複数列統計の確認</li>
+</ul>
+
+
+<p>拡張統計として、複数列が認識されていることを確認。</p>
+
+<pre><code>SQL&gt; col extension_name for a30
+     col extension for a30
+SQL&gt; Select extension_name, extension 
+     from user_stat_extensions 
+     where table_name='MULTI_COL_TAB';
+
+EXTENSION_NAME                 EXTENSION
+------------------------------ ------------------------------
+SYS_STUF3GLKIOP5F4B0BTTCFTMX0W ("C1","C2")
+</code></pre>
+
+<p>実際に複数列の統計が採られていることを確認</p>
+
+<pre><code>SQL&gt; col col_group for a30
+SQL&gt; select e.extension col_group, t.num_distinct, t.histogram
+     from user_stat_extensions e, user_tab_col_statistics t
+     where e.extension_name=t.column_name
+     and e.table_name=t.table_name
+     and t.table_name='MULTI_COL_TAB';
+
+COL_GROUP                      NUM_DISTINCT HISTOGRAM
+------------------------------ ------------ ---------------------------------------------
+("C1","C2")                               5 FREQUENCY
+</code></pre>
+
+<p><code>HISTGRAM</code> 列が <code>NONE</code> 以外であればヒストグラムが採られている。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -266,249 +662,6 @@ SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>アドバンスト・アプリケーション開発者ガイド<br/>
--> 12 Oracle Flashback Technologyの使用<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56259/adfns_flashback.htm#BJFFDCEH">フラッシュバック・データ・アーカイブの使用(Oracle Total Recall)</a></li>
-</ul>
-
-
-<h2>フラッシュバック・データ・アーカイブの使用</h2>
-
-<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存できる。例えば、コンプライアンス上変更履歴を年単位で長時間保存しておく必要がある場合などに有効。</p>
-
-<ul>
-<li>フラッシュバック・データ・アーカイブの作成</li>
-</ul>
-
-
-<p><code>CREATE FLASHBACK ARCHIVE</code> 文を使用してフラッシュバック・データ・アーカイブを作成する。
-データを1年間保持するデフォルトのフラッシュバック・データ・アーカイブ <code>fla1</code> を <code>USERS</code> 表領域に作成。
-作成するには <code>FLASHBACK ARCHIVE ADMINISTER</code> システム権限を持つユーザか、SYSDBA として接続する必要がある。</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-Connected.
-SQL&gt; CREATE FLASHBACK ARCHIVE DEFAULT fla1 TABLESPACE users
-     RETENTION 1 YEAR;
-
-Flashback archive created.
-</code></pre>
-
-<ul>
-<li>表のフラッシュバック・アーカイブの有効化</li>
-</ul>
-
-
-<p><code>scott.emp</code> 表のフラッシュバック・アーカイブを有効にして、フラッシュバック・データ・アーカイブ <code>fla1</code> に履歴データを格納するようにする。
-<code>scott</code> スキーマに <code>fla1</code> に対する <code>FLASHBACK ARCHIVE</code> オブジェクト権限を与えて、<code>ALTER TABLE</code> 文を発行する。</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-Connected.
-SQL&gt; GRANT FLASHBACK ARCHIVE ON fla1 TO scott;
-
-Grant succeeded.
-
-SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; ALTER TABLE scott.emp FLASHBACK ARCHIVE fla1;
-
-Table altered.
-</code></pre>
-
-<ul>
-<li>フラッシュバック・データ・アーカイブが有効になっていることの確認</li>
-</ul>
-
-
-<p><code>scott</code> スキーマで <code>emp</code> 表のフラッシュバック・データ・アーカイブが有効になっていることの確認</p>
-
-<pre><code>SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; col table_name for a30
-     col owner_name for a30
-     col flashback_archive_name for a30
-     col archive_table_name for a30
-     col status for a10
-     set lines 200
-SQL&gt; SELECT * FROM USER_FLASHBACK_ARCHIVE_TABLES;
-
-TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_NAME         ARCHIVE_TABLE_NAME             STATUS
------------------------------- ------------------------------ ------------------------------ ------------------------------ ----------
-EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-interval-partitioned-table/">[Oracle] 時間隔パーティション表</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T16:46:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>時間隔パーティション表を作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>VLDBおよびパーティショニング・ガイド<br/>
--> 4 パーティションの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJHFFBE">時間隔パーティション表の作成</a></li>
-</ul>
-
-
-<h2>時間隔パーティション表の作成</h2>
-
-<p>時間隔パーティション表はレンジ・パーティションの一種で、例えば月単位の時間隔パーティション表を作成すると、パーティションを明示的に作成しなくても自動で必要な月のパーティションをデータ insert 時に作成してくれる。</p>
-
-<p><code>DATE</code> 型の <code>time_id</code> をパーティション・キーとして、2009年までは年単位でパーティション化し、2010年1月1日以降は月単位でパーティションを自動作成するような時間隔パーティション表を作成してみる。</p>
-
-<pre><code>SQL&gt; CREATE TABLE interval_sales
-         ( prod_id        NUMBER(6)
-         , cust_id        NUMBER
-         , time_id        DATE
-         , channel_id     CHAR(1)
-         , promo_id       NUMBER(6)
-         , quantity_sold  NUMBER(3)
-         , amount_sold    NUMBER(10,2)
-         ) 
-       PARTITION BY RANGE (time_id) 
-       INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
-         ( PARTITION p0 VALUES LESS THAN (TO_DATE('1-1-2008', 'DD-MM-YYYY')),
-           PARTITION p1 VALUES LESS THAN (TO_DATE('1-1-2009', 'DD-MM-YYYY')),
-           PARTITION p2 VALUES LESS THAN (TO_DATE('1-1-2010', 'DD-MM-YYYY')) );
-
-Table created.
-</code></pre>
-
-<p>ちなみに追加されるパーティションを日単位にする場合は、<code>NUMTODSINTERVAL(1, 'DAY')</code> 関数を利用する。</p>
-
-<p>パーティション情報の確認。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col partitioning_type for a20
-     set lines 200
-SQL&gt; SELECT table_name, partitioning_type FROM user_part_tables;
-
-TABLE_NAME                     PARTITIONING_TYPE   
------------------------------- --------------------
-INTERVAL_SALES                 RANGE
-
-SQL&gt; col partition_name for a30
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p>最初はパーティションは作られていないが、上記の範囲を超える行を insert するとパーティションが自動で作成される。</p>
-
-<pre><code>SQL&gt; INSERT INTO interval_sales(prod_id, time_id) VALUES(1, TO_DATE('2012-09-16', 'YYYY-MM-DD'));
-
-1 row created.
-
-SQL&gt; COMMIT;
-
-Commit complete.
-
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p><code>SYS_P41</code> というパーティションが自動で作成された。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/3/">&larr; Older</a>
@@ -526,6 +679,14 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
       </li>
     
@@ -535,14 +696,6 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
     
       <li class="post">
         <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
       </li>
     
   </ul>
