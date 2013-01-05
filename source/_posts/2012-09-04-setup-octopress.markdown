@@ -113,3 +113,11 @@ ruby 1.9.3 が必要だが、今回は [JRuby](http://jruby.org) を使用した
     $ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
     $ jruby -S rake preview
     $ jruby -S gen_deploy
+
+`source` ディレクトリも Github に push するためには [Deploying to Github Pages](http://octopress.org/docs/deploying/github/) に従い、以下を実行
+
+    $ git add .
+    $ git commit -m 'your message'
+    $ git push origin source
+
+これで Github 上の source ブランチに push される。
