@@ -214,6 +214,15 @@ $ emacs -nw source/_posts/2012-09-04-setup-octopress.markdown
 $ jruby -S rake preview
 $ jruby -S gen_deploy
 </code></pre>
+
+<p><code>source</code> ディレクトリも Github に push するためには <a href="http://octopress.org/docs/deploying/github/">Deploying to Github Pages</a> に従い、以下を実行</p>
+
+<pre><code>$ git add .
+$ git commit -m 'your message'
+$ git push origin source
+</code></pre>
+
+<p>これで Github 上の source ブランチに push される。</p>
 </div>
 
 
@@ -269,6 +278,14 @@ $ jruby -S gen_deploy
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
       </li>
     
@@ -278,14 +295,6 @@ $ jruby -S gen_deploy
     
       <li class="post">
         <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a>
       </li>
     
   </ul>

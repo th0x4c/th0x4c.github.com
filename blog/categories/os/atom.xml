@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: OS | th0x4c 備忘録]]></title>
+  <link href="http://th0x4c.github.com/blog/categories/os/atom.xml" rel="self"/>
+  <link href="http://th0x4c.github.com/"/>
+  <updated>2013-01-06T05:26:12+09:00</updated>
+  <id>http://th0x4c.github.com/</id>
+  <author>
+    <name><![CDATA[Takashi Hashizume]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[[OS] 仮想メモリ空間のメモリマップを調べる]]></title>
+    <link href="http://th0x4c.github.com/blog/2012/10/10/os-virtual-memory-map/"/>
+    <updated>2012-10-10T23:20:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2012/10/10/os-virtual-memory-map</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>仮想メモリ空間のアドレス等のメモリマップを調べる。</p>
+
+<p>なお、ちゃんと調べたわけではないので誤りがあるかもしれない。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>Kernel: 2.6.32-300.10.1.el5uek x86_64</li>
+</ul>
+
+
+<h2>仮想メモリ空間のメモリマップ</h2>
+
+<p>Unix/Linux における仮想メモリ空間のメモリマップは一般には以下のようになっている。</p>
+
+<pre><code>+------------------------------+  0x0000000000000000
+:                              :
++------------------------------+
+|                              |
+|  text                        |  機械命令
+|                              |
++------------------------------+
+|                              |
+|  data                        |  初期化された static 変数
+|                              |
++------------------------------+
+|                              |
+|  BSS                         |  初期化されていない static 変数
+|                              |
++------------------------------+
+|                              |
+|  heap                        |  malloc() で動的に確保される領域(上位アドレスに伸びる)
+|                              |
++------------------------------+
+|             ||||             |
+|             VVVV             |
+:                              :
+:                              :
+|                              |
++------------------------------+
+|                              |
+|  shared memory               |  共有メモリ領域
+|                              |
++------------------------------+
+|                              |
+:                              :
+:                              :
+|             ^^^^             |
+|             ||||             |
++------------------------------+
+|                              |
+|  stack                       |  関数呼び出しやローカル変数等で使用されるスタック領域(下位アドレスに伸びる)
+|                              |
++------------------------------+
+|                              |
+|  arguments / environments    |  引数と環境変数
+|                              |
++------------------------------+
+:                              :
+:                              :
++------------------------------+  0xffffffffffffffff = 2^64 (64bit の場合)
+</code></pre>
+
+<h2>実例</h2>
+
+<p>以下のプログラムでメモリマップを確認する。</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdlib</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">string</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">sys</span><span class="o">/</span><span class="n">types</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">sys</span><span class="o">/</span><span class="n">shm</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">STRSIZE</span> <span class="mi">64</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">hello</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">hello_local_world</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">char</span> <span class="n">not_initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
+</span><span class='line'><span class="kt">char</span> <span class="n">initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;initialized global world&quot;</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">not_initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;initialized static world&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">malloc_world</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">shmid</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">shared_memory_world</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">big_malloc_world</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">medium_malloc_world_1</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">medium_malloc_world_2</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">,</span> <span class="s">&quot;not initialized global world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_static_world</span><span class="p">,</span> <span class="s">&quot;not initialized static world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">malloc_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="o">*</span> <span class="n">STRSIZE</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">,</span> <span class="s">&quot;malloc world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">shmid</span> <span class="o">=</span> <span class="n">shmget</span><span class="p">(</span><span class="n">IPC_PRIVATE</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="o">*</span> <span class="n">STRSIZE</span><span class="p">,</span> <span class="mo">0666</span> <span class="o">|</span> <span class="n">IPC_CREAT</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">shared_memory_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">shmat</span><span class="p">(</span><span class="n">shmid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">,</span> <span class="s">&quot;shared memory world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">big_malloc_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">256</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">,</span> <span class="s">&quot;big malloc world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">medium_malloc_world_1</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">131</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="mi">905</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">,</span> <span class="s">&quot;medium malloc world 1&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">medium_malloc_world_2</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">131</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="mi">904</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">,</span> <span class="s">&quot;medium malloc world 2&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">hello</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">initialized_global_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">not_initialized_static_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">initialized_static_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello_local_world</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">getchar</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">free</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">shmdt</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">shmctl</span><span class="p">(</span><span class="n">shmid</span><span class="p">,</span> <span class="n">IPC_RMID</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">hello</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;hello, %s: 0x%016lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">hello_local_world</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">local_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">local_world</span><span class="p">,</span> <span class="s">&quot;local world&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">local_world</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>実行結果は以下。</p>
+
+<pre><code>$ gcc -o hello hello.c
+$ ./hello ARGworld
+hello, ARGworld: 0x00007ffff7269cb5
+hello, not initialized global world: 0x0000000000600ec0
+hello, initialized global world: 0x0000000000600de0
+hello, not initialized static world: 0x0000000000600e80
+hello, initialized static world: 0x0000000000600e20
+hello, malloc world: 0x0000000001f61010
+hello, shared memory world: 0x00007f2eeea0e000
+hello, big malloc world: 0x00007f2eee9b0010
+hello, medium malloc world 1: 0x00007f2eee98f010
+hello, medium malloc world 2: 0x0000000001f61060
+hello, local world: 0x00007ffff7269680
+</code></pre>
+
+<p>メモリマップは <code>pmap</code> や <code>cat /proc/&lt;PID&gt;/maps</code> や <code>cat /proc/&lt;PID&gt;/smaps</code> で確認できる。</p>
+
+<pre><code>$ pmap -x 19671
+19671:   ./hello ARGworld
+Address           Kbytes     RSS   Dirty Mode   Mapping
+0000000000400000       4       4       0 r-x--  hello
+0000000000600000       4       4       4 rw---  hello
+0000000001f61000     132       8       8 rw---    [ anon ]
+00000037be000000     112      96       0 r-x--  ld-2.5.so
+00000037be21c000       4       4       4 r----  ld-2.5.so
+00000037be21d000       4       4       4 rw---  ld-2.5.so
+00000037be400000    1340     248       0 r-x--  libc-2.5.so
+00000037be54f000    2044       0       0 -----  libc-2.5.so
+00000037be74e000      16      12       8 r----  libc-2.5.so
+00000037be752000       4       4       4 rw---  libc-2.5.so
+00000037be753000      20      16      16 rw---    [ anon ]
+00007f2eee98d000     408      20      20 rw---    [ anon ]
+00007f2eeea0e000       4       4       4 rw-s-    [ shmid=0x578006 ]
+00007f2eeea0f000       8       8       8 rw---    [ anon ]
+00007ffff7255000      84       8       8 rw---    [ stack ]
+00007ffff730e000       4       4       0 r-x--    [ anon ]
+ffffffffff600000       4       0       0 r-x--    [ anon ]
+----------------  ------  ------  ------
+total kB            4196     444      88
+
+$ cat /proc/19671/maps 
+00400000-00401000 r-xp 00000000 fd:00 5101878                            /tmp/hello
+00600000-00601000 rw-p 00000000 fd:00 5101878                            /tmp/hello
+01f61000-01f82000 rw-p 00000000 00:00 0                                  [heap]
+37be000000-37be01c000 r-xp 00000000 fd:00 1871272                        /lib64/ld-2.5.so
+37be21c000-37be21d000 r--p 0001c000 fd:00 1871272                        /lib64/ld-2.5.so
+37be21d000-37be21e000 rw-p 0001d000 fd:00 1871272                        /lib64/ld-2.5.so
+37be400000-37be54f000 r-xp 00000000 fd:00 1871273                        /lib64/libc-2.5.so
+37be54f000-37be74e000 ---p 0014f000 fd:00 1871273                        /lib64/libc-2.5.so
+37be74e000-37be752000 r--p 0014e000 fd:00 1871273                        /lib64/libc-2.5.so
+37be752000-37be753000 rw-p 00152000 fd:00 1871273                        /lib64/libc-2.5.so
+37be753000-37be758000 rw-p 00000000 00:00 0 
+7f2eee98d000-7f2eee9f3000 rw-p 00000000 00:00 0 
+7f2eeea0e000-7f2eeea0f000 rw-s 00000000 00:04 5734406                    /SYSV00000000 (deleted)
+7f2eeea0f000-7f2eeea11000 rw-p 00000000 00:00 0 
+7ffff7255000-7ffff726a000 rw-p 00000000 00:00 0                          [stack]
+7ffff730e000-7ffff730f000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+</code></pre>
+
+<p><code>size</code> コマンドで text や BSS のサイズを確認できる。</p>
+
+<pre><code>$ size hello
+   text    data     bss     dec     hex filename
+   2414     704     160    3278     cce hello
+
+$ size --format=SysV -x hello
+hello  :
+section           size       addr
+.interp           0x1c   0x400200
+.note.ABI-tag     0x20   0x40021c
+.gnu.hash         0x1c   0x400240
+.dynsym          0x108   0x400260
+.dynstr           0x6d   0x400368
+.gnu.version      0x16   0x4003d6
+.gnu.version_r    0x20   0x4003f0
+.rela.dyn         0x18   0x400410
+.rela.plt         0xd8   0x400428
+.init             0x18   0x400500
+.plt              0xa0   0x400518
+.text            0x488   0x4005c0
+.fini              0xe   0x400a48
+.rodata           0x25   0x400a58
+.eh_frame_hdr     0x34   0x400a80
+.eh_frame         0xd4   0x400ab8
+.ctors            0x10   0x600b90
+.dtors            0x10   0x600ba0
+.jcr               0x8   0x600bb0
+.dynamic         0x190   0x600bb8
+.got               0x8   0x600d48
+.got.plt          0x60   0x600d50
+.data             0xa0   0x600dc0
+.bss              0xa0   0x600e60
+.comment         0x114        0x0
+Total            0xde2
+</code></pre>
+
+<p>これらから次のようなメモリマップとなっていると考えられる。</p>
+
+<pre><code>+------------------------------+  0x0000000000000000
+:                              :
++------------------------------+  0x0000000000400000
+|text                          |  機械命令
+|                              |
++------------------------------+  0x0000000000401000
+:                              :
++------------------------------+  0x0000000000600000
+|                              |  0x0000000000600dc0
+|data                          |  初期化された static 変数
+|  initialized global var      |  0x0000000000600de0
+|  initialized static var      |  0x0000000000600e20
+|                              |
++------------------------------+  0x0000000000600e60
+|BSS                           |  初期化されていない static 変数
+|  not initialized static var  |  0x0000000000600e80
+|  not initialized global var  |  0x0000000000600ec0
+|                              |
++------------------------------+  0x0000000000601000
+:                              :
++------------------------------+  0x0000000001f61000
+|heap                          |  malloc() で動的に確保される領域(上位アドレスに伸びる)
+|  malloc var                  |  0x0000000001f61010
+|  malloc var                  |  0x0000000001f61060
+|                              |
++------------------------------+  0x0000000001f82000
+|             ||||             |
+|             VVVV             |
+:                              :
+:                              :
+|                              |
++------------------------------+  0x00000037be000000
+|                              |
+|  共有ライブラリ              |
+|  (ld-2.5.so, libc-2.5.so)    |
++------------------------------+  0x00000037be753000
+| ???                          |
++------------------------------+  0x00000037be758000
+|                              |
+:                              :
+:                              :
+|             ^^^^ ??          |
+|             |||| ??          |
++------------------------------+  0x00007f2eee98d000
+|heap??                        |
+|  malloc var                  |  0x00007f2eee98f010
+|  big malloc var              |  0x00007f2eee9b0010
+|                              |
++------------------------------+  0x00007f2eee9f3000
+:                              :
++------------------------------+  0x00007f2eeea0e000
+|shared memory                 |  共有メモリ領域
+|  shared memory var           |  0x00007f2eeea0e000
+|                              |
++------------------------------+  0x00007f2eeea0f000
+|???                           |
++------------------------------+  0x00007f2eeea11000
+|                              |
+:                              :
+:                              :
+|             ^^^^             |
+|             ||||             |
++------------------------------+  0x00007ffff7255000
+|stack                         |  関数呼び出しやローカル変数等で使用されるスタック領域(下位アドレスに伸びる)
+|  local var                   |  0x00007ffff7269680
+|  arguments[1]                |  0x00007ffff7269cb5
+|                              |
++------------------------------+  0x00007ffff726a000
+:                              :
++------------------------------+  0x00007ffff730e000
+|???                           |
++------------------------------+  0x00007ffff730f000
+|                              |
+:                              :
+:                              :
+|                              |
++------------------------------+  0xffffffffff600000
+|arguments / environments??    |
+|                              |
++------------------------------+  0xffffffffff601000
+:                              :
+:                              :
++------------------------------+  0xffffffffffffffff = 2^64 (64bit の場合)
+</code></pre>
+
+<p>heap としては 0x0000000001f61000 〜 0x0000000001f82000 の 132Kbytes が割り当てられているようだが、
+約132Kbytes より大きく malloc() で動的にメモリを割り当てるとアドレスが飛んで 0x00007f2eee98d000 付近に
+メモリが割り当てられ、しかも下位にメモリが伸びているようだ。</p>
+
+<h2>参考</h2>
+
+<ul>
+<li><a href="http://www.coins.tsukuba.ac.jp/~yas/coins/os2-2011/2012-01-24/index.html">メモリ管理、アドレス空間、ページテーブル</a></li>
+<li><a href="http://blog.gakitama.com/?e=490">おじさんＯＳ講座（１）：pmapを使ってみよう</a></li>
+<li><a href="http://www.valinux.co.jp/contents/tech/techlib/eos/malloc/malloc_001.html">mallocライブラリのメモリ管理構造</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
