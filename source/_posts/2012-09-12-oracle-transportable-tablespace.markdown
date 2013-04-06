@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Oracle トランスポータブル表領域"
+title: "[Oracle] トランスポータブル表領域"
 date: 2012-09-12 23:18
 comments: true
 categories: [Oracle, DB, 11gR2]
