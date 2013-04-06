@@ -9,8 +9,10 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 従来型の LOB (BasicFiles LOB) から、Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB へ移行する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle &hellip;">
+  <meta name="description" content="目的 参照パーティション表を作成する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパーティショニング・ガイド
+-> 4 パーティションの管理
+-> &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -63,6 +65,129 @@ DB: Oracle &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-reference-partitioned-table/">[Oracle] 参照パーティション表</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T16:13:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>参照パーティション表を作成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>VLDBおよびパーティショニング・ガイド<br/>
+-> 4 パーティションの管理<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJDDEEC">参照パーティション表の作成</a></li>
+</ul>
+
+
+<h2>参照パーティション表の作成</h2>
+
+<p>参照パーティション表は、例えば次のようなケースで役立つ。注文を管理する orders 表に注文日が格納される order_date 列がある。また、注文に含まれる品目を管理する order_items 表があり、orders 表を order_id 列で外部参照しているとする。orders 表が order_date 列をキー値としてパーティション化されている場合、order_items 表も同じように注文日によりパーティション化したかったら、従来ならば order_date 列を order_itmes 表にも加える必要があった。参照パーティション表を使えば、order_items 列に余計な order_date 列を加えることなく、外部参照している orders と同じ単位でパーティション化することができる。</p>
+
+<p>実際に上記シナリオで参照パーティション表を作成してみる。</p>
+
+<pre><code>SQL&gt; CREATE TABLE orders
+         ( order_id           NUMBER(12),
+           order_date         DATE,
+           order_mode         VARCHAR2(8),
+           customer_id        NUMBER(6),
+           order_status       NUMBER(2),
+           order_total        NUMBER(8,2),
+           sales_rep_id       NUMBER(6),
+           promotion_id       NUMBER(6),
+           CONSTRAINT orders_pk PRIMARY KEY(order_id)
+         )
+       PARTITION BY RANGE(order_date)
+         ( PARTITION Q1_2005 VALUES LESS THAN (TO_DATE('01-APR-2005','DD-MON-YYYY')),
+           PARTITION Q2_2005 VALUES LESS THAN (TO_DATE('01-JUL-2005','DD-MON-YYYY')),
+           PARTITION Q3_2005 VALUES LESS THAN (TO_DATE('01-OCT-2005','DD-MON-YYYY')),
+           PARTITION Q4_2005 VALUES LESS THAN (TO_DATE('01-JAN-2006','DD-MON-YYYY'))
+         );
+
+Table created.
+
+SQL&gt; CREATE TABLE order_items
+         ( order_id           NUMBER(12) NOT NULL,
+           line_item_id       NUMBER(3)  NOT NULL,
+           product_id         NUMBER(6)  NOT NULL,
+           unit_price         NUMBER(8,2),
+           quantity           NUMBER(8),
+           CONSTRAINT order_items_fk
+           FOREIGN KEY(order_id) REFERENCES orders(order_id)
+         )
+         PARTITION BY REFERENCE(order_items_fk);
+
+Table created. 
+</code></pre>
+
+<p>パーティション情報の確認。</p>
+
+<pre><code>SQL&gt; col table_name for a30
+     col partitioning_type for a20
+     col ref_ptn_constraint_name for a30
+     set lines 200
+SQL&gt; SELECT table_name, partitioning_type, ref_ptn_constraint_name FROM user_part_tables;
+
+TABLE_NAME                     PARTITIONING_TYPE    REF_PTN_CONSTRAINT_NAME
+------------------------------ -------------------- ------------------------------
+ORDERS                         RANGE
+ORDER_ITEMS                    REFERENCE            ORDER_ITEMS_FK
+
+SQL&gt; col partition_name for a30
+SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
+
+TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
+------------------------------ ------------------------------ --------------------------------------------------------------------------------
+ORDERS                         Q1_2005                        TO_DATE(' 2005-04-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q2_2005                        TO_DATE(' 2005-07-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q3_2005                        TO_DATE(' 2005-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDERS                         Q4_2005                        TO_DATE(' 2006-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
+ORDER_ITEMS                    Q1_2005
+ORDER_ITEMS                    Q2_2005
+ORDER_ITEMS                    Q3_2005
+ORDER_ITEMS                    Q4_2005
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -704,317 +829,6 @@ Statistics
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/12/oracle-transportable-tablespace/">Oracle トランスポータブル表領域</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-12T23:18:00+09:00" pubdate data-updated="true">Sep 12<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>トランスポータブル表領域により DB 間で表領域の移動を行う。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>管理者ガイド<br/>
--> 14 表領域の管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces013.htm#i1007252">データベース間で表領域をトランスポートする手順および例</a></li>
-</ul>
-
-
-<h2>トランスポータブル表領域</h2>
-
-<p>マニュアルに記載の手順に従い、トランスポータブル表領域により DB 間で表領域の移動を行う。</p>
-
-<ul>
-<li>今回の検証用に表領域を作成</li>
-</ul>
-
-
-<p><code>tt_emp</code> 表領域を作成する。</p>
-
-<pre><code>SQL&gt; CREATE TABLESPACE tt_emp
-     DATAFILE '/u01/app/oracle/oradata/PROD1/tt_emp01.dbf'
-     SIZE 10M REUSE AUTOEXTEND ON;
-
-Tablespace created.
-
-SQL&gt; CREATE TABLE scott.tt_emp TABLESPACE tt_emp AS SELECT * FROM scott.emp;
-
-Table created.
-</code></pre>
-
-<ul>
-<li>endianness の確認</li>
-</ul>
-
-
-<p>異なるプラットフォーム間で表領域のトランスポートを行う場合は endianness が異なると変換が必要になる。
-endianness を確認する。</p>
-
-<pre><code>SQL&gt; set pages 100
-     col platform_name for a40
-     col endian_format for a15
-SQL&gt; SELECT * FROM V$TRANSPORTABLE_PLATFORM;
-
-PLATFORM_ID PLATFORM_NAME                            ENDIAN_FORMAT
------------ ---------------------------------------- ---------------
-          1 Solaris[tm] OE (32-bit)                  Big
-          2 Solaris[tm] OE (64-bit)                  Big
-          7 Microsoft Windows IA (32-bit)            Little
-         10 Linux IA (32-bit)                        Little
-          6 AIX-Based Systems (64-bit)               Big
-          3 HP-UX (64-bit)                           Big
-          5 HP Tru64 UNIX                            Little
-          4 HP-UX IA (64-bit)                        Big
-         11 Linux IA (64-bit)                        Little
-         15 HP Open VMS                              Little
-          8 Microsoft Windows IA (64-bit)            Little
-          9 IBM zSeries Based Linux                  Big
-         13 Linux x86 64-bit                         Little
-         16 Apple Mac OS                             Big
-         12 Microsoft Windows x86 64-bit             Little
-         17 Solaris Operating System (x86)           Little
-         18 IBM Power Based Linux                    Big
-         19 HP IA Open VMS                           Little
-         20 Solaris Operating System (x86-64)        Little
-         21 Apple Mac OS (x86-64)                    Little
-
-20 rows selected.
-
-SQL&gt; SELECT PLATFORM_NAME FROM V$DATABASE;
-
-PLATFORM_NAME
-----------------------------------------
-Linux x86 64-bit
-
-SQL&gt; SELECT d.PLATFORM_NAME, ENDIAN_FORMAT
-     FROM V$TRANSPORTABLE_PLATFORM tp, V$DATABASE d
-     WHERE tp.PLATFORM_NAME = d.PLATFORM_NAME;
-
-PLATFORM_NAME                            ENDIAN_FORMAT
----------------------------------------- ---------------
-Linux x86 64-bit                         Little
-</code></pre>
-
-<ul>
-<li>表領域が自己完結型かどうかの確認</li>
-</ul>
-
-
-<p>表領域内に別の表領域の表の索引が含まれている場合などは自己完結型でないためトランスポートできない。
-表領域が自己完結型かどうかチェックする。</p>
-
-<pre><code>SQL&gt; EXECUTE DBMS_TTS.TRANSPORT_SET_CHECK('tt_emp', TRUE);
-
-PL/SQL procedure successfully completed.
-
-SQL&gt; SELECT * FROM TRANSPORT_SET_VIOLATIONS;
-
-no rows selected
-</code></pre>
-
-<p>もし、違反している場合は <code>TRANSPORT_SET_VIOLATIONS</code> ビューに違反している内容が表示される。</p>
-
-<ul>
-<li>表領域を読み取り専用にする</li>
-</ul>
-
-
-<p>表領域を読取り専用にする。</p>
-
-<pre><code>SQL&gt; ALTER TABLESPACE tt_emp READ ONLY;
-
-Tablespace altered.
-</code></pre>
-
-<ul>
-<li>データ・ポンプによりエクスポート</li>
-</ul>
-
-
-<p><code>expdp</code> によりエクスポートする。</p>
-
-<pre><code>$ expdp system/oracle dumpfile=expdat.dmp directory=data_pump_dir \
-        transport_tablespaces=tt_emp logfile=tts_export.log
-
-Export: Release 11.2.0.3.0 - Production on Wed Sep 12 23:53:49 2012
-
-Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
-
-Connected to: Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
-With the Partitioning, OLAP, Data Mining and Real Application Testing options
-FLASHBACK automatically enabled to preserve database integrity.
-Starting "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01":  system/******** dumpfile=expdat.dmp directory=data_pump_dir transport_tablespaces=tt_emp logfile=tts_export.log 
-Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
-Processing object type TRANSPORTABLE_EXPORT/TABLE
-Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
-Master table "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully loaded/unloaded
-******************************************************************************
-Dump file set for SYSTEM.SYS_EXPORT_TRANSPORTABLE_01 is:
-  /u01/app/oracle/admin/PROD1/dpdump/expdat.dmp
-******************************************************************************
-Datafiles required for transportable tablespace TT_EMP:
-  /u01/app/oracle/oradata/PROD1/tt_emp01.dbf
-Job "SYSTEM"."SYS_EXPORT_TRANSPORTABLE_01" successfully completed at 23:54:17
-</code></pre>
-
-<ul>
-<li>endianness の変換</li>
-</ul>
-
-
-<p>もし、endianness の異なるプラットフォームにトランスポートする場合は、RMAN でデータファイルの変換を行う。</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target /
-RMAN&gt; CONVERT TABLESPACE tt_emp
-      TO PLATFORM 'Apple Mac OS'
-      FORMAT '/tmp/%U';
-
-Starting conversion at source at 12-09-12
-using target database control file instead of recovery catalog
-allocated channel: ORA_DISK_1
-channel ORA_DISK_1: SID=43 device type=DISK
-channel ORA_DISK_1: starting datafile conversion
-input datafile file number=00006 name=/u01/app/oracle/oradata/PROD1/tt_emp01.dbf
-converted datafile=/tmp/data_D-PROD1_I-2014160803_TS-TT_EMP_FNO-6_07nl25cg
-channel ORA_DISK_1: datafile conversion complete, elapsed time: 00:00:01
-Finished conversion at source at 12-09-12  
-</code></pre>
-
-<ul>
-<li>表領域のデータファイルと、エクスポート・ダンプ・ファイルをトランスポート先に移動</li>
-</ul>
-
-
-<p>今回は同一サーバ上の別 DB にした。</p>
-
-<pre><code># エクスポート・ダンプ・ファイル をトランスポート先 DB の DATA_PUMP_DIR にコピー
-$ cp -i /u01/app/oracle/admin/PROD1/dpdump/expdat.dmp /u01/app/oracle/admin/PROD2/dpdump/
-
-# 通常はデータファイルをトランスポート先のデータファイルの位置にコピー
-# 今回はテストとして endianness を変換したファイルをコピーした
-$ cp -i /tmp/data_D-PROD1_I-2014160803_TS-TT_EMP_FNO-6_07nl25cg /tmp/tt_emp01.dbf
-</code></pre>
-
-<ul>
-<li>endianness の変換</li>
-</ul>
-
-
-<p>もし、endianness の異なるプラットフォームにトランスポートする場合でトランスポート元で変換を行っていない場合は、RMAN でデータファイルの変換を行う。</p>
-
-<pre><code>$ export ORACLE_SID=PROD2
-$ rman target /
-RMAN&gt; CONVERT DATAFILE
-      '/tmp/tt_emp01.dbf'
-      TO PLATFORM 'Linux x86 64-bit'
-      FROM PLATFORM 'Apple Mac OS'
-      DB_FILE_NAME_CONVERT='/tmp/', '/u01/app/oracle/oradata/PROD2/';
-
-Starting conversion at target at 12-09-13
-using target database control file instead of recovery catalog
-allocated channel: ORA_DISK_1
-channel ORA_DISK_1: SID=36 device type=DISK
-channel ORA_DISK_1: starting datafile conversion
-input file name=/tmp/tt_emp01.dbf
-converted datafile=/u01/app/oracle/oradata/PROD2/tt_emp01.dbf
-channel ORA_DISK_1: datafile conversion complete, elapsed time: 00:00:01
-Finished conversion at target at 12-09-13
-</code></pre>
-
-<ul>
-<li>トランスポート元の表領域を読取り/書込みモードに戻す。</li>
-</ul>
-
-
-<p><code>ALTER TABLESPACE</code> にて戻す。</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; ALTER TABLESPACE tt_emp READ WRITE;
-
-Tablespace altered.
-</code></pre>
-
-<ul>
-<li>データ・ポンプによりインポート</li>
-</ul>
-
-
-<p><code>impdp</code> によりインポートする。</p>
-
-<pre><code>$ export ORACLE_SID=PROD2
-$ impdp system/oracle dumpfile=expdat.dmp directory=data_pump_dir \
-        transport_datafiles='/u01/app/oracle/oradata/PROD2/tt_emp01.dbf' \
-        logfile=tts_import.log
-
-Import: Release 11.2.0.3.0 - Production on Thu Sep 13 00:22:31 2012
-
-Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
-
-Connected to: Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
-With the Partitioning, OLAP, Data Mining and Real Application Testing options
-Master table "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01" successfully loaded/unloaded
-Starting "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01":  system/******** dumpfile=expdat.dmp directory=data_pump_dir transport_datafiles=/u01/app/oracle/oradata/PROD2/tt_emp01.dbf logfile=tts_import.log 
-Processing object type TRANSPORTABLE_EXPORT/PLUGTS_BLK
-Processing object type TRANSPORTABLE_EXPORT/TABLE
-Processing object type TRANSPORTABLE_EXPORT/POST_INSTANCE/PLUGTS_BLK
-Job "SYSTEM"."SYS_IMPORT_TRANSPORTABLE_01" successfully completed at 00:22:34
-</code></pre>
-
-<ul>
-<li>トランスポート先の表領域を読取り/書込みモードに戻す。</li>
-</ul>
-
-
-<p><code>ALTER TABLESPACE</code> にて戻す。</p>
-
-<pre><code>$ export ORACLE_SID=PROD2
-$ sqlplus '/as sysdba'
-SQL&gt; ALTER TABLESPACE tt_emp READ WRITE;
-
-Tablespace altered.
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -1032,6 +846,10 @@ Tablespace altered.
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
@@ -1045,10 +863,6 @@ Tablespace altered.
     
       <li class="post">
         <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
       </li>
     
   </ul>

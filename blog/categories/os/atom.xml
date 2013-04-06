@@ -4,7 +4,7 @@
   <title><![CDATA[Category: OS | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/os/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-01-06T05:26:12+09:00</updated>
+  <updated>2013-04-06T17:37:46+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -12,6 +12,465 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[[OS] メモリリークの調査方法]]></title>
+    <link href="http://th0x4c.github.com/blog/2013/04/06/os-memory-leak/"/>
+    <updated>2013-04-06T17:29:00+09:00</updated>
+    <id>http://th0x4c.github.com/blog/2013/04/06/os-memory-leak</id>
+    <content type="html"><![CDATA[<h2>目的</h2>
+
+<p>メモリリークの調査方法をまとめる。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: CentOS 5.5</li>
+<li>Kernel: 2.6.18-194.el5 x86_64</li>
+<li>GCC: gcc 4.1.2 20080704</li>
+<li>GDB: GNU gdb 7.0.1-23.el5</li>
+<li>Valgrind: valgrind-3.5.0</li>
+</ul>
+
+
+<h2>サンプルプログラム</h2>
+
+<p>メモリリークが起きるサンプルとして以下を利用する。
+<code>leak_func()</code> が実行される度に 2048 bytes メモリリークする。
+合計で 101 回 <code>leak_func()</code> が実行されるので 206848bytes(= 2048 * 101 bytes) リークする。</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdlib</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">STR_BYTES</span> <span class="mi">2048</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">my_alloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">ret</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">size</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">fprintf</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="s">&quot;Cannot malloc struct</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">my_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">leak_func</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">leak_str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">str</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">my_alloc</span><span class="p">(</span><span class="n">STR_BYTES</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">leak_str</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">my_alloc</span><span class="p">(</span><span class="n">STR_BYTES</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">snprintf</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="s">&quot;freed memory&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">snprintf</span><span class="p">(</span><span class="n">leak_str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="s">&quot;leaked memory&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: 0x%016lx, &quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: 0x%016lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">my_free</span><span class="p">((</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">str</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">leak_str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">leak_str</span> <span class="err">が</span> <span class="n">free</span><span class="p">()</span> <span class="err">されていないのでリークする</span> <span class="err">*/</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">leak_func</span><span class="p">();</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Press enter key:&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">getchar</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">100</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">leak_func</span><span class="p">();</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Press enter key:&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">getchar</span><span class="p">();</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>実行結果は以下。</p>
+
+<pre><code>$ gcc -o memory_leak_sample memory_leak_sample.c
+$ ./memory_leak_sample
+freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a19820
+Press enter key:
+freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a1a030
+freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a1a840
+freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a1b050
+&lt;中略&gt;
+freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a4b650
+freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a4be60
+Press enter key:
+</code></pre>
+
+<h2>valgrind による調査</h2>
+
+<p><a href="http://valgrind.org">Valgrind</a> は、メモリリークの検出等を行うツール。
+プロファイリング等メモリリーク検出以外の機能もあり、メモリリー検出で使用する場合は <code>--tool=memcheck</code> を指定する。</p>
+
+<p>Valgrind を使用して上記サンプルを動作させた例が以下。なお、Valgrind を通してプログラムを実行するとすごく遅くなるので注意。</p>
+
+<pre><code>$ valgrind --tool=memcheck --leak-check=yes --leak-resolution=high --num-callers=40 --undef-value-errors=no --run-libc-freeres=no -v ./memory_leak_sample
+==16207== Memcheck, a memory error detector
+==16207== Copyright (C) 2002-2009, and GNU GPL'd, by Julian Seward et al.
+==16207== Using Valgrind-3.5.0 and LibVEX; rerun with -h for copyright info
+==16207== Command: ./memory_leak_sample
+==16207==
+--16207-- Valgrind options:
+--16207--    --tool=memcheck
+--16207--    --leak-check=yes
+--16207--    --leak-resolution=high
+--16207--    --num-callers=40
+--16207--    --undef-value-errors=no
+--16207--    --run-libc-freeres=no
+--16207--    -v
+--16207-- Contents of /proc/version:
+--16207--   Linux version 2.6.18-194.el5 (mockbuild@builder10.centos.org) (gcc version 4.1.2 20080704 (Red Hat 4.1.2-48)) #1 SMP Fri Apr 2
+ 14:58:14 EDT 2010
+--16207-- Arch and hwcaps: AMD64, amd64-sse3-cx16
+--16207-- Page sizes: currently 4096, max supported 4096
+--16207-- Valgrind library directory: /usr/lib64/valgrind
+--16207-- Reading syms from /home/hashi/tmp/memory_leak_sample (0x400000)
+--16207-- Reading syms from /usr/lib64/valgrind/memcheck-amd64-linux (0x38000000)
+--16207--    object doesn't have a dynamic symbol table
+--16207-- Reading syms from /lib64/ld-2.5.so (0x3e1c600000)
+--16207-- Reading suppressions file: /usr/lib64/valgrind/default.supp
+--16207-- REDIR: 0x3e1c614620 (strlen) redirected to 0x3803e767 (vgPlain_amd64_linux_REDIR_FOR_strlen)
+--16207-- Reading syms from /usr/lib64/valgrind/vgpreload_core-amd64-linux.so (0x4802000)
+--16207-- Reading syms from /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so (0x4a03000)
+==16207== WARNING: new redirection conflicts with existing -- ignoring it
+--16207--     new: 0x3e1c614620 (strlen              ) R-&gt; 0x04a06dc0 strlen
+--16207-- REDIR: 0x3e1c614440 (index) redirected to 0x4a06c30 (index)
+--16207-- REDIR: 0x3e1c6145f0 (strcmp) redirected to 0x4a06e90 (strcmp)
+--16207-- Reading syms from /lib64/libc-2.5.so (0x3e1ca00000)
+--16207-- REDIR: 0x3e1ca79ba0 (rindex) redirected to 0x4a06ae0 (rindex)
+--16207-- REDIR: 0x3e1ca74c70 (malloc) redirected to 0x4a05d9a (malloc)
+--16207-- REDIR: 0x3e1ca797b0 (strlen) redirected to 0x4a06d80 (strlen)
+freed memory: 0x0000000004c24040, leaked memory: 0x0000000004c24880
+--16207-- REDIR: 0x3e1ca72720 (free) redirected to 0x4a059aa (free)
+Press enter key:
+freed memory: 0x0000000004c250c0, leaked memory: 0x0000000004c25900
+freed memory: 0x0000000004c26140, leaked memory: 0x0000000004c26980
+&lt;中略&gt;
+freed memory: 0x0000000004c89140, leaked memory: 0x0000000004c89980
+freed memory: 0x0000000004c8a1c0, leaked memory: 0x0000000004c8aa00
+freed memory: 0x0000000004c8b240, leaked memory: 0x0000000004c8ba80
+Press enter key:
+==16207==
+==16207== HEAP SUMMARY:
+==16207==     in use at exit: 206,848 bytes in 101 blocks
+==16207==   total heap usage: 202 allocs, 101 frees, 413,696 bytes allocated
+==16207==
+==16207== Searching for pointers to 101 not-freed blocks
+==16207== Checked 73,400 bytes
+==16207==
+==16207== 2,048 bytes in 1 blocks are definitely lost in loss record 1 of 2
+==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
+==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x4007AE: main (in /home/hashi/tmp/memory_leak_sample)
+==16207==
+==16207== 204,800 bytes in 100 blocks are definitely lost in loss record 2 of 2
+==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
+==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x4007D5: main (in /home/hashi/tmp/memory_leak_sample)
+==16207==
+==16207== LEAK SUMMARY:
+==16207==    definitely lost: 206,848 bytes in 101 blocks
+==16207==    indirectly lost: 0 bytes in 0 blocks
+==16207==      possibly lost: 0 bytes in 0 blocks
+==16207==    still reachable: 0 bytes in 0 blocks
+==16207==         suppressed: 0 bytes in 0 blocks
+==16207==
+==16207== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
+==16207== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
+</code></pre>
+
+<p>いろいろ出力があるが、以下の出力からどの Call Stack で確保されたメモリがどれだけリークしているか分かる。</p>
+
+<pre><code>==16207== 2,048 bytes in 1 blocks are definitely lost in loss record 1 of 2
+==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
+==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x4007AE: main (in /home/hashi/tmp/memory_leak_sample)
+==16207==
+==16207== 204,800 bytes in 100 blocks are definitely lost in loss record 2 of 2
+==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
+==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
+==16207==    by 0x4007D5: main (in /home/hashi/tmp/memory_leak_sample)
+</code></pre>
+
+<p>上述のやり方だと、シェルから valgrind と共に直接実行できるプログラムでないと調査できない。
+デーモンなど直接実行できないプログラムの場合は、ラップするシェルスクリプトを用意するとよい。</p>
+
+<p>例えば、最終的に <code>some_daemon.bin</code> というバイナリが実行されるデーモンがあるとして、以下の
+ようにラップするシェルスクリプトを同一名で用意して、元のデーモンと同じように起動・停止すればよい。</p>
+
+<pre><code>$ cp -p /path/to/some_daemon.bin /path/to/some_daemon.bin.backup
+$ mv /path/to/some_daemon.bin /path/to/some_daemon.bin.orig
+$ vi some_daemon.bin # 以下の内容で作成
+--------
+#!/bin/sh
+
+ORG_BIN=/path/to/some_daemon.bin.orig
+LOG_LOC_AND_PREFIX=/tmp/valgrind_instance.%p.log
+VALG_PATH=/usr/bin/valgrind
+VALGRIND_OPTS="--log-file=$LOG_LOC_AND_PREFIX --leak-check=yes --leak-resolution=high --num-callers=40 --undef-value-errors=no --run-libc-freeres=no --error-limit=no -v"
+export VALGRIND_OPTS
+
+exec $VALG_PATH --tool=memcheck $ORG_BIN "$*"
+--------
+$ chown root:root some_daemon.bin # 元のバイナリと同じオーナーにする
+$ chmod 755 some_daemon.bin       # 元のバイナリと同じパーミッションにする
+</code></pre>
+
+<p>これで上記<code>LOG_LOC_AND_PREFIX</code>に指定したファイルにログが出力される。</p>
+
+<h2>pmap と gdb による調査</h2>
+
+<p>プロセスのメモリマップを表示する <code>pmap</code> を採取してリークしている領域を特定し、その内容を <code>gdb</code> から確認する。</p>
+
+<p>まず、<code>pmap</code> を採取して増加している領域を特定する。合わせメモリダンプを確認するために <code>gcore</code> により core を採取しておく。</p>
+
+<p>プログラムを実行</p>
+
+<pre><code>$ ./memory_leak_sample
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8e820
+Press enter key:
+</code></pre>
+
+<p>この時の pmap の結果は以下</p>
+
+<pre><code>$ ps -ef | grep memory_leak_sample
+hashi    16639 29479  0 10:47 pts/10   00:00:00 ./memory_leak_sample
+$ pmap -x 16639
+16639:   ./memory_leak_sample
+Address           Kbytes     RSS   Dirty Mode   Mapping
+0000000000400000       4       4       0 r-x--  memory_leak_sample
+0000000000600000       4       4       4 rw---  memory_leak_sample
+0000000007b8e000     132       8       8 rw---    [ anon ]
+0000003e1c600000     112      96       0 r-x--  ld-2.5.so
+0000003e1c81b000       4       4       4 r----  ld-2.5.so
+0000003e1c81c000       4       4       4 rw---  ld-2.5.so
+0000003e1ca00000    1336     260       0 r-x--  libc-2.5.so
+0000003e1cb4e000    2044       0       0 -----  libc-2.5.so
+0000003e1cd4d000      16      12       8 r----  libc-2.5.so
+0000003e1cd51000       4       4       4 rw---  libc-2.5.so
+0000003e1cd52000      20      16      16 rw---    [ anon ]
+00002b2fac886000      12       8       8 rw---    [ anon ]
+00002b2fac89f000       8       8       8 rw---    [ anon ]
+00007fff1b3a6000      84      12      12 rw---    [ stack ]
+ffffffffff600000    8192       0       0 -----    [ anon ]
+----------------  ------  ------  ------
+total kB           11976     440      76
+</code></pre>
+
+<p>合わせて core を採取しておく(上書きされないようにリネームしておく)</p>
+
+<pre><code>$ gcore 16639
+0x0000003e1cac5ff0 in __read_nocancel () from /lib64/libc.so.6
+Saved corefile core.16639
+
+$ mv core.16639 core.16639.before
+</code></pre>
+
+<p>プログラムを進める</p>
+
+<pre><code>$ ./memory_leak_sample
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8e820
+Press enter key:  &lt;=== エンターキーを押下
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8f030
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8f840
+&lt;中略&gt;
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bae410
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007baec20
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007baf430
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bafc40
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bb0450
+&lt;中略&gt;
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bc0650
+freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bc0e60
+Press enter key:
+</code></pre>
+
+<p>この時の pmap と core を採取しておく</p>
+
+<pre><code>$ pmap -x 16639
+16639:   ./memory_leak_sample
+Address           Kbytes     RSS   Dirty Mode   Mapping
+0000000000400000       4       4       0 r-x--  memory_leak_sample
+0000000000600000       4       4       4 rw---  memory_leak_sample
+0000000007b8e000     264     208     208 rw---    [ anon ]
+0000003e1c600000     112      96       0 r-x--  ld-2.5.so
+0000003e1c81b000       4       4       4 r----  ld-2.5.so
+0000003e1c81c000       4       4       4 rw---  ld-2.5.so
+0000003e1ca00000    1336     260       0 r-x--  libc-2.5.so
+0000003e1cb4e000    2044       0       0 -----  libc-2.5.so
+0000003e1cd4d000      16      12       8 r----  libc-2.5.so
+0000003e1cd51000       4       4       4 rw---  libc-2.5.so
+0000003e1cd52000      20      16      16 rw---    [ anon ]
+00002b2fac886000      12      12      12 rw---    [ anon ]
+00002b2fac89f000       8       8       8 rw---    [ anon ]
+00007fff1b3a6000      84      12      12 rw---    [ stack ]
+ffffffffff600000    8192       0       0 -----    [ anon ]
+----------------  ------  ------  ------
+total kB           12108     644     280
+
+$ gcore 16639
+0x0000003e1cac5ff0 in __read_nocancel () from /lib64/libc.so.6
+Saved corefile core.16639
+
+$ mv core.16639 core.16639.after
+</code></pre>
+
+<p>1回目と2回目の pmap の結果を比較すると、以下の個所で仮想メモリ量が増加している(リークしている)ことが分かる。</p>
+
+<pre><code>5c5
+&lt; 0000000007b8e000     132       8       8 rw---    [ anon ]
+---
+&gt; 0000000007b8e000     264     208     208 rw---    [ anon ]
+</code></pre>
+
+<p>仮想メモリ量が 132Kbytes -> 264Kbytes (+132Kbytes)に増加している。
+増加したアドレスのメモリダンプを確認して、どのように利用されているか確認してみる。</p>
+
+<p>具体的にはメモリ増加後の core で 0x0000000007b8e000 + 132Kbytes のアドレス(0x7baf000)から
+増加した 132Kbytes 分のメモリダンプを確認する。
+ダンプを採るときに <code>x/16896xg 0x7baf000</code> としているのは、アドレス <code>0x7baf000</code> から、
+8バイト(ジャイアント・ワード)単位で(<code>g</code>)、16896個分を、16進数で(<code>x</code>)出力するということ。
+つまり、<code>16896 * 8 = 135168 = 132Kbytes</code> 分が出力される。</p>
+
+<pre><code>$ gdb
+(gdb) set height 0
+(gdb) file ./memory_leak_sample
+(gdb) core-file core.16639.after
+(gdb) set logging file core.16639.after.gdb.log
+(gdb) set logging on
+(gdb) x/16896xg 0x7baf000
+0x7baf000:      0x0000000000000000      0x0000000000000000
+0x7baf010:      0x0000000000000000      0x0000000000000000
+&lt;中略&gt;
+0x7baf410:      0x0000000000000000      0x0000000000000000
+0x7baf420:      0x0000000000000000      0x0000000000000811
+0x7baf430:      0x6d2064656b61656c      0x00000079726f6d65
+0x7baf440:      0x0000000000000000      0x0000000000000000
+&lt;中略&gt;
+0x7bcffe0:      0x0000000000000000      0x0000000000000000
+0x7bcfff0:      0x0000000000000000      0x0000000000000000
+(gdb) quit
+</code></pre>
+
+<p>このメモリダンプが pmap 上増加した分。内容を確認すると以下の文字列が見える。</p>
+
+<pre><code>$ grep -v "0x0000000000000000" core.16639.after.gdb.log
+0x7baf430:      0x6d2064656b61656c      0x00000079726f6d65
+0x7bafc40:      0x6d2064656b61656c      0x00000079726f6d65
+0x7bb0450:      0x6d2064656b61656c      0x00000079726f6d65
+0x7bb0c60:      0x6d2064656b61656c      0x00000079726f6d65
+&lt;中略&gt;
+0x7bbf630:      0x6d2064656b61656c      0x00000079726f6d65
+0x7bbfe40:      0x6d2064656b61656c      0x00000079726f6d65
+0x7bc0650:      0x6d2064656b61656c      0x00000079726f6d65
+0x7bc0e60:      0x6d2064656b61656c      0x00000079726f6d65
+</code></pre>
+
+<p><code>0x6d2064656b61656c 0x00000079726f6d65</code> は ASCII で直すと "leaked memory"</p>
+
+<pre><code>$ ruby -e 's="6d2064656b61656c"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.chr}; puts'
+m dekael
+$ ruby -e 's="00000079726f6d65"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.chr}; puts'
+yrome
+</code></pre>
+
+<p>よってプログラム中で "leaked memory" を入れている領域がリークしていると分かる。
+こんなに明らかに分かるケースは少なく、実際のプログラムではポインタが見えていたり
+して、さらに core を追わないとリーク原因箇所が追えないケースが多いと思うがメモリ
+リーク原因究明のとっかかりにはなる。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[[OS] 仮想メモリ空間のメモリマップを調べる]]></title>

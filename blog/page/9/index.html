@@ -9,9 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 パスワードを大文字・小文字の区別をするようにする。
-DB のパスワードについてはその他複雑なパスワードにするように強制する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
+  <meta name="description" content="目的 EM エージェントをインストールする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3)
+EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,188 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-em-agent-installation/">[Oracle] EM エージェントのインストール</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T23:28:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>EM エージェントをインストールする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>EM エージェントのインストール</h2>
+
+<p>EM からインストールする。
+事前に EM エージェントをインストールするサーバに ssh 接続できることを確認しておくこと。</p>
+
+<ul>
+<li>&#8220;デプロイ&#8221; タブから &#8220;エージェントのインストール&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;フレッシュ・インストール&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-2.png" width="720" height="450"></p>
+
+<ul>
+<li>以下のように設定
+
+<ul>
+<li>&#8220;ホスト・リストの指定&#8221; : DB サーバのホスト名</li>
+<li>&#8220;OS 資格証明&#8221; : DB サーバの OS ユーザ</li>
+<li>&#8220;root.sh の実行&#8221; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
+<li>&#8220;インストールのベース・ディレクトリ&#8221; : /u01/app/oracle/Middleware</li>
+<li>&#8220;管理サーバの登録パスワード&#8221; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
+</ul>
+</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-3.png" width="720" height="450">
+<img src="/images/2012-09-07-oracle-em-agent-installation/em-4.png" width="720" height="450">
+<img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&#8221; のチェックははずす。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;はい&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-7.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール中</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-8.png" width="720" height="450"></p>
+
+<ul>
+<li>インストール完了。&#8221;完了&#8221; をクリック。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-9.png" width="720" height="450"></p>
+
+<ul>
+<li>DB サーバ上で root.sh を実行する。</li>
+</ul>
+
+
+<p>DB サーバ上で実行。</p>
+
+<pre><code>$ cd /u01/app/oracle/Middleware/agent11g
+$ su
+# ./root.sh
+</code></pre>
+
+<h2>DB インスタンスを EM に登録する</h2>
+
+<p>EM エージェントをインストールしただけでは DB インスタンスのステータスが保留状態なので構成する必要がある。</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
+
+<ul>
+<li>DB インスタンスを選択して &#8220;構成&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-11.png" width="720" height="450"></p>
+
+<ul>
+<li>dbsnmp のパスワードを変更</li>
+</ul>
+
+
+<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &#8220;接続テスト&#8221; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-13.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
+
+<p>dbsnmp のパスワードを変更したらもう一度 &#8220;接続テスト&#8221; を行い成功することを確認して &#8220;次へ&#8221; をクリック</p>
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
+
+<ul>
+<li>確認して &#8220;発行&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-16.png" width="720" height="450"></p>
+
+<ul>
+<li>構成中</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
+
+<ul>
+<li>&#8220;OK&#8221;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-18.png" width="720" height="450"></p>
+
+<ul>
+<li>他の DB がある場合は同様に構成して、ステータスが正常になることを確認</li>
+</ul>
+
+
+<p><img src="/images/2012-09-07-oracle-em-agent-installation/em-19.png" width="720" height="450"></p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -373,118 +555,6 @@ ADR_BASE = /home/oracle
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-direct-nfs-client/">[Oracle] ダイレクト NFS クライアント</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T19:24:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>インストレーション・ガイド for Linux<br/>
--> 5 Oracle Databaseのインストール後の作業<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
-</ul>
-
-
-<h2>ダイレクト NFS クライアントの有効化</h2>
-
-<ul>
-<li><p>(マニュアルにある <code>oranfstab</code> ファイルの作成は NFS サーバへのアクセスするネットワーク・パスが複数あってロード・バランスやフェイルオーバする場合は必要だが、ネットワーク・パスが1つしか無い場合は不要だそうだ。)</p></li>
-<li><p>libodm11.so の置き換え</p></li>
-</ul>
-
-
-<p><code>$ORACLE_HOME/lib/libnfsodm11.so</code> を元々存在する <code>$ORACLE_HOME/lib/libodm11.so</code> と置き換えるだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_on</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_on
-</code></pre>
-
-<p>内容は <code>libodm11.so</code> をバックアップしておいて <code>libnfsodm11.so</code> と置き換えているだけ。</p>
-
-<pre><code>$ make -n -f ins_rdbms.mk dnfs_on
-if [ ! -f /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy ]; then \
-        cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/lib/libodm11.so.dummy; \
-        fi
-rm -f /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so; cp /u01/app/oracle/product/11.2.0/dbhome_1/lib/libnfsodm11.so /u01/app/oracle/product/11.2.0/dbhome_1/lib/libodm11.so
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>ダイレクト NFS クライアントの無効化</h2>
-
-<ul>
-<li>libodm11.so の置き換え</li>
-</ul>
-
-
-<p>バックアップしておいた <code>libodm11.so</code> を戻すだけでよい。11gR2 ではこれを実行するために <code>$ORACLE_HOME/rdbms/lib/ins_rdbms.mk</code> に <code>dnfs_off</code> というターゲットがある。11gR1 では、手動でコピーが必要だった。</p>
-
-<pre><code>$ cd $ORACLE_HOME/rdbms/lib
-$ make -f ins_rdbms.mk dnfs_off
-</code></pre>
-
-<ul>
-<li>DB 再起動</li>
-</ul>
-
-
-<p>設定変更を有効にするために DB インスタンスを再起動する。</p>
-
-<h2>確認方法</h2>
-
-<p>ダイレクト NFS クライアントが有効な場合、DB 起動時に <code>alert.log</code> に以下の出力がある。</p>
-
-<pre><code>Oracle instance running with ODM: Oracle Direct NFS ODM Library Version 3.0
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/10/">&larr; Older</a>
@@ -502,6 +572,10 @@ $ make -f ins_rdbms.mk dnfs_off
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
@@ -515,10 +589,6 @@ $ make -f ins_rdbms.mk dnfs_off
     
       <li class="post">
         <a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a>
       </li>
     
   </ul>
