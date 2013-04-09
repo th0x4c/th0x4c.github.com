@@ -743,7 +743,7 @@ bps は (byte でなく) bit 単位であることに注意。
 
 * [Linuxトラブルシューティング探偵団　番外編（1）：減り続けるメモリ残量！ 果たしてその原因は!? (1/3) - ＠IT](http://www.atmarkit.co.jp/ait/articles/0810/01/news134.html)
 * [ Linuxトラブルシューティング探偵団　番外編（3）：SystemTapで真犯人を捕まえろ！ (1/4) - ＠IT](http://www.atmarkit.co.jp/ait/articles/0903/25/news131.html)
-* [2.CPU使用率(第5章 パフォーマンス管理～上級:基本管理コースII)](https://users.miraclelinux.com/technet/document/linux/training/2_5_2.html#training2_5_2)
+* [2.CPU使用率(第5章 パフォーマンス管理～上級:基本管理コースII)](https://users.miraclelinux.com/technet/document/linux/training/2_5_2.html)
 * [4.メモリ使用率(第5章 パフォーマンス管理～上級:基本管理コースII)](https://users.miraclelinux.com/technet/document/linux/training/2_5_4.html)
 * [3. 性能管理実践編(システムリソース管理)](http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-3-520773-ja.html)
 * [6. システムがパフォーマンスを維持するためのメモリ管理について](http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-6-520778-ja.html)
