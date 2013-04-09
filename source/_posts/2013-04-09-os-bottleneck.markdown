@@ -749,3 +749,4 @@ bps は (byte でなく) bit 単位であることに注意。
 * [6. システムがパフォーマンスを維持するためのメモリ管理について](http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-6-520778-ja.html)
 * [9. I/Oボトルネックの計測](http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-9-520784-ja.html)
 * [netstat - ホストのネットワーク統計や状態を確認する](http://www.atmarkit.co.jp/fnetwork/netcom/netstat/netstat.html)
+* [Linux Performance and Tuning Guidelines](http://www.redbooks.ibm.com/abstracts/redp4285.html)
