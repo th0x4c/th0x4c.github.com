@@ -9,8 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップおよびリカバリ・ &hellip;">
+  <meta name="description" content="目的 RMAN の構成を変更して、以下ができるようにする。 制御ファイルと SPFILE の自動バックアップ取得
+バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)
+ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +66,142 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップ�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-configure-rman/">[Oracle] RMAN の構成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T01:47:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>RMAN の構成を変更して、以下ができるようにする。</p>
+
+<ul>
+<li>制御ファイルと SPFILE の自動バックアップ取得</li>
+<li>バックアップの最適化(保存方針によって同一ファイルの不要なバックアップをしない)</li>
+<li>ブロック・チェンジ・トラッキングを有効化(DB で変更されたブロックを記録しておくことで、増分バックアップ時のパフォーマンスが向上する。)</li>
+</ul>
+
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+-> 5 Recovery Manager環境の構成<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1019739">Recovery Managerの永続的な構成の表示およびクリア</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1017907">制御ファイルおよびサーバー・パラメータ・ファイルの自動バックアップの構成</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#sthref449">バックアップの最適化の構成</a></p>
+
+<p>-> 9 データベースのバックアップ<br/>
+-> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#sthref883">ブロック・チェンジ・トラッキングの有効化および無効化</a></p></li>
+</ul>
+
+
+<h2>RMAN 構成の確認</h2>
+
+<p>現在の RMAN 構成は <code>show all</code> にて確認できる。</p>
+
+<pre><code>$ rman target / catalog rman/rman@EMREP
+RMAN&gt; show all;
+
+RMAN configuration parameters for database with db_unique_name PROD1 are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
+</code></pre>
+
+<h2>制御ファイル, SPFILE の自動バックアップ</h2>
+
+<p><code>BACKUP</code> コマンドが実行されるときに、制御ファイルと SPFILE も自動的にバックアップするように設定する。</p>
+
+<pre><code>RMAN&gt; CONFIGURE CONTROLFILE AUTOBACKUP ON;
+
+new RMAN configuration parameters:
+CONFIGURE CONTROLFILE AUTOBACKUP ON;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<h2>バックアップの最適化</h2>
+
+<p>バックアップの最適化を有効にすると、保存方針によって同一ファイルの不要なバックアップをしなくなる。例えば、保存方針が <code>REDUNDANCY 1</code> として USERS 表領域を READ ONLY にして、<code>BACKUP DATABASE</code> を実行すると USERS 表領域のバックアップは 2 つ(REDUNDANCY + 1)あればよいので、3 回目以降の <code>BACKUP DATABASE</code> では USERS 表領域のバックアップが取得されなくなる。</p>
+
+<pre><code>RMAN&gt; CONFIGURE BACKUP OPTIMIZATION ON;
+
+new RMAN configuration parameters:
+CONFIGURE BACKUP OPTIMIZATION ON;
+new RMAN configuration parameters are successfully stored
+starting full resync of recovery catalog
+full resync complete
+</code></pre>
+
+<h2>ブロック・チェンジ・トラッキングを有効化</h2>
+
+<p>DB で変更されたブロックをブロック・チェンジ・トラッキング・ファイル上に記録するようにする。このことで、増分バックアップ時に変更があったブロックだけを読むだけでよくなり、データファイルのすべてのブロックの読み込みが不要になり、パフォーマンスが向上する。</p>
+
+<p>マニュアルでは <code>DB_CREATE_FILE_DEST</code> の設定の記載があるが、ブロック・チェンジ・トラッキング・ファイルのパスをフルパスで指定する場合は <code>DB_CREATE_FILE_DEST</code> の設定は不要。</p>
+
+<pre><code>SQL&gt; ALTER DATABASE ENABLE BLOCK CHANGE TRACKING
+     USING FILE '/u01/app/oracle/oradata/PROD1/rman_change_track.f' REUSE;
+
+Database altered.
+
+SQL&gt; SELECT STATUS, FILENAME
+     FROM V$BLOCK_CHANGE_TRACKING;
+
+STATUS   FILENAME
+-------- ------------------------------------------------------------
+ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -427,200 +564,6 @@ $ su
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T22:09:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>パスワードを大文字・小文字の区別をするようにする。
-DB のパスワードについてはその他複雑なパスワードにするように強制する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>管理者ガイド<br/>
--> 1 データベース管理スタート・ガイド<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/dba007.htm#i1006789">パスワード・ファイルの作成とメンテナンス</a></p></li>
-<li><p>セキュリティ・ガイド<br/>
--> 3 認証の構成<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#CHDJDCGI">パスワードでの大/小文字の区別の有効化または無効化</a><br/>
-<a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#i1007341">パスワードの複雑度検証の規定</a></p></li>
-</ul>
-
-
-<h2>SYSDBA でのログイン時のパスワード</h2>
-
-<p>SYSDBA でのログイン(SYS ユーザで as sysdba でのログイン)時のパスワードを大文字・小文字の区別させるためにパスワードファイル(<code>$ORACLE_HOME/dbs/orapw&lt;ORACLE_SID&gt;</code>)を再作成する。</p>
-
-<p><code>orapwd</code>を引数なしで実行すると、使い方が分かる。</p>
-
-<pre><code>$ orapwd
-Usage: orapwd file=&lt;fname&gt; entries=&lt;users&gt; force=&lt;y/n&gt; ignorecase=&lt;y/n&gt; nosysdba=&lt;y/n&gt;
-
-  where
-    file - name of password file (required),
-    password - password for SYS will be prompted if not specified at command line,
-    entries - maximum number of distinct DBA (optional),
-    force - whether to overwrite existing file (optional),
-    ignorecase - passwords are case-insensitive (optional),
-    nosysdba - whether to shut out the SYSDBA logon (optional Database Vault only).
-
-  There must be no spaces around the equal-to (=) character.
-</code></pre>
-
-<p><code>ignorecase=n</code> で再作成すれば大文字・小文字が区別される。
-ちなみにパスワードファイルのファイル名は <code>orapw&lt;ORACLE_SID&gt;</code> でなければならない。</p>
-
-<pre><code>$ cd $ORACLE_HOME/dbs
-$ rm orapwPROD1
-$ orapwd file=orapwPROD1 password=oracle ignorecase=n
-</code></pre>
-
-<p>大文字・小文字が区別されるか確認。</p>
-
-<pre><code>SQL&gt; connect sys/oracle@PROD1 as sysdba
-Connected.
-SQL&gt; connect sys/ORACLE@PROD1 as sysdba
-ERROR:
-ORA-01017: invalid username/password; logon denied
-
-
-Warning: You are no longer connected to ORACLE.
-</code></pre>
-
-<h2>DB ユーザのパスワード</h2>
-
-<h3>大文字・小文字の区別</h3>
-
-<p>DB ユーザのパスワードの大文字・小文字を区別するためには初期かパラメータ <code>SEC_CASE_SENSITIVE_LOGON</code> を <code>TRUE</code> にする。(デフォルトは <code>TRUE</code>)</p>
-
-<pre><code>SQL&gt; ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE;
-
-System altered.
-</code></pre>
-
-<h3>複雑なパスワードを強制</h3>
-
-<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> を実行することで、デフォルトのプロファイルを使用するユーザがパスワード変更する際に以下がチェックされるようになる。</p>
-
-<ul>
-<li>パスワードの長さが8文字以上30文字以内であること。</li>
-<li>パスワードがユーザー名と同一でないこと。ユーザー名のスペルを逆にしたり、ユーザー名に数字を追加したパスワードでないこと。</li>
-<li>サーバー名と同一であったり、サーバー名に数字1から100を追加したパスワードでないこと。</li>
-<li>単純なパスワードでないこと(例: welcome1、database1、account1、user1234、password1、oracle、oracle123、computer1、abcdefg1、change_on_install)。</li>
-<li>パスワードに少なくとも数字が1つと英字が1つ含まれていること。</li>
-<li>以前のパスワードとの違いが3文字以上あること。</li>
-</ul>
-
-
-<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> の内容を確認すると分かるように、パスワード検証関数 <code>verify_function_11G</code> が作成されてデフォルトプロファイル(<code>DEFAULT</code>)が変更されている。(パスワードの存続期間等も設定される)</p>
-
-<pre><code>$ cat $ORACLE_HOME/rdbms/admin/utlpwdmg.sql
-...(*snip*)
-
--- This script sets the default password resource parameters
--- This script needs to be run to enable the password features.
--- However the default resource parameters can be changed based
--- on the need.
--- A default password complexity function is also provided.
--- This function makes the minimum complexity checks like
--- the minimum length of the password, password not same as the
--- username, etc. The user may enhance this function according to
--- the need.
--- This function must be created in SYS schema.
--- connect sys/&lt;password&gt; as sysdba before running the script
-
-CREATE OR REPLACE FUNCTION verify_function_11G
-...(*snip*)
-END;
-/
-
--- This script alters the default parameters for Password Management
--- This means that all the users on the system have Password Management
--- enabled and set to the following values unless another profile is
--- created with parameter values set to different value or UNLIMITED
--- is created and assigned to the user.
-
-ALTER PROFILE DEFAULT LIMIT
-PASSWORD_LIFE_TIME 180
-PASSWORD_GRACE_TIME 7
-PASSWORD_REUSE_TIME UNLIMITED
-PASSWORD_REUSE_MAX UNLIMITED
-FAILED_LOGIN_ATTEMPTS 10
-PASSWORD_LOCK_TIME 1
-PASSWORD_VERIFY_FUNCTION verify_function_11G;
-...(*snip*)
-</code></pre>
-
-<p>ということで、<code>utlpwdmg.sql</code> を実行する。</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; @?/rdbms/admin/utlpwdmg.sql
-
-Function created.
-
-
-Profile altered.
-
-
-Function created.
-</code></pre>
-
-<p>他のプロファイルも変更する場合は、<code>ALTER PROFILE</code> を実行する必要がある。</p>
-
-<pre><code>SQL&gt; ALTER PROFILE &lt;profile名&gt; LIMIT
-     PWSSWORD_VERIFY_FUNCTION verify_function_11G;
-</code></pre>
-
-<p>実際にパスワードを変更してチェックに引っかかるか確認してみる。</p>
-
-<pre><code>SQL&gt; alter user scott identified by tiger;
-alter user scott identified by tiger
-*
-ERROR at line 1:
-ORA-28003: password verification for the specified password failed
-ORA-20001: Password length less than 8
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/10/">&larr; Older</a>
@@ -638,6 +581,10 @@ ORA-20001: Password length less than 8
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
       </li>
     
@@ -651,10 +598,6 @@ ORA-20001: Password length less than 8
     
       <li class="post">
         <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
       </li>
     
   </ul>

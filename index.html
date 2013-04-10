@@ -9,11 +9,10 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 OS コマンドによるボトルネック調査方法をまとめる。 CPU
-メモリ
-I/O
-ネットワーク 環境 OS: CentOS 5.5
-Kernel: 2.6.18-194.el5 x86_64 CPU サーバ全体の CPU 使用率 CPU 使用率を確認する。使用率が 100% に近くなっている &hellip;">
+  <meta name="description" content="目的 Linux x86-64 の呼出規約(calling convention)を gdb で確認する。 環境 OS: CentOS 5.5
+Kernel: 2.6.18-194.el5 x86_64
+GCC: gcc 4.1.2 20080704
+GDB: GNU gdb 7.0.1-23. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -68,6 +67,1025 @@ Kernel: 2.6.18-194.el5 x86_64 CPU サーバ全体の CPU 使用率 CPU 使用率
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux X86-64 の呼出規約(calling Convention)を Gdb で確認する</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-10T21:01:00+09:00" pubdate data-updated="true">Apr 10<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Linux x86-64 の呼出規約(calling convention)を gdb で確認する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: CentOS 5.5</li>
+<li>Kernel: 2.6.18-194.el5 x86_64</li>
+<li>GCC: gcc 4.1.2 20080704</li>
+<li>GDB: GNU gdb 7.0.1-23.el5</li>
+</ul>
+
+
+<h2>呼出規約(calling convention)</h2>
+
+<p>プログラムで関数を呼び出す際に、レジスタやスタックを使いどのように引数を渡すか、戻り値をどのように受け取るかは呼出規約(calling convention)で決められている。</p>
+
+<p>Linux x86-64 では、以下のような呼出規約になっている。
+(Wikepedia <a href="http://en.wikipedia.org/wiki/X86_calling_conventions#x86-64_calling_conventions">x86 calling conventions</a>, <a href="http://ja.wikipedia.org/wiki/%E5%91%BC%E5%87%BA%E8%A6%8F%E7%B4%84#System_V_AMD64_ABI_.E5.91.BC.E5.87.BA.E8.A6.8F.E7.B4.84">呼出規約</a> から抜粋)</p>
+
+<blockquote><p>The calling convention of the System V AMD64 ABI is followed on Solaris,
+GNU/Linux, FreeBSD, and other non-Microsoft operating systems.
+The first six integer or pointer arguments are passed in registers RDI, RSI,
+RDX, RCX, R8, and R9, while XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7
+are used for floating point arguments.
+For system calls, R10 is used instead of RCX.
+As in the Microsoft x64 calling convention, additional arguments are passed
+on the stack and the return value is stored in RAX.</p></blockquote>
+
+<ul>
+<li>整数・ポインタ引数: RDI, RSI, RDX, RCX, R8, R9</li>
+<li>浮動小数点引数: XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7</li>
+<li>戻り値: RAX</li>
+<li>システムコールでは RCX の代わりに R10 を使用</li>
+<li>レジスタだけでは引数の数が不足する場合はスタックを利用</li>
+</ul>
+
+
+<p>より詳細には <a href="http://x86-64.org/documentation/abi.pdf">System V Application Binary Interface AMD64 Architecture Processor Supplement</a> を参照。</p>
+
+<h2>gdb による確認</h2>
+
+<p>上記の呼出規約を実際のプログラムで確認してみる。</p>
+
+<p>使用するサンプルプログラムは以下。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="n">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a1</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a2</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a3</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a4</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a5</span><span class="p">,</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">a6</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a7</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a8</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a9</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">func</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a1</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a2</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a3</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a4</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a5</span><span class="p">,</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">a6</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a7</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a8</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a9</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">s</span> <span class="o">=</span> <span class="o">-</span><span class="mi">9999</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">s</span> <span class="o">=</span> <span class="n">a1</span> <span class="o">+</span> <span class="n">a2</span> <span class="o">+</span> <span class="n">a3</span> <span class="o">+</span> <span class="n">a4</span> <span class="o">+</span> <span class="n">a5</span> <span class="o">+</span> <span class="n">a6</span> <span class="o">+</span> <span class="n">a7</span> <span class="o">+</span> <span class="n">a8</span> <span class="o">+</span> <span class="n">a9</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">func</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ret</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">44</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">66</span><span class="p">,</span> <span class="mi">77</span><span class="p">,</span> <span class="mi">88</span><span class="p">,</span> <span class="mi">99</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sum: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">func</span><span class="p">();</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>実行結果は以下。</p>
+
+<pre><code>$ gcc -g -o sample1 sample1.c
+$ ./sample1
+sum: 495
+</code></pre>
+
+<p>gdb から、関数 func から関数 sum を呼び出している個所を確認する。
+<code>disas/m</code> というふうに修飾子 /m を指定するとソースと共に表示されて分かりやすくなる。
+(ちなみに <code>objdump -d -S ./sample1</code> としてもソースと関数の逆アセンブル結果が出力される)</p>
+
+<pre><code>$ gdb ./sample1
+(gdb) set height 0
+(gdb) disas/m func
+Dump of assembler code for function func:
+18      {
+0x00000000004004da &lt;func+0&gt;:    push   %rbp
+0x00000000004004db &lt;func+1&gt;:    mov    %rsp,%rbp
+0x00000000004004de &lt;func+4&gt;:    sub    $0x30,%rsp
+
+19        int ret = -1;
+0x00000000004004e2 &lt;func+8&gt;:    movl   $0xffffffff,-0x4(%rbp)
+
+20
+21        ret = sum(11, 22, 33, 44, 55, 66, 77, 88, 99);
+0x00000000004004e9 &lt;func+15&gt;:   movl   $0x63,0x10(%rsp)  &lt;== 第9引数(0x63 = 99) を スタック+0x10 の位置に格納
+0x00000000004004f1 &lt;func+23&gt;:   movl   $0x58,0x8(%rsp)   &lt;== 第8引数(0x58 = 88) を スタック+0x8  の位置に格納
+0x00000000004004f9 &lt;func+31&gt;:   movl   $0x4d,(%rsp)      &lt;== 第7引数(0x4d = 77) を スタック      の位置に格納
+0x0000000000400500 &lt;func+38&gt;:   mov    $0x42,%r9d        &lt;== 第6引数(0x42 = 66) を R9  に格納
+0x0000000000400506 &lt;func+44&gt;:   mov    $0x37,%r8d        &lt;== 第5引数(0x37 = 55) を R8  に格納
+0x000000000040050c &lt;func+50&gt;:   mov    $0x2c,%ecx        &lt;== 第4引数(0x2c = 44) を ECX に格納
+0x0000000000400511 &lt;func+55&gt;:   mov    $0x21,%edx        &lt;== 第3引数(0x21 = 33) を EDX に格納
+0x0000000000400516 &lt;func+60&gt;:   mov    $0x16,%esi        &lt;== 第2引数(0x16 = 22) を RSI に格納
+0x000000000040051b &lt;func+65&gt;:   mov    $0xb,%edi         &lt;== 第1引数( 0xb = 11) を RDI に格納
+0x0000000000400520 &lt;func+70&gt;:   callq  0x400498 &lt;sum&gt;    &lt;== 関数 sum を呼出
+0x0000000000400525 &lt;func+75&gt;:   mov    %eax,-0x4(%rbp)   &lt;== 戻り値を RAX から受け取る
+
+22
+23        printf("sum: %d\n", ret);
+0x0000000000400528 &lt;func+78&gt;:   mov    -0x4(%rbp),%esi
+0x000000000040052b &lt;func+81&gt;:   mov    $0x400658,%edi
+0x0000000000400530 &lt;func+86&gt;:   mov    $0x0,%eax
+0x0000000000400535 &lt;func+91&gt;:   callq  0x400398 &lt;printf@plt&gt;
+
+24      }
+0x000000000040053a &lt;func+96&gt;:   leaveq
+0x000000000040053b &lt;func+97&gt;:   retq
+
+End of assembler dump.
+</code></pre>
+
+<p>確かに呼出規約通り、第1引数～第6引数まで RDI, RSI, RDX, RCX, R8, R9 を順に使用して、
+残りの第7引数～第9引数はスタックを利用している。戻り値は RAX に格納されている。</p>
+
+<p>ちなみに呼び出される関数 sum の disas の結果は以下</p>
+
+<pre><code>(gdb) disas/m sum
+Dump of assembler code for function sum:
+9       {
+0x0000000000400498 &lt;sum+0&gt;:     push   %rbp
+0x0000000000400499 &lt;sum+1&gt;:     mov    %rsp,%rbp
+0x000000000040049c &lt;sum+4&gt;:     mov    %edi,-0x14(%rbp)
+0x000000000040049f &lt;sum+7&gt;:     mov    %esi,-0x18(%rbp)
+0x00000000004004a2 &lt;sum+10&gt;:    mov    %edx,-0x1c(%rbp)
+0x00000000004004a5 &lt;sum+13&gt;:    mov    %ecx,-0x20(%rbp)
+0x00000000004004a8 &lt;sum+16&gt;:    mov    %r8d,-0x24(%rbp)
+0x00000000004004ac &lt;sum+20&gt;:    mov    %r9d,-0x28(%rbp)
+
+10        int s = -9999;
+0x00000000004004b0 &lt;sum+24&gt;:    movl   $0xffffd8f1,-0x4(%rbp)
+
+11
+12        s = a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+0x00000000004004b7 &lt;sum+31&gt;:    mov    -0x18(%rbp),%eax
+0x00000000004004ba &lt;sum+34&gt;:    add    -0x14(%rbp),%eax
+0x00000000004004bd &lt;sum+37&gt;:    add    -0x1c(%rbp),%eax
+0x00000000004004c0 &lt;sum+40&gt;:    add    -0x20(%rbp),%eax
+0x00000000004004c3 &lt;sum+43&gt;:    add    -0x24(%rbp),%eax
+0x00000000004004c6 &lt;sum+46&gt;:    add    -0x28(%rbp),%eax
+0x00000000004004c9 &lt;sum+49&gt;:    add    0x10(%rbp),%eax
+0x00000000004004cc &lt;sum+52&gt;:    add    0x18(%rbp),%eax
+0x00000000004004cf &lt;sum+55&gt;:    add    0x20(%rbp),%eax
+0x00000000004004d2 &lt;sum+58&gt;:    mov    %eax,-0x4(%rbp)
+
+13
+14        return s;
+0x00000000004004d5 &lt;sum+61&gt;:    mov    -0x4(%rbp),%eax
+
+15      }
+0x00000000004004d8 &lt;sum+64&gt;:    leaveq
+0x00000000004004d9 &lt;sum+65&gt;:    retq
+
+End of assembler dump.
+</code></pre>
+
+<p>関数 sum で break させて、レジスタの状態やスタックを確認すれば引数の値が分かる。</p>
+
+<pre><code>(gdb) b sum
+Breakpoint 1 at 0x4004b0: file sample1.c, line 10.
+(gdb) run
+Starting program: /home/hashi/tmp/sample1
+
+Breakpoint 1, sum (a1=11, a2=22, a3=33, a4=44, a5=55, a6=66, a7=77, a8=88, a9=99) at sample1.c:10
+10        int s = -9999;
+(gdb) info reg
+rax            0x0      0
+rbx            0x3e1c81bbc0     266766236608
+rcx            0x2c     44                        &lt;== 第4引数
+rdx            0x21     33                        &lt;== 第3引数
+rsi            0x16     22                        &lt;== 第2引数
+rdi            0xb      11                        &lt;== 第1引数
+rbp            0x7fffffffe270   0x7fffffffe270
+rsp            0x7fffffffe270   0x7fffffffe270
+r8             0x37     55                        &lt;== 第5引数
+r9             0x42     66                        &lt;== 第6引数
+r10            0x0      0
+r11            0x3e1ca1d8a0     266768341152
+r12            0x0      0
+r13            0x7fffffffe3b0   140737488348080
+r14            0x0      0
+r15            0x0      0
+rip            0x4004b0 0x4004b0 &lt;sum+24&gt;         &lt;== sum+20 までの処理が終わっていて次の処理は sum+24
+eflags         0x202    [ IF ]
+cs             0x33     51
+ss             0x2b     43
+ds             0x0      0
+es             0x0      0
+fs             0x0      0
+gs             0x0      0
+fctrl          0x37f    895
+fstat          0x0      0
+ftag           0xffff   65535
+fiseg          0x0      0
+fioff          0x0      0
+foseg          0x0      0
+fooff          0x0      0
+fop            0x0      0
+mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
+(gdb) x/6gx $rbp
+0x7fffffffe270: 0x00007fffffffe2b0      0x0000000000400525
+0x7fffffffe280: 0x000000000000004d      0x0000000000000058
+                          ~~~~~~~~第7引数         ~~~~~~~~第8引数
+0x7fffffffe290: 0x2cb4304900000063      0x00000000004005a7
+                          ~~~~~~~~第9引数
+</code></pre>
+
+<p>スタック上の値を確認するのに <code>x/6gx $rbp</code> としているのは、関数で break したときは関数の最初の方の処理(サブルーチンプロローグ)まで
+終わっているが、普通はここまでで引数をスタックに積んだ後、</p>
+
+<ul>
+<li><code>call &lt;function&gt;</code> : スタックに戻り先の命令アドレスを積んで関数を呼ぶ(rsp が +0x8 される)</li>
+<li><code>push %rbp</code> : ベースポインタ(rbp)の値が push され、スタックに保存される(rsp が +0x8 される)</li>
+<li><code>mov %rsp,%rbp</code> : スタックポインタ(rsp)の値をベースポインタ(rbp)に保存する</li>
+<li>(<code>sub $0xXX,%rsp</code> : ローカル変数を保持するためにスタックを上げる)</li>
+</ul>
+
+
+<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&#8230; というふうに存在することになる。</p>
+
+<p>関数 sum から返った後に レジスタ RAX にて戻り値が分かる。</p>
+
+<pre><code>(gdb) finish
+Run till exit from #0  sum (a1=11, a2=22, a3=33, a4=44, a5=55, a6=66, a7=77, a8=88, a9=99) at sample1.c:12
+0x0000000000400525 in func () at sample1.c:21
+21        ret = sum(11, 22, 33, 44, 55, 66, 77, 88, 99);
+Value returned is $1 = 495
+(gdb) p $rax
+$2 = 495
+</code></pre>
+
+<h2>詳細確認</h2>
+
+<p>せっかくなので、関数 func から関数 sum を呼び出しているところを逆アセンブルの結果から詳しく追ってみる。</p>
+
+<p>初期状態(関数 func が呼ばれる直前)</p>
+
+<pre><code>rbp            0x7fffffffe2d0   0x7fffffffe2d0
+rsp            0x7fffffffe2c0   0x7fffffffe2c0
+
+        0x7fffffffe2b8 +------------------+
+                       |                  |
+rsp --&gt; 0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+rbp --&gt; 0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>関数 main から関数 func を呼ぶ</p>
+
+<pre><code>0x0000000000400550 &lt;main+20&gt;:   callq  0x4004da &lt;func&gt;  &lt;== 次は関数 func の命令を呼ぶ
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rbp            0x7fffffffe2d0   0x7fffffffe2d0
+rsp            0x7fffffffe2b8   0x7fffffffe2b8
+
+rip            0x4004da 0x4004da &lt;func&gt;
+
+rsp --&gt; 0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555| &lt;== 関数 main の戻り先命令アドレス
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+rbp --&gt; 0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>関数 func が呼び出され、ここから関数 func に入る。</p>
+
+<pre><code>Dump of assembler code for function func:
+18      {
+0x00000000004004da &lt;func+0&gt;:    push   %rbp
+0x00000000004004db &lt;func+1&gt;:    mov    %rsp,%rbp
+0x00000000004004de &lt;func+4&gt;:    sub    $0x30,%rsp
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe280   0x7fffffffe280
+
+rsp --&gt; 0x7fffffffe280 +------------------+ &lt;== ローカル変数を保持するためにスタックを上げる
+                       |                  |
+        0x7fffffffe288 +------------------+
+                       |                  |
+        0x7fffffffe290 +------------------+
+                       |                  |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |                  |
+rbp --&gt; 0x7fffffffe2b0 +------------------+ &lt;== 元のスタックの位置がベースポインタに保存される
+                       |0x00007fffffffe2d0| &lt;== ベースポインタの値がスタックに保存される
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>19        int ret = -1;
+0x00000000004004e2 &lt;func+8&gt;:    movl   $0xffffffff,-0x4(%rbp)
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe280   0x7fffffffe280
+
+rsp --&gt; 0x7fffffffe280 +------------------+
+                       |                  |
+        0x7fffffffe288 +------------------+
+                       |                  |
+        0x7fffffffe290 +------------------+
+                       |                  |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+rbp --&gt; 0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>20
+21        ret = sum(11, 22, 33, 44, 55, 66, 77, 88, 99);
+0x00000000004004e9 &lt;func+15&gt;:   movl   $0x63,0x10(%rsp)  &lt;== 第9引数(0x63 = 99) を スタック+0x10 の位置に格納
+0x00000000004004f1 &lt;func+23&gt;:   movl   $0x58,0x8(%rsp)   &lt;== 第8引数(0x58 = 88) を スタック+0x8  の位置に格納
+0x00000000004004f9 &lt;func+31&gt;:   movl   $0x4d,(%rsp)      &lt;== 第7引数(0x4d = 77) を スタック      の位置に格納
+0x0000000000400500 &lt;func+38&gt;:   mov    $0x42,%r9d        &lt;== 第6引数(0x42 = 66) を R9  に格納
+0x0000000000400506 &lt;func+44&gt;:   mov    $0x37,%r8d        &lt;== 第5引数(0x37 = 55) を R8  に格納
+0x000000000040050c &lt;func+50&gt;:   mov    $0x2c,%ecx        &lt;== 第4引数(0x2c = 44) を ECX に格納
+0x0000000000400511 &lt;func+55&gt;:   mov    $0x21,%edx        &lt;== 第3引数(0x21 = 33) を EDX に格納
+0x0000000000400516 &lt;func+60&gt;:   mov    $0x16,%esi        &lt;== 第2引数(0x16 = 22) を RSI に格納
+0x000000000040051b &lt;func+65&gt;:   mov    $0xb,%edi         &lt;== 第1引数( 0xb = 11) を RDI に格納
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rcx            0x2c     44
+rdx            0x21     33
+rsi            0x16     22
+rdi            0xb      11
+rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe280   0x7fffffffe280
+r8             0x37     55
+r9             0x42     66
+
+rsp --&gt; 0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+rbp --&gt; 0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>0x0000000000400520 &lt;func+70&gt;:   callq  0x400498 &lt;sum&gt;    &lt;== 関数 sum を呼出
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rcx            0x2c     44
+rdx            0x21     33
+rsi            0x16     22
+rdi            0xb      11
+rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe278   0x7fffffffe278
+r8             0x37     55
+r9             0x42     66
+
+rip            0x400498 0x400498 &lt;sum&gt;  &lt;== 次は関数 sum の命令を呼ぶ
+
+rsp --&gt; 0x7fffffffe278 +------------------+
+                       |0x0000000000400525| &lt;== 関数 func の戻り先命令アドレス
+        0x7fffffffe280 +------------------+
+                       | 0x0000004d       |
+        0x7fffffffe288 +------------------+
+                       | 0x00000058       |
+        0x7fffffffe290 +------------------+
+                       | 0x00000063       |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |       0xffffffff |
+rbp --&gt; 0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>ここから関数 sum に入る</p>
+
+<pre><code>Dump of assembler code for function sum:
+9       {
+0x0000000000400498 &lt;sum+0&gt;:     push   %rbp
+0x0000000000400499 &lt;sum+1&gt;:     mov    %rsp,%rbp
+0x000000000040049c &lt;sum+4&gt;:     mov    %edi,-0x14(%rbp)
+0x000000000040049f &lt;sum+7&gt;:     mov    %esi,-0x18(%rbp)
+0x00000000004004a2 &lt;sum+10&gt;:    mov    %edx,-0x1c(%rbp)
+0x00000000004004a5 &lt;sum+13&gt;:    mov    %ecx,-0x20(%rbp)
+0x00000000004004a8 &lt;sum+16&gt;:    mov    %r8d,-0x24(%rbp)
+0x00000000004004ac &lt;sum+20&gt;:    mov    %r9d,-0x28(%rbp)
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rcx            0x2c     44
+rdx            0x21     33
+rsi            0x16     22
+rdi            0xb      11
+rbp            0x7fffffffe270   0x7fffffffe270
+rsp            0x7fffffffe270   0x7fffffffe270
+r8             0x37     55
+r9             0x42     66
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037| &lt;== 66 55
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021| &lt;== 44 33
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b| &lt;== 22 11
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |                  |
+rsp +--&gt;0x7fffffffe270 +------------------+ &lt;== 元のスタックの位置がベースポインタに保存される
+rbp +                  |0x00007fffffffe2b0| &lt;== ベースポインタの値がスタックに保存される
+        0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+        0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+        0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>10        int s = -9999;
+0x00000000004004b0 &lt;sum+24&gt;:    movl   $0xffffd8f1,-0x4(%rbp)
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rcx            0x2c     44
+rdx            0x21     33
+rsi            0x16     22
+rdi            0xb      11
+rbp            0x7fffffffe270   0x7fffffffe270
+rsp            0x7fffffffe270   0x7fffffffe270
+r8             0x37     55
+r9             0x42     66
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037|
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021|
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b|
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |        0xffffd8f1| &lt;== -9999
+rsp +--&gt;0x7fffffffe270 +------------------+
+rbp +                  |0x00007fffffffe2b0|
+        0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+        0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+        0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>11
+12        s = a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+0x00000000004004b7 &lt;sum+31&gt;:    mov    -0x18(%rbp),%eax
+0x00000000004004ba &lt;sum+34&gt;:    add    -0x14(%rbp),%eax
+0x00000000004004bd &lt;sum+37&gt;:    add    -0x1c(%rbp),%eax
+0x00000000004004c0 &lt;sum+40&gt;:    add    -0x20(%rbp),%eax
+0x00000000004004c3 &lt;sum+43&gt;:    add    -0x24(%rbp),%eax
+0x00000000004004c6 &lt;sum+46&gt;:    add    -0x28(%rbp),%eax
+0x00000000004004c9 &lt;sum+49&gt;:    add    0x10(%rbp),%eax
+0x00000000004004cc &lt;sum+52&gt;:    add    0x18(%rbp),%eax
+0x00000000004004cf &lt;sum+55&gt;:    add    0x20(%rbp),%eax
+0x00000000004004d2 &lt;sum+58&gt;:    mov    %eax,-0x4(%rbp)
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rax            0x1ef    495
+
+rcx            0x2c     44
+rdx            0x21     33
+rsi            0x16     22
+rdi            0xb      11
+rbp            0x7fffffffe270   0x7fffffffe270
+rsp            0x7fffffffe270   0x7fffffffe270
+r8             0x37     55
+r9             0x42     66
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037|
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021|
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b|
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |        0x000001ef| &lt;== 495
+rsp +--&gt;0x7fffffffe270 +------------------+
+rbp +                  |0x00007fffffffe2b0|
+        0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+        0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+        0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>13
+14        return s;
+0x00000000004004d5 &lt;sum+61&gt;:    mov    -0x4(%rbp),%eax
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rax            0x1ef    495 &lt;== 戻り値が RAX に入っている
+
+rcx            0x2c     44
+rdx            0x21     33
+rsi            0x16     22
+rdi            0xb      11
+rbp            0x7fffffffe270   0x7fffffffe270
+rsp            0x7fffffffe270   0x7fffffffe270
+r8             0x37     55
+r9             0x42     66
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037|
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021|
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b|
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |        0x000001ef|
+rsp +--&gt;0x7fffffffe270 +------------------+
+rbp +                  |0x00007fffffffe2b0|
+        0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+        0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+        0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>15      }
+0x00000000004004d8 &lt;sum+64&gt;:    leaveq
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe278   0x7fffffffe278
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037|
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021|
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b|
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |        0x000001ef|
+        0x7fffffffe270 +------------------+
+                       |0x00007fffffffe2b0|
+rsp ---&gt;0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+        0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+rbp ---&gt;0x7fffffffe2b0 +------------------+  &lt;== ベースポインタが関数 sum 呼出直前に戻る
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>0x00000000004004d9 &lt;sum+65&gt;:    retq
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe280   0x7fffffffe280
+
+rip            0x400525 0x400525 &lt;func+75&gt;      &lt;== 関数 func の戻り先アドレス
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037|
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021|
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b|
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |        0x000001ef|
+        0x7fffffffe270 +------------------+
+                       |0x00007fffffffe2b0|
+        0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+rsp --&gt; 0x7fffffffe280 +------------------+  &lt;== スタックポインタが関数 sum 呼出直前に戻る
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0xffffffff|
+rbp ---&gt;0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>関数 func に戻ってきた</p>
+
+<pre><code>0x0000000000400525 &lt;func+75&gt;:   mov    %eax,-0x4(%rbp)   &lt;== 戻り値を RAX から受け取る
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rax            0x1ef    495
+
+rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe280   0x7fffffffe280
+
+        0x7fffffffe248 +------------------+
+                       |0x00000042 0x00000037|
+        0x7fffffffe250 +------------------+
+                       |0x0000002c 0x00000021|
+        0x7fffffffe258 +------------------+
+                       |0x00000016 0x0000000b|
+        0x7fffffffe260 +------------------+
+                       |                  |
+        0x7fffffffe268 +------------------+
+                       |        0x000001ef|
+        0x7fffffffe270 +------------------+
+                       |0x00007fffffffe2b0|
+        0x7fffffffe278 +------------------+
+                       |0x0000000000400525|
+rsp --&gt; 0x7fffffffe280 +------------------+
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0x000001ef|  &lt;== 戻り値を RAX から受け取って格納された
+rbp ---&gt;0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>22
+23        printf("sum: %d\n", ret);
+0x0000000000400528 &lt;func+78&gt;:   mov    -0x4(%rbp),%esi
+0x000000000040052b &lt;func+81&gt;:   mov    $0x400658,%edi
+0x0000000000400530 &lt;func+86&gt;:   mov    $0x0,%eax
+0x0000000000400535 &lt;func+91&gt;:   callq  0x400398 &lt;printf@plt&gt;
+</code></pre>
+
+<p>この命令後のレジスタの状態(printf 関数から返った直後)</p>
+
+<pre><code>rax            0x9      9      &lt;=== printf からの戻り値(出力バイト数なので9バイト, "sum: 495\n")
+
+rsi            0x2aaaaaaac000   46912496123904  &lt;== printf の中で使用されたので変わっている
+rdi            0x1      1                       &lt;== printf の中で使用されたので変わっている
+rbp            0x7fffffffe2b0   0x7fffffffe2b0
+rsp            0x7fffffffe280   0x7fffffffe280
+
+rsp --&gt; 0x7fffffffe280 +------------------+  &lt;== スタックポインタより上位アドレス(この絵では↓)は printf 呼出前と同じ
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0x000001ef|
+rbp ---&gt;0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+        0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+        0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<p>進める</p>
+
+<pre><code>24      }
+0x000000000040053a &lt;func+96&gt;:   leaveq
+0x000000000040053b &lt;func+97&gt;:   retq
+</code></pre>
+
+<p>この命令後のレジスタの状態</p>
+
+<pre><code>rbp            0x7fffffffe2d0   0x7fffffffe2d0  &lt;== 関数 func 呼出直前に戻っている
+rsp            0x7fffffffe2c0   0x7fffffffe2c0  &lt;== 関数 func 呼出直前に戻っている
+
+rip            0x400555 0x400555 &lt;main+25&gt;      &lt;== 関数 main の戻り先アドレス
+
+        0x7fffffffe280 +------------------+ 
+                       |0x0000004d        |
+        0x7fffffffe288 +------------------+
+                       |0x00000058        |
+        0x7fffffffe290 +------------------+
+                       |0x00000063        |
+        0x7fffffffe298 +------------------+
+                       |                  |
+        0x7fffffffe2a0 +------------------+
+                       |                  |
+        0x7fffffffe2a8 +------------------+
+                       |        0x000001ef|
+        0x7fffffffe2b0 +------------------+
+                       |0x00007fffffffe2d0|
+        0x7fffffffe2b8 +------------------+
+                       |0x0000000000400555|
+rsp --&gt; 0x7fffffffe2c0 +------------------+
+                       |                  |
+        0x7fffffffe2c8 +------------------+
+                       |                  |
+rbp --&gt; 0x7fffffffe2d0 +------------------+
+                       |                  |
+        0x7fffffffe2d8 +------------------+
+</code></pre>
+
+<h2>参考</h2>
+
+<ul>
+<li><a href="http://en.wikipedia.org/wiki/X86_calling_conventions#x86-64_calling_conventions">x86 calling conventions</a></li>
+<li><a href="http://ja.wikipedia.org/wiki/%E5%91%BC%E5%87%BA%E8%A6%8F%E7%B4%84#System_V_AMD64_ABI_.E5.91.BC.E5.87.BA.E8.A6.8F.E7.B4.84">呼出規約</a></li>
+<li><a href="http://x86-64.org/documentation/abi.pdf">System V Application Binary Interface AMD64 Architecture Processor Supplement</a></li>
+</ul>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1648,476 +2666,6 @@ yrome
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-10T23:20:00+09:00" pubdate data-updated="true">Oct 10<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>仮想メモリ空間のアドレス等のメモリマップを調べる。</p>
-
-<p>なお、ちゃんと調べたわけではないので誤りがあるかもしれない。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>Kernel: 2.6.32-300.10.1.el5uek x86_64</li>
-</ul>
-
-
-<h2>仮想メモリ空間のメモリマップ</h2>
-
-<p>Unix/Linux における仮想メモリ空間のメモリマップは一般には以下のようになっている。</p>
-
-<pre><code>+------------------------------+  0x0000000000000000
-:                              :
-+------------------------------+
-|                              |
-|  text                        |  機械命令
-|                              |
-+------------------------------+
-|                              |
-|  data                        |  初期化された static 変数
-|                              |
-+------------------------------+
-|                              |
-|  BSS                         |  初期化されていない static 変数
-|                              |
-+------------------------------+
-|                              |
-|  heap                        |  malloc() で動的に確保される領域(上位アドレスに伸びる)
-|                              |
-+------------------------------+
-|             ||||             |
-|             VVVV             |
-:                              :
-:                              :
-|                              |
-+------------------------------+
-|                              |
-|  shared memory               |  共有メモリ領域
-|                              |
-+------------------------------+
-|                              |
-:                              :
-:                              :
-|             ^^^^             |
-|             ||||             |
-+------------------------------+
-|                              |
-|  stack                       |  関数呼び出しやローカル変数等で使用されるスタック領域(下位アドレスに伸びる)
-|                              |
-+------------------------------+
-|                              |
-|  arguments / environments    |  引数と環境変数
-|                              |
-+------------------------------+
-:                              :
-:                              :
-+------------------------------+  0xffffffffffffffff = 2^64 (64bit の場合)
-</code></pre>
-
-<h2>実例</h2>
-
-<p>以下のプログラムでメモリマップを確認する。</p>
-
-<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;sys/shm.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#define STRSIZE 64</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="n">hello</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
-</span><span class='line'><span class="kt">void</span> <span class="n">hello_local_world</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">char</span> <span class="n">not_initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
-</span><span class='line'><span class="kt">char</span> <span class="n">initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;initialized global world&quot;</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">not_initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
-</span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;initialized static world&quot;</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">malloc_world</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">shmid</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">shared_memory_world</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">big_malloc_world</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">medium_malloc_world_1</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">medium_malloc_world_2</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">,</span> <span class="s">&quot;not initialized global world&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_static_world</span><span class="p">,</span> <span class="s">&quot;not initialized static world&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">malloc_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="o">*</span> <span class="n">STRSIZE</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">,</span> <span class="s">&quot;malloc world&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">shmid</span> <span class="o">=</span> <span class="n">shmget</span><span class="p">(</span><span class="n">IPC_PRIVATE</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="o">*</span> <span class="n">STRSIZE</span><span class="p">,</span> <span class="mo">0666</span> <span class="o">|</span> <span class="n">IPC_CREAT</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">shared_memory_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">shmat</span><span class="p">(</span><span class="n">shmid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">,</span> <span class="s">&quot;shared memory world&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">big_malloc_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">256</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">,</span> <span class="s">&quot;big malloc world&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">medium_malloc_world_1</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">131</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="mi">905</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">,</span> <span class="s">&quot;medium malloc world 1&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">medium_malloc_world_2</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">131</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="mi">904</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">,</span> <span class="s">&quot;medium malloc world 2&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">initialized_global_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">not_initialized_static_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">initialized_static_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello_local_world</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">getchar</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">shmdt</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">shmctl</span><span class="p">(</span><span class="n">shmid</span><span class="p">,</span> <span class="n">IPC_RMID</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">hello</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;hello, %s: 0x%016lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">hello_local_world</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">local_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">local_world</span><span class="p">,</span> <span class="s">&quot;local world&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">local_world</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>実行結果は以下。</p>
-
-<pre><code>$ gcc -o hello hello.c
-$ ./hello ARGworld
-hello, ARGworld: 0x00007ffff7269cb5
-hello, not initialized global world: 0x0000000000600ec0
-hello, initialized global world: 0x0000000000600de0
-hello, not initialized static world: 0x0000000000600e80
-hello, initialized static world: 0x0000000000600e20
-hello, malloc world: 0x0000000001f61010
-hello, shared memory world: 0x00007f2eeea0e000
-hello, big malloc world: 0x00007f2eee9b0010
-hello, medium malloc world 1: 0x00007f2eee98f010
-hello, medium malloc world 2: 0x0000000001f61060
-hello, local world: 0x00007ffff7269680
-</code></pre>
-
-<p>メモリマップは <code>pmap</code> や <code>cat /proc/&lt;PID&gt;/maps</code> や <code>cat /proc/&lt;PID&gt;/smaps</code> で確認できる。</p>
-
-<pre><code>$ pmap -x 19671
-19671:   ./hello ARGworld
-Address           Kbytes     RSS   Dirty Mode   Mapping
-0000000000400000       4       4       0 r-x--  hello
-0000000000600000       4       4       4 rw---  hello
-0000000001f61000     132       8       8 rw---    [ anon ]
-00000037be000000     112      96       0 r-x--  ld-2.5.so
-00000037be21c000       4       4       4 r----  ld-2.5.so
-00000037be21d000       4       4       4 rw---  ld-2.5.so
-00000037be400000    1340     248       0 r-x--  libc-2.5.so
-00000037be54f000    2044       0       0 -----  libc-2.5.so
-00000037be74e000      16      12       8 r----  libc-2.5.so
-00000037be752000       4       4       4 rw---  libc-2.5.so
-00000037be753000      20      16      16 rw---    [ anon ]
-00007f2eee98d000     408      20      20 rw---    [ anon ]
-00007f2eeea0e000       4       4       4 rw-s-    [ shmid=0x578006 ]
-00007f2eeea0f000       8       8       8 rw---    [ anon ]
-00007ffff7255000      84       8       8 rw---    [ stack ]
-00007ffff730e000       4       4       0 r-x--    [ anon ]
-ffffffffff600000       4       0       0 r-x--    [ anon ]
-----------------  ------  ------  ------
-total kB            4196     444      88
-
-$ cat /proc/19671/maps 
-00400000-00401000 r-xp 00000000 fd:00 5101878                            /tmp/hello
-00600000-00601000 rw-p 00000000 fd:00 5101878                            /tmp/hello
-01f61000-01f82000 rw-p 00000000 00:00 0                                  [heap]
-37be000000-37be01c000 r-xp 00000000 fd:00 1871272                        /lib64/ld-2.5.so
-37be21c000-37be21d000 r--p 0001c000 fd:00 1871272                        /lib64/ld-2.5.so
-37be21d000-37be21e000 rw-p 0001d000 fd:00 1871272                        /lib64/ld-2.5.so
-37be400000-37be54f000 r-xp 00000000 fd:00 1871273                        /lib64/libc-2.5.so
-37be54f000-37be74e000 ---p 0014f000 fd:00 1871273                        /lib64/libc-2.5.so
-37be74e000-37be752000 r--p 0014e000 fd:00 1871273                        /lib64/libc-2.5.so
-37be752000-37be753000 rw-p 00152000 fd:00 1871273                        /lib64/libc-2.5.so
-37be753000-37be758000 rw-p 00000000 00:00 0 
-7f2eee98d000-7f2eee9f3000 rw-p 00000000 00:00 0 
-7f2eeea0e000-7f2eeea0f000 rw-s 00000000 00:04 5734406                    /SYSV00000000 (deleted)
-7f2eeea0f000-7f2eeea11000 rw-p 00000000 00:00 0 
-7ffff7255000-7ffff726a000 rw-p 00000000 00:00 0                          [stack]
-7ffff730e000-7ffff730f000 r-xp 00000000 00:00 0                          [vdso]
-ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
-</code></pre>
-
-<p><code>size</code> コマンドで text や BSS のサイズを確認できる。</p>
-
-<pre><code>$ size hello
-   text    data     bss     dec     hex filename
-   2414     704     160    3278     cce hello
-
-$ size --format=SysV -x hello
-hello  :
-section           size       addr
-.interp           0x1c   0x400200
-.note.ABI-tag     0x20   0x40021c
-.gnu.hash         0x1c   0x400240
-.dynsym          0x108   0x400260
-.dynstr           0x6d   0x400368
-.gnu.version      0x16   0x4003d6
-.gnu.version_r    0x20   0x4003f0
-.rela.dyn         0x18   0x400410
-.rela.plt         0xd8   0x400428
-.init             0x18   0x400500
-.plt              0xa0   0x400518
-.text            0x488   0x4005c0
-.fini              0xe   0x400a48
-.rodata           0x25   0x400a58
-.eh_frame_hdr     0x34   0x400a80
-.eh_frame         0xd4   0x400ab8
-.ctors            0x10   0x600b90
-.dtors            0x10   0x600ba0
-.jcr               0x8   0x600bb0
-.dynamic         0x190   0x600bb8
-.got               0x8   0x600d48
-.got.plt          0x60   0x600d50
-.data             0xa0   0x600dc0
-.bss              0xa0   0x600e60
-.comment         0x114        0x0
-Total            0xde2
-</code></pre>
-
-<p>これらから次のようなメモリマップとなっていると考えられる。</p>
-
-<pre><code>+------------------------------+  0x0000000000000000
-:                              :
-+------------------------------+  0x0000000000400000
-|text                          |  機械命令
-|                              |
-+------------------------------+  0x0000000000401000
-:                              :
-+------------------------------+  0x0000000000600000
-|                              |  0x0000000000600dc0
-|data                          |  初期化された static 変数
-|  initialized global var      |  0x0000000000600de0
-|  initialized static var      |  0x0000000000600e20
-|                              |
-+------------------------------+  0x0000000000600e60
-|BSS                           |  初期化されていない static 変数
-|  not initialized static var  |  0x0000000000600e80
-|  not initialized global var  |  0x0000000000600ec0
-|                              |
-+------------------------------+  0x0000000000601000
-:                              :
-+------------------------------+  0x0000000001f61000
-|heap                          |  malloc() で動的に確保される領域(上位アドレスに伸びる)
-|  malloc var                  |  0x0000000001f61010
-|  malloc var                  |  0x0000000001f61060
-|                              |
-+------------------------------+  0x0000000001f82000
-|             ||||             |
-|             VVVV             |
-:                              :
-:                              :
-|                              |
-+------------------------------+  0x00000037be000000
-|                              |
-|  共有ライブラリ              |
-|  (ld-2.5.so, libc-2.5.so)    |
-+------------------------------+  0x00000037be753000
-| ???                          |
-+------------------------------+  0x00000037be758000
-|                              |
-:                              :
-:                              :
-|             ^^^^ ??          |
-|             |||| ??          |
-+------------------------------+  0x00007f2eee98d000
-|heap??                        |
-|  malloc var                  |  0x00007f2eee98f010
-|  big malloc var              |  0x00007f2eee9b0010
-|                              |
-+------------------------------+  0x00007f2eee9f3000
-:                              :
-+------------------------------+  0x00007f2eeea0e000
-|shared memory                 |  共有メモリ領域
-|  shared memory var           |  0x00007f2eeea0e000
-|                              |
-+------------------------------+  0x00007f2eeea0f000
-|???                           |
-+------------------------------+  0x00007f2eeea11000
-|                              |
-:                              :
-:                              :
-|             ^^^^             |
-|             ||||             |
-+------------------------------+  0x00007ffff7255000
-|stack                         |  関数呼び出しやローカル変数等で使用されるスタック領域(下位アドレスに伸びる)
-|  local var                   |  0x00007ffff7269680
-|  arguments[1]                |  0x00007ffff7269cb5
-|                              |
-+------------------------------+  0x00007ffff726a000
-:                              :
-+------------------------------+  0x00007ffff730e000
-|???                           |
-+------------------------------+  0x00007ffff730f000
-|                              |
-:                              :
-:                              :
-|                              |
-+------------------------------+  0xffffffffff600000
-|arguments / environments??    |
-|                              |
-+------------------------------+  0xffffffffff601000
-:                              :
-:                              :
-+------------------------------+  0xffffffffffffffff = 2^64 (64bit の場合)
-</code></pre>
-
-<p>heap としては 0x0000000001f61000 〜 0x0000000001f82000 の 132Kbytes が割り当てられているようだが、
-約132Kbytes より大きく malloc() で動的にメモリを割り当てるとアドレスが飛んで 0x00007f2eee98d000 付近に
-メモリが割り当てられ、しかも下位にメモリが伸びているようだ。</p>
-
-<h2>参考</h2>
-
-<ul>
-<li><a href="http://www.coins.tsukuba.ac.jp/~yas/coins/os2-2011/2012-01-24/index.html">メモリ管理、アドレス空間、ページテーブル</a></li>
-<li><a href="http://blog.gakitama.com/?e=490">おじさんＯＳ講座（１）：pmapを使ってみよう</a></li>
-<li><a href="http://www.valinux.co.jp/contents/tech/techlib/eos/malloc/malloc_001.html">mallocライブラリのメモリ管理構造</a></li>
-</ul>
-
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -2133,6 +2681,10 @@ Total            0xde2
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
       </li>
     
@@ -2146,10 +2698,6 @@ Total            0xde2
     
       <li class="post">
         <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a>
       </li>
     
   </ul>
