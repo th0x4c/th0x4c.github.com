@@ -24,7 +24,7 @@ categories: [GDB]
 
 例えば、以下のように `abort()` でわざと core を吐かせて試してみる。
 
-    $ cat prog1.c
+    $ cat hello.c
     #include <stdio.h>
     #include <stdlib.h>
 
@@ -144,3 +144,40 @@ GDB でこの core を解析するためには、採取した共有ライブラ�
     #0  0x00000037be430265 in raise () from /tmp/lib/libc.so.6
     #1  0x00000037be431d10 in abort () from /tmp/lib/libc.so.6
     #2  0x00000000004004f6 in main ()
+
+### ソースファイル
+
+デバックオプション(-g オプション)付きでコンパイルされている場合は、ソースファイルがあればソースコードを使用した調査ができる。
+コンパイルした環境と別の環境で core 解析する場合、ソースコードを入手して、GDB の `directory` にてソースファイルを展開したディレクトリを指定する。
+
+実行例は以下。(実行ファイルはデバックオプション付きでコンパイルしたものを使用)
+
+    (gdb) bt
+    #0  0x00000030ea830265 in raise () from /tmp/lib/libc.so.6
+    #1  0x00000030ea831d10 in abort () from /tmp/lib/libc.so.6
+    #2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
+    (gdb) frame 2
+    #2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
+    7   hello.c: No such file or directory.
+        in hello.c
+    (gdb) list
+    2     in hello.c
+
+ソースファイルが見つからないと上記のようにソースコードが必要な調査ができない。
+`directory` にてソースファイルを展開したディレクトリを指定すると、ソースコードを元にした調査ができる。
+(ディレクトリが複数ある場合は`:`で区切って複数指定するか、`directory` をディレクトリの分だけ実行すれば追加される)
+
+    (gdb) directory /tmp/src
+    Source directories searched: /tmp/src:$cdir:$cwd
+    (gdb) frame 2
+    #2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
+    7     abort();
+    (gdb) list
+    2       #include <stdlib.h>
+    3       
+    4       int main(int argc, char *argv[])
+    5       {
+    6         printf("hello, world\n");
+    7         abort();
+    8         return 0;
+    9       }
