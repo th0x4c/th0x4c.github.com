@@ -171,7 +171,7 @@ GDB でこの core を解析するためには、採取した共有ライブラ�
     Source directories searched: /tmp/src:$cdir:$cwd
     (gdb) frame 2
     #2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
-    7     abort();
+    7         abort();
     (gdb) list
     2       #include <stdlib.h>
     3       
