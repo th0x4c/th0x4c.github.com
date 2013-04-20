@@ -4,7 +4,7 @@
   <title><![CDATA[th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-04-21T03:53:30+09:00</updated>
+  <updated>2013-04-21T04:02:11+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -3164,7 +3164,7 @@ Program terminated with signal 6, Aborted.
 Source directories searched: /tmp/src:$cdir:$cwd
 (gdb) frame 2
 #2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
-7     abort();
+7         abort();
 (gdb) list
 2       #include &lt;stdlib.h&gt;
 3       
