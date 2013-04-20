@@ -601,7 +601,7 @@ Total            0xde2
 
 <p>例えば、以下のように <code>abort()</code> でわざと core を吐かせて試してみる。</p>
 
-<pre><code>$ cat prog1.c
+<pre><code>$ cat hello.c
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 
@@ -733,6 +733,45 @@ Program terminated with signal 6, Aborted.
 #0  0x00000037be430265 in raise () from /tmp/lib/libc.so.6
 #1  0x00000037be431d10 in abort () from /tmp/lib/libc.so.6
 #2  0x00000000004004f6 in main ()
+</code></pre>
+
+<h3>ソースファイル</h3>
+
+<p>デバックオプション(-g オプション)付きでコンパイルされている場合は、ソースファイルがあればソースコードを使用した調査ができる。
+コンパイルした環境と別の環境で core 解析する場合、ソースコードを入手して、GDB の <code>directory</code> にてソースファイルを展開したディレクトリを指定する。</p>
+
+<p>実行例は以下。(実行ファイルはデバックオプション付きでコンパイルしたものを使用)</p>
+
+<pre><code>(gdb) bt
+#0  0x00000030ea830265 in raise () from /tmp/lib/libc.so.6
+#1  0x00000030ea831d10 in abort () from /tmp/lib/libc.so.6
+#2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
+(gdb) frame 2
+#2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
+7   hello.c: No such file or directory.
+    in hello.c
+(gdb) list
+2     in hello.c
+</code></pre>
+
+<p>ソースファイルが見つからないと上記のようにソースコードが必要な調査ができない。
+<code>directory</code> にてソースファイルを展開したディレクトリを指定すると、ソースコードを元にした調査ができる。
+(ディレクトリが複数ある場合は<code>:</code>で区切って複数指定するか、<code>directory</code> をディレクトリの分だけ実行すれば追加される)</p>
+
+<pre><code>(gdb) directory /tmp/src
+Source directories searched: /tmp/src:$cdir:$cwd
+(gdb) frame 2
+#2  0x00000000004004f6 in main (argc=1, argv=0x7fff9d995df8) at hello.c:7
+7     abort();
+(gdb) list
+2       #include &lt;stdlib.h&gt;
+3       
+4       int main(int argc, char *argv[])
+5       {
+6         printf("hello, world\n");
+7         abort();
+8         return 0;
+9       }
 </code></pre>
 </div>
   
