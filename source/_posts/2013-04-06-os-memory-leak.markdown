@@ -377,7 +377,7 @@ Valgrind を使用して上記サンプルを動作させた例が以下。な�
 #### gdb によるメモリダンプについて
 
 gdb による core のメモリダンプは `dump binary memory` によって行うことができる。
-(こちらのほうが速い。)
+(こちらのほうが `x` でダンプするより速い。)
 
     (gdb) help dump binary memory
     Write contents of memory to a raw binary file.
@@ -578,7 +578,7 @@ gdb の `info target` とか `info files` で `pmap` と同じような情報を
     The address of the last match is stored as the value of "$_".
     Convenience variable "$numfound" is set to the number of matches.
 
-例えば上述の例で 0x7baf000 から 132Kbytes 分の間に "leaked memory" とう文字列を見つける。
+例えば上述の例で 0x7baf000 から 132Kbytes 分の間に "leaked memory" という文字列を見つける。
 
     $ gdb
     (gdb) core-file core.16639.after
@@ -629,7 +629,7 @@ gdb の `info target` とか `info files` で `pmap` と同じような情報を
     Pattern not found.
 
 部分文字列で探す場合は文字列を16進数にするしかなさそう。
-(リトルエンディアンで "leaked" は 0x64656b61656c になる。)
+(リトルエンディアンで "leaked" は `0x64656b61656c` になる。)
 
     (gdb)  find /b  0x7baf000, +(132 * 1024), 0x64656b61656c
     0x7baf430
