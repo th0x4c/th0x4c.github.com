@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Linux | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:31:23+09:00</updated>
+  <updated>2013-05-07T22:37:13+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -2563,7 +2563,7 @@ yrome
 <h4>gdb によるメモリダンプについて</h4>
 
 <p>gdb による core のメモリダンプは <code>dump binary memory</code> によって行うことができる。
-(こちらのほうが速い。)</p>
+(こちらのほうが <code>x</code> でダンプするより速い。)</p>
 
 <pre><code>(gdb) help dump binary memory
 Write contents of memory to a raw binary file.
@@ -2772,7 +2772,7 @@ The address of the last match is stored as the value of "$_".
 Convenience variable "$numfound" is set to the number of matches.
 </code></pre>
 
-<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に "leaked memory" とう文字列を見つける。</p>
+<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に "leaked memory" という文字列を見つける。</p>
 
 <pre><code>$ gdb
 (gdb) core-file core.16639.after
@@ -2825,7 +2825,7 @@ Pattern not found.
 </code></pre>
 
 <p>部分文字列で探す場合は文字列を16進数にするしかなさそう。
-(リトルエンディアンで "leaked" は 0x64656b61656c になる。)</p>
+(リトルエンディアンで "leaked" は <code>0x64656b61656c</code> になる。)</p>
 
 <pre><code>(gdb)  find /b  0x7baf000, +(132 * 1024), 0x64656b61656c
 0x7baf430
