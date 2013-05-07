@@ -11,7 +11,7 @@
   
   <meta name="description" content="目的 カーソルを無効化せずに統計情報を取得する。 環境 OS: Oracle Enterprise Linux 5.8
 DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス
--> 141 &hellip;">
+&ndash &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,13 +20,14 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケー�
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/page/3/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/3">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -45,8 +46,6 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケー�
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -123,8 +122,8 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケー�
 
 <ul>
 <li>PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス<br/>
--> 141 DBMS_STATS<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
+&ndash;> 141 DBMS_STATS<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#BEIBJJHC">SET_TABLE_PREFSプロシージャ</a></li>
 </ul>
 
@@ -235,8 +234,8 @@ PL/SQL procedure successfully completed.
 
 <ul>
 <li>パフォーマンス・チューニング・ガイド<br/>
--> 13 オプティマイザ統計の管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
+&ndash;> 13 オプティマイザ統計の管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
 </ul>
 
 
@@ -505,7 +504,7 @@ COL_GROUP                      NUM_DISTINCT HISTOGRAM
 
   <div class="entry-content"><h2>目的</h2>
 
-<p>&#8220;結果キャッシュ&#8221; 機能を使用する。</p>
+<p>&ldquo;結果キャッシュ&rdquo; 機能を使用する。</p>
 
 <h2>環境</h2>
 
@@ -519,14 +518,14 @@ COL_GROUP                      NUM_DISTINCT HISTOGRAM
 
 <ul>
 <li>パフォーマンス・チューニング・ガイド<br/>
--> 7 メモリーの構成および使用方法<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
+&ndash;> 7 メモリーの構成および使用方法<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
 </ul>
 
 
 <h2>結果キャッシュの使用</h2>
 
-<p>&#8220;結果キャッシュ&#8221; 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
+<p>&ldquo;結果キャッシュ&rdquo; 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
 
 <ul>
 <li>初期化パラメータの設定</li>
@@ -724,7 +723,7 @@ SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -743,7 +742,6 @@ SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

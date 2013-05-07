@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Backup and Recovery | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/backup-and-recovery/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:37:13+09:00</updated>
+  <updated>2013-05-07T23:28:57+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -34,8 +34,8 @@
 
 <ul>
 <li>Data Guard概要および管理<br/>
--> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
+&ndash;> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
 </ul>
 
 
@@ -122,8 +122,8 @@ new RMAN configuration parameters are successfully stored
 
 <ul>
 <li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 9 データベースのバックアップ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
+&ndash;> 9 データベースのバックアップ<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
 </ul>
 
 
@@ -242,8 +242,8 @@ Finished backup at 12-09-09
 
 <ul>
 <li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 10 データベースのバックアップ: 高度なトピック<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckad.htm#CHDBAHAD">セクションへの大規模なデータファイルのバックアップの分割</a></li>
+&ndash;> 10 データベースのバックアップ: 高度なトピック<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckad.htm#CHDBAHAD">セクションへの大規模なデータファイルのバックアップの分割</a></li>
 </ul>
 
 
@@ -377,13 +377,13 @@ BS Key  Type LV Size       Device Type Elapsed Time Completion Time
 
 <ul>
 <li><p>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 5 Recovery Manager環境の構成<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1019739">Recovery Managerの永続的な構成の表示およびクリア</a><br/>
+&ndash;> 5 Recovery Manager環境の構成<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1019739">Recovery Managerの永続的な構成の表示およびクリア</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#i1017907">制御ファイルおよびサーバー・パラメータ・ファイルの自動バックアップの構成</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmconfb.htm#sthref449">バックアップの最適化の構成</a></p>
 
-<p>-> 9 データベースのバックアップ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#sthref883">ブロック・チェンジ・トラッキングの有効化および無効化</a></p></li>
+<p>&ndash;> 9 データベースのバックアップ<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#sthref883">ブロック・チェンジ・トラッキングの有効化および無効化</a></p></li>
 </ul>
 
 
@@ -479,8 +479,8 @@ ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
 
 <ul>
 <li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 13 リカバリ・カタログの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
+&ndash;> 13 リカバリ・カタログの管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
 </ul>
 

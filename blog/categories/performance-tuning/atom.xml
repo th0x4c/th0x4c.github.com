@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Performance Tuning | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/performance-tuning/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:37:13+09:00</updated>
+  <updated>2013-05-07T23:28:57+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -34,8 +34,8 @@
 
 <ul>
 <li>パフォーマンス・チューニング・ガイド<br/>
--> 15 SQL計画の管理の使用方法<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/optplanmgmt.htm#BABEGJGB">15.2 SQL計画ベースラインの管理</a></li>
+&ndash;> 15 SQL計画の管理の使用方法<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/optplanmgmt.htm#BABEGJGB">15.2 SQL計画ベースラインの管理</a></li>
 </ul>
 
 
@@ -235,8 +235,8 @@ Statistics
 
 <ul>
 <li>PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス<br/>
--> 141 DBMS_STATS<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
+&ndash;> 141 DBMS_STATS<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#BEIBJJHC">SET_TABLE_PREFSプロシージャ</a></li>
 </ul>
 
@@ -320,8 +320,8 @@ PL/SQL procedure successfully completed.
 
 <ul>
 <li>パフォーマンス・チューニング・ガイド<br/>
--> 13 オプティマイザ統計の管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
+&ndash;> 13 オプティマイザ統計の管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
 </ul>
 
 
@@ -563,7 +563,7 @@ COL_GROUP                      NUM_DISTINCT HISTOGRAM
     <id>http://th0x4c.github.com/blog/2012/09/16/oracle-result-cache</id>
     <content type="html"><![CDATA[<h2>目的</h2>
 
-<p>"結果キャッシュ" 機能を使用する。</p>
+<p>&ldquo;結果キャッシュ&rdquo; 機能を使用する。</p>
 
 <h2>環境</h2>
 
@@ -577,14 +577,14 @@ COL_GROUP                      NUM_DISTINCT HISTOGRAM
 
 <ul>
 <li>パフォーマンス・チューニング・ガイド<br/>
--> 7 メモリーの構成および使用方法<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
+&ndash;> 7 メモリーの構成および使用方法<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
 </ul>
 
 
 <h2>結果キャッシュの使用</h2>
 
-<p>"結果キャッシュ" 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
+<p>&ldquo;結果キャッシュ&rdquo; 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
 
 <ul>
 <li>初期化パラメータの設定</li>

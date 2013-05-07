@@ -19,13 +19,14 @@ DB: &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -44,8 +45,6 @@ DB: &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -119,8 +118,8 @@ DB: &hellip;">
 
 <ul>
 <li>インストレーション・ガイド for Linux<br/>
--> 5 Oracle Databaseのインストール後の作業<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
+&ndash;> 5 Oracle Databaseのインストール後の作業<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/install.112/b56273/post_inst_task.htm#CHDIDHCH">5.3.9.1 ダイレクトNFSクライアント</a></li>
 </ul>
 
 
@@ -274,7 +273,7 @@ $ make -f ins_rdbms.mk dnfs_off
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -293,7 +292,6 @@ $ make -f ins_rdbms.mk dnfs_off
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

@@ -19,13 +19,14 @@ DB: Oracle Database 11g Release 2 &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/page/6/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/6">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -44,8 +45,6 @@ DB: Oracle Database 11g Release 2 &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -122,8 +121,8 @@ DB: Oracle Database 11g Release 2 &hellip;">
 
 <ul>
 <li>データ・ウェアハウス・ガイド<br/>
--> 9 基本的なマテリアライズド・ビュー<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006519">集計を含むマテリアライズド・ビュー</a><br/>
+&ndash;> 9 基本的なマテリアライズド・ビュー<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006519">集計を含むマテリアライズド・ビュー</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007028">集計を含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1006674">結合のみを含むマテリアライズド・ビュー</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/basicmv.htm#i1007013">結合のみを含むマテリアライズド・ビューの高速リフレッシュに関する制限</a><br/>
@@ -490,21 +489,21 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 <p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
 
 <ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の Data Guard の項目から &#8220;設定および管理&#8221; をクリックして、Data Guard のページを開く</li>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;ファスト・スタート・フェイルオーバー&#8221; の &#8220;無効&#8221; をクリック</li>
+<li>&ldquo;ファスト・スタート・フェイルオーバー&rdquo; の &ldquo;無効&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;オブザーバの構成&#8221; をクリック</li>
+<li>&ldquo;オブザーバの構成&rdquo; をクリック</li>
 </ul>
 
 
@@ -518,7 +517,7 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;続行&#8221;</li>
+<li>&ldquo;続行&rdquo;</li>
 </ul>
 
 
@@ -532,21 +531,21 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;続行&#8221;</li>
+<li>&ldquo;続行&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;はい&#8221;</li>
+<li>&ldquo;はい&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
 
 <ul>
-<li>処理中 -> 完了</li>
+<li>処理中 &ndash;> 完了</li>
 </ul>
 
 
@@ -554,10 +553,10 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
 
-<p>なぜか上記画面のまま &#8220;概要&#8221; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
 
 <ul>
-<li>Data Guard の構成画面に戻ると &#8220;ファスト・スタート・フェイルオーバー&#8221; が &#8220;stdby1.localに対して有効&#8221; になり、&#8221;オブザーバの場所&#8221; が &#8220;sv2.local&#8221; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
+<li>Data Guard の構成画面に戻ると &ldquo;ファスト・スタート・フェイルオーバー&rdquo; が &ldquo;stdby1.localに対して有効&rdquo; になり、&#8221;オブザーバの場所&#8221; が &ldquo;sv2.local&rdquo; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
 </ul>
 
 
@@ -759,8 +758,8 @@ SQL&gt; exit
 
 <ul>
 <li>Data Guard概要および管理<br/>
--> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
+&ndash;> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
 </ul>
 
 
@@ -878,7 +877,7 @@ new RMAN configuration parameters are successfully stored
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -897,7 +896,6 @@ new RMAN configuration parameters are successfully stored
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

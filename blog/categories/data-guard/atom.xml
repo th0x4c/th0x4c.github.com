@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Data Guard | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/data-guard/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:37:13+09:00</updated>
+  <updated>2013-05-07T23:28:57+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -39,21 +39,21 @@
 <p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
 
 <ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li>"ファスト・スタート・フェイルオーバー" の "無効" をクリック</li>
+<li>&ldquo;ファスト・スタート・フェイルオーバー&rdquo; の &ldquo;無効&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
 
 <ul>
-<li>"オブザーバの構成" をクリック</li>
+<li>&ldquo;オブザーバの構成&rdquo; をクリック</li>
 </ul>
 
 
@@ -67,7 +67,7 @@
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
 
 <ul>
-<li>"続行"</li>
+<li>&ldquo;続行&rdquo;</li>
 </ul>
 
 
@@ -81,21 +81,21 @@
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
 
 <ul>
-<li>"続行"</li>
+<li>&ldquo;続行&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
 
 <ul>
-<li>"はい"</li>
+<li>&ldquo;はい&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
 
 <ul>
-<li>処理中 -> 完了</li>
+<li>処理中 &ndash;> 完了</li>
 </ul>
 
 
@@ -103,10 +103,10 @@
 
 <p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
 
-<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
 
 <ul>
-<li>Data Guard の構成画面に戻ると "ファスト・スタート・フェイルオーバー" が "stdby1.localに対して有効" になり、"オブザーバの場所" が "sv2.local" になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
+<li>Data Guard の構成画面に戻ると &ldquo;ファスト・スタート・フェイルオーバー&rdquo; が &ldquo;stdby1.localに対して有効&rdquo; になり、"オブザーバの場所" が &ldquo;sv2.local&rdquo; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
 </ul>
 
 
@@ -281,8 +281,8 @@ SQL&gt; exit
 
 <ul>
 <li>Data Guard概要および管理<br/>
--> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
+&ndash;> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
 </ul>
 
 
@@ -355,7 +355,7 @@ new RMAN configuration parameters are successfully stored
     <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-real-time-query</id>
     <content type="html"><![CDATA[<h2>目的</h2>
 
-<p>Data Guard の "リアルタイム問い合わせ" 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
+<p>Data Guard の &ldquo;リアルタイム問い合わせ&rdquo; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
 
 <h2>環境</h2>
 
@@ -368,33 +368,33 @@ new RMAN configuration parameters are successfully stored
 
 <h2>リアルタイム問い合わせ</h2>
 
-<p>Data Guard の "リアルタイム問い合わせ" 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
+<p>Data Guard の &ldquo;リアルタイム問い合わせ&rdquo; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
 
 <p>今回は EM Grid Control を使用してこの機能を有効にする。</p>
 
 <ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li>"リアルタイム問い合わせ" の "無効" をクリック</li>
+<li>&ldquo;リアルタイム問い合わせ&rdquo; の &ldquo;無効&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-1.png" width="720" height="450"></p>
 
 <ul>
-<li>"リアルタイム問い合わせの有効化" をチェックして、"適用" をクリック</li>
+<li>&ldquo;リアルタイム問い合わせの有効化&rdquo; をチェックして、"適用" をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-2.png" width="720" height="450"></p>
 
 <ul>
-<li>処理中 -> 正常に適用された</li>
+<li>処理中 &ndash;> 正常に適用された</li>
 </ul>
 
 
@@ -403,7 +403,7 @@ new RMAN configuration parameters are successfully stored
 <p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-4.png" width="720" height="450"></p>
 
 <ul>
-<li>Data Guard の構成画面に戻ると "リアルタイム問い合わせ" が "有効" になっている</li>
+<li>Data Guard の構成画面に戻ると &ldquo;リアルタイム問い合わせ&rdquo; が &ldquo;有効&rdquo; になっている</li>
 </ul>
 
 
@@ -445,7 +445,7 @@ ORA-16000: database open for read-only access
     <id>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database</id>
     <content type="html"><![CDATA[<h2>目的</h2>
 
-<p>Data Guard の "スナップショット・スタンバイ・データベース" 機能により、スタンバイ DB を一時的に更新可能にする。</p>
+<p>Data Guard の &ldquo;スナップショット・スタンバイ・データベース&rdquo; 機能により、スタンバイ DB を一時的に更新可能にする。</p>
 
 <h2>環境</h2>
 
@@ -458,33 +458,33 @@ ORA-16000: database open for read-only access
 
 <h2>スナップショット・スタンバイ・データベースへの変換</h2>
 
-<p>Data Guard の "スナップショット・スタンバイ・データベース" 機能により、スタンバイ DB が一時的に更新可能にできる。"スナップショット・スタンバイ・データベース" となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
+<p>Data Guard の &ldquo;スナップショット・スタンバイ・データベース&rdquo; 機能により、スタンバイ DB が一時的に更新可能にできる。"スナップショット・スタンバイ・データベース" となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
 
-<p>EM Grid Control を使用すると変換が楽にできる。("変換" をクリックするだけ)</p>
+<p>EM Grid Control を使用すると変換が楽にできる。(&ldquo;変換&rdquo; をクリックするだけ)</p>
 
 <ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li>"変換" をクリック</li>
+<li>&ldquo;変換&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
 
 <ul>
-<li>"はい"</li>
+<li>&ldquo;はい&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
 
 <ul>
-<li>処理中 -> 完了</li>
+<li>処理中 &ndash;> 完了</li>
 </ul>
 
 
@@ -492,10 +492,10 @@ ORA-16000: database open for read-only access
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
 
-<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
 
 <ul>
-<li>ロールが "スナップショット・スタンバイ" になる。</li>
+<li>ロールが &ldquo;スナップショット・スタンバイ&rdquo; になる。</li>
 </ul>
 
 
@@ -509,7 +509,7 @@ SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
 Table created.
 </code></pre>
 
-<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から "変換" をクリックすればよい。</p>
+<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から &ldquo;変換&rdquo; をクリックすればよい。</p>
 ]]></content>
   </entry>
   
@@ -536,14 +536,14 @@ Table created.
 <p>EM Grid Control を使用してスイッチオーバーを行う。</p>
 
 <ul>
-<li>プライマリ DB インスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、Data Guard のページを開く</li>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
 
 <ul>
-<li>"スイッチオーバー" をクリック</li>
+<li>&ldquo;スイッチオーバー&rdquo; をクリック</li>
 </ul>
 
 
@@ -564,14 +564,14 @@ Table created.
 <p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-3.png" width="720" height="450"></p>
 
 <ul>
-<li>"はい"</li>
+<li>&ldquo;はい&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-4.png" width="720" height="450"></p>
 
 <ul>
-<li>処理中 -> 完了</li>
+<li>処理中 &ndash;> 完了</li>
 </ul>
 
 
@@ -579,10 +579,10 @@ Table created.
 
 <p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-6.png" width="720" height="450"></p>
 
-<p>なぜか上記画面のまま "概要" のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
 
 <ul>
-<li>今度は元スタンバイでプライマリになったインスタンスの "可用性" タブ内の Data Guard の項目から "設定および管理" をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
+<li>今度は元スタンバイでプライマリになったインスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
 </ul>
 
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 11gR1 | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/11gr1/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:37:13+09:00</updated>
+  <updated>2013-05-07T23:28:57+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -37,14 +37,14 @@
 事前に EM エージェントをインストールするサーバに ssh 接続できることを確認しておくこと。</p>
 
 <ul>
-<li>"デプロイ" タブから "エージェントのインストール" をクリック</li>
+<li>&ldquo;デプロイ&rdquo; タブから &ldquo;エージェントのインストール&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
 
 <ul>
-<li>"フレッシュ・インストール" をクリック</li>
+<li>&ldquo;フレッシュ・インストール&rdquo; をクリック</li>
 </ul>
 
 
@@ -54,11 +54,11 @@
 <li>以下のように設定
 
 <ul>
-<li>"ホスト・リストの指定" : DB サーバのホスト名</li>
-<li>"OS 資格証明" : DB サーバの OS ユーザ</li>
-<li>"root.sh の実行" のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
-<li>"インストールのベース・ディレクトリ" : /u01/app/oracle/Middleware</li>
-<li>"管理サーバの登録パスワード" : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
+<li>&ldquo;ホスト・リストの指定&rdquo; : DB サーバのホスト名</li>
+<li>&ldquo;OS 資格証明&rdquo; : DB サーバの OS ユーザ</li>
+<li>&ldquo;root.sh の実行&rdquo; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
+<li>&ldquo;インストールのベース・ディレクトリ&rdquo; : /u01/app/oracle/Middleware</li>
+<li>&ldquo;管理サーバの登録パスワード&rdquo; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
 </ul>
 </li>
 </ul>
@@ -69,14 +69,14 @@
 <img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
 
 <ul>
-<li>"セキュリティ・アップデートをMy Oracle Support経由で受け取ります。" のチェックははずす。</li>
+<li>&ldquo;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&rdquo; のチェックははずす。</li>
 </ul>
 
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
 
 <ul>
-<li>"はい"</li>
+<li>&ldquo;はい&rdquo;</li>
 </ul>
 
 
@@ -115,7 +115,7 @@ $ su
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
 
 <ul>
-<li>DB インスタンスを選択して "構成" をクリック</li>
+<li>DB インスタンスを選択して &ldquo;構成&rdquo; をクリック</li>
 </ul>
 
 
@@ -126,7 +126,7 @@ $ su
 </ul>
 
 
-<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して "接続テスト" をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
+<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &ldquo;接続テスト&rdquo; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
 
@@ -134,12 +134,12 @@ $ su
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
 
-<p>dbsnmp のパスワードを変更したらもう一度 "接続テスト" を行い成功することを確認して "次へ" をクリック</p>
+<p>dbsnmp のパスワードを変更したらもう一度 &ldquo;接続テスト&rdquo; を行い成功することを確認して &ldquo;次へ&rdquo; をクリック</p>
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
 
 <ul>
-<li>確認して "発行"</li>
+<li>確認して &ldquo;発行&rdquo;</li>
 </ul>
 
 
@@ -153,7 +153,7 @@ $ su
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
 
 <ul>
-<li>"OK"</li>
+<li>&ldquo;OK&rdquo;</li>
 </ul>
 
 

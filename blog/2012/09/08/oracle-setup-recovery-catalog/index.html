@@ -19,13 +19,14 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップ�
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/08/oracle-setup-recovery-catalog/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/08/oracle-setup-recovery-catalog">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -44,8 +45,6 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップ�
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -119,8 +118,8 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップ�
 
 <ul>
 <li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
--> 13 リカバリ・カタログの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
+&ndash;> 13 リカバリ・カタログの管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
 </ul>
 
@@ -341,7 +340,7 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -360,7 +359,6 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

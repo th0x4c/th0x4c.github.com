@@ -4,7 +4,7 @@
   <title><![CDATA[Category: GDB | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/gdb/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:37:13+09:00</updated>
+  <updated>2013-05-07T23:28:57+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -133,7 +133,7 @@ on the stack and the return value is stored in RAX.</p></blockquote>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">ret</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">44</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">66</span><span class="p">,</span> <span class="mi">77</span><span class="p">,</span> <span class="mi">88</span><span class="p">,</span> <span class="mi">99</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sum: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">sum</span><span class="o">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">ret</span><span class="p">);</span>
 </span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
@@ -300,7 +300,7 @@ mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
 </ul>
 
 
-<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,... というふうに存在することになる。</p>
+<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&hellip; というふうに存在することになる。</p>
 
 <p>関数 sum から返った後に レジスタ RAX にて戻り値が分かる。</p>
 

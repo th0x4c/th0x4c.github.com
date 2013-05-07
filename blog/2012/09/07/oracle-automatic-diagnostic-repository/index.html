@@ -11,8 +11,8 @@
   
   <meta name="description" content="目的 Oracle Database のログ出力先を変更する。 環境 OS: Oracle Enterprise Linux 5.8
 DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
--> 9 診断データの管理
--> &hellip;">
+&ndash;> 9 診断データの管理
+& &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,13 +21,14 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-automatic-diagnostic-repository/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-automatic-diagnostic-repository">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -46,8 +47,6 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -121,20 +120,20 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
 
 <ul>
 <li><p>管理者ガイド<br/>
--> 9 診断データの管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
+&ndash;> 9 診断データの管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
 <li><p>リファレンス<br/>
--> 1 初期化パラメータ<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
+&ndash;> 1 初期化パラメータ<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
 <li><p>Net Services管理者ガイド<br/>
--> 16 Oracle Net Servicesのトラブルシューティング<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
+&ndash;> 16 Oracle Net Servicesのトラブルシューティング<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
 </ul>
 
 
 <h2>設定</h2>
 
-<p>Oracle Database 11gR1 より、各種ログの出力先が&#8221;自動診断リポジトリ(Automatic Diagnostic Repository, ADR)&#8221;という構造になった。</p>
+<p>Oracle Database 11gR1 より、各種ログの出力先が&#8221;自動診断リポジトリ(Automatic Diagnostic Repository, ADR)&ldquo;という構造になった。</p>
 
 <ul>
 <li>Oracle Database のログ</li>
@@ -278,7 +277,7 @@ ADR_BASE = /home/oracle
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -297,7 +296,6 @@ ADR_BASE = /home/oracle
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

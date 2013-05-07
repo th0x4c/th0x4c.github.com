@@ -21,13 +21,14 @@ GDB: GNU gdb 7.0.1-23. &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/">
+  <link rel="canonical" href="http://th0x4c.github.com">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -46,8 +47,6 @@ GDB: GNU gdb 7.0.1-23. &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -375,7 +374,7 @@ mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
 </ul>
 
 
-<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&#8230; というふうに存在することになる。</p>
+<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&hellip; というふうに存在することになる。</p>
 
 <p>関数 sum から返った後に レジスタ RAX にて戻り値が分かる。</p>
 
@@ -2189,14 +2188,14 @@ sit0      Link encap:IPv6-in-IPv4
 <h2>参考</h2>
 
 <ul>
-<li><a href="http://www.atmarkit.co.jp/ait/articles/0810/01/news134.html">Linuxトラブルシューティング探偵団　番外編（1）：減り続けるメモリ残量！ 果たしてその原因は!? (1/3) - ＠IT</a></li>
-<li><a href="http://www.atmarkit.co.jp/ait/articles/0903/25/news131.html"> Linuxトラブルシューティング探偵団　番外編（3）：SystemTapで真犯人を捕まえろ！ (1/4) - ＠IT</a></li>
+<li><a href="http://www.atmarkit.co.jp/ait/articles/0810/01/news134.html">Linuxトラブルシューティング探偵団　番外編（1）：減り続けるメモリ残量！ 果たしてその原因は!? (1/3) &ndash; ＠IT</a></li>
+<li><a href="http://www.atmarkit.co.jp/ait/articles/0903/25/news131.html"> Linuxトラブルシューティング探偵団　番外編（3）：SystemTapで真犯人を捕まえろ！ (&frac14;) &ndash; ＠IT</a></li>
 <li><a href="https://users.miraclelinux.com/technet/document/linux/training/2_5_2.html">2.CPU使用率(第5章 パフォーマンス管理～上級:基本管理コースII)</a></li>
 <li><a href="https://users.miraclelinux.com/technet/document/linux/training/2_5_4.html">4.メモリ使用率(第5章 パフォーマンス管理～上級:基本管理コースII)</a></li>
 <li><a href="http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-3-520773-ja.html">3. 性能管理実践編(システムリソース管理)</a></li>
 <li><a href="http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-6-520778-ja.html">6. システムがパフォーマンスを維持するためのメモリ管理について</a></li>
 <li><a href="http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-9-520784-ja.html">9. I/Oボトルネックの計測</a></li>
-<li><a href="http://www.atmarkit.co.jp/fnetwork/netcom/netstat/netstat.html">netstat - ホストのネットワーク統計や状態を確認する</a></li>
+<li><a href="http://www.atmarkit.co.jp/fnetwork/netcom/netstat/netstat.html">netstat &ndash; ホストのネットワーク統計や状態を確認する</a></li>
 <li><a href="http://www.redbooks.ibm.com/abstracts/redp4285.html">Linux Performance and Tuning Guidelines</a></li>
 </ul>
 
@@ -2616,7 +2615,7 @@ $ mv core.16639 core.16639.after
 &gt; 0000000007b8e000     264     208     208 rw---    [ anon ]
 </code></pre>
 
-<p>仮想メモリ量が 132Kbytes -> 264Kbytes (+132Kbytes)に増加している。
+<p>仮想メモリ量が 132Kbytes &ndash;> 264Kbytes (+132Kbytes)に増加している。
 増加したアドレスのメモリダンプを確認して、どのように利用されているか確認してみる。</p>
 
 <p>具体的にはメモリ増加後の core で 0x0000000007b8e000 + 132Kbytes のアドレス(0x7baf000)から
@@ -2659,7 +2658,7 @@ $ mv core.16639 core.16639.after
 0x7bc0e60:      0x6d2064656b61656c      0x00000079726f6d65
 </code></pre>
 
-<p><code>0x6d2064656b61656c 0x00000079726f6d65</code> は ASCII で直すと &#8220;leaked memory&#8221;</p>
+<p><code>0x6d2064656b61656c 0x00000079726f6d65</code> は ASCII で直すと &ldquo;leaked memory&rdquo;</p>
 
 <pre><code>$ ruby -e 's="6d2064656b61656c"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.chr}; puts'
 m dekael
@@ -2667,7 +2666,7 @@ $ ruby -e 's="00000079726f6d65"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.
 yrome
 </code></pre>
 
-<p>よってプログラム中で &#8220;leaked memory&#8221; を入れている領域がリークしていると分かる。
+<p>よってプログラム中で &ldquo;leaked memory&rdquo; を入れている領域がリークしていると分かる。
 こんなに明らかに分かるケースは少なく、実際のプログラムではポインタが見えていたり
 して、さらに core を追わないとリーク原因箇所が追えないケースが多いと思うがメモリ
 リーク原因究明のとっかかりにはなる。</p>
@@ -2886,7 +2885,7 @@ The address of the last match is stored as the value of "$_".
 Convenience variable "$numfound" is set to the number of matches.
 </code></pre>
 
-<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に &#8220;leaked memory&#8221; という文字列を見つける。</p>
+<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に &ldquo;leaked memory&rdquo; という文字列を見つける。</p>
 
 <pre><code>$ gdb
 (gdb) core-file core.16639.after
@@ -2932,14 +2931,14 @@ Convenience variable "$numfound" is set to the number of matches.
 
 <p>36 個所で見つかった。
 なお、<code>find</code> の引数で文字列を渡して探すときは文字列は NULL 終端を含むことに注意。
-例えば、上記の例で部分文字列で探そうと &#8220;leaked&#8221; としても引っかからない。</p>
+例えば、上記の例で部分文字列で探そうと &ldquo;leaked&rdquo; としても引っかからない。</p>
 
 <pre><code>(gdb)  find 0x7baf000, +(132 * 1024), "leaked"
 Pattern not found.
 </code></pre>
 
 <p>部分文字列で探す場合は文字列を16進数にするしかなさそう。
-(リトルエンディアンで &#8220;leaked&#8221; は <code>0x64656b61656c</code> になる。)</p>
+(リトルエンディアンで &ldquo;leaked&rdquo; は <code>0x64656b61656c</code> になる。)</p>
 
 <pre><code>(gdb)  find /b  0x7baf000, +(132 * 1024), 0x64656b61656c
 0x7baf430
@@ -3002,7 +3001,7 @@ Pattern not found.
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -3021,7 +3020,6 @@ Pattern not found.
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

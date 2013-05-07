@@ -19,13 +19,14 @@ DB: Oracle &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -44,8 +45,6 @@ DB: Oracle &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -119,14 +118,14 @@ DB: Oracle &hellip;">
 
 <ul>
 <li><p>SecureFilesおよびラージ・オブジェクト開発者ガイド<br/>
--> 4 Oracle SecureFiles LOBの使用<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABDIEGE">BasicFiles LOBからSecureFiles LOBへの列の移行</a><br/>
+&ndash;> 4 Oracle SecureFiles LOBの使用<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABDIEGE">BasicFiles LOBからSecureFiles LOBへの列の移行</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABJFEBB">SecureFiles LOBの初期化パラメータdb_securefile</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHGHEFA">SecureFiles LOBを含んだCREATE TABLEの使用</a><br/>
    <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHJJBIJ">SecureFiles LOBを含んだALTER TABLEの使用</a></p></li>
 <li><p>管理者ガイド<br/>
--> 20 表の管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tables007.htm#i1006754">表のオンライン再定義</a></p></li>
+&ndash;> 20 表の管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tables007.htm#i1006754">表のオンライン再定義</a></p></li>
 </ul>
 
 
@@ -450,7 +449,7 @@ CUST                           C_LOB                          NO         HIGH   
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -469,7 +468,6 @@ CUST                           C_LOB                          NO         HIGH   
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

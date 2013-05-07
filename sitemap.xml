@@ -2,154 +2,158 @@
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/04/setup-octopress/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/05/oracle-net-services/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/07/oracle-encrypting-a-tablespace/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/07/oracle-direct-nfs-client/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>
             http://th0x4c.github.com/blog/2012/09/07/oracle-automatic-diagnostic-repository/
         </loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/07/oracle-password-management/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/08/oracle-setup-recovery-catalog/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/09/oracle-configure-rman/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/09/oracle-multisection-backup/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/09/oracle-archival-backup/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>
             http://th0x4c.github.com/blog/2012/09/09/oracle-creating-a-physical-standby-database/
         </loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-switchover/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>
             http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/
         </loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-real-time-query/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/09/oracle-data-guard-rman-configuration/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/11/oracle-data-guard-fast-start-failover/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>
             http://th0x4c.github.com/blog/2012/09/12/oracle-fast-refresh-on-materialized-view/
         </loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/12/oracle-transportable-tablespace/</loc>
-        <lastmod>2013-04-06T17:36:47+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/13/oracle-star-transformation/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/16/oracle-securefiles-lob/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/16/oracle-reference-partitioned-table/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/16/oracle-interval-partitioned-table/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>
             http://th0x4c.github.com/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/
         </loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/16/oracle-result-cache/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/16/oracle-multicolumn-statistics/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>
             http://th0x4c.github.com/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/
         </loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/09/16/oracle-sql-plan-management/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/10/10/gdb-analyze-a-core-file/</loc>
-        <lastmod>2013-04-21T04:01:37+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2012/10/10/os-virtual-memory-map/</loc>
-        <lastmod>2013-01-06T05:24:52+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2013/04/06/os-memory-leak/</loc>
-        <lastmod>2013-05-07T22:36:31+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2013/04/09/os-bottleneck/</loc>
-        <lastmod>2013-04-10T00:07:19+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/2013/04/10/gdb-calling-convention/</loc>
-        <lastmod>2013-04-10T22:22:15+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/blog/archives/</loc>
-        <lastmod>2013-05-07T22:36:31+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
     <url>
         <loc>http://th0x4c.github.com/</loc>
-        <lastmod>2013-05-07T22:36:31+09:00</lastmod>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
+    </url>
+    <url>
+        <loc>http://th0x4c.github.com/robots.txt</loc>
+        <lastmod>2013-05-07T23:22:18+09:00</lastmod>
     </url>
 </urlset>

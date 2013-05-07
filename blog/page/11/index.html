@@ -10,7 +10,7 @@
 
   
   <meta name="description" content="目的 暗号化された表領域を作成する。
-&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。 環境 OS: Oracle Enterprise Linux 5.8
+&ldquo;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。 環境 OS: Oracle Enterprise Linux 5.8
 DB: Oracle Database 11g &hellip;">
   
 
@@ -20,13 +20,14 @@ DB: Oracle Database 11g &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/page/11/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/page/11">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -45,8 +46,6 @@ DB: Oracle Database 11g &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -110,7 +109,7 @@ DB: Oracle Database 11g &hellip;">
   <div class="entry-content"><h2>目的</h2>
 
 <p>暗号化された表領域を作成する。<br/>
-&#8220;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
+&ldquo;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
 
 <h2>環境</h2>
 
@@ -124,17 +123,17 @@ DB: Oracle Database 11g &hellip;">
 
 <ul>
 <li><p>2日でセキュリティ・ガイド<br/>
--> 6 データの保護<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
+&ndash;> 6 データの保護<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
 <li><p>管理者ガイド<br/>
--> 14 表領域の管理<br/>
--> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
+&ndash;> 14 表領域の管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
 </ul>
 
 
 <h2>作成</h2>
 
-<p>&#8220;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
+<p>&ldquo;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
 
 <ol>
 <li>ウォレット(マスター暗号化キーが格納される)を DB 外の OS 上のファイルとして作成</li>
@@ -177,7 +176,7 @@ ENCRYPTION_WALLET_LOCATION=
 </ul>
 
 
-<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&#8220;)で囲む必要がある。
+<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&ldquo;)で囲む必要がある。
 これでウォレット格納ディレクトリにウォレットの OS ファイルができる。</p>
 
 <pre><code>$ sqlplus '/as sysdba'
@@ -307,14 +306,14 @@ SECURESPACE          YES
 <li><p><code>netca</code> を起動</p>
 
 <p>  $ netca</p></li>
-<li><p>&#8220;リスナー構成&#8221; を選択</p></li>
+<li><p>&ldquo;リスナー構成&rdquo; を選択</p></li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-1.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;追加&#8221;</li>
+<li>&ldquo;追加&rdquo;</li>
 </ul>
 
 
@@ -342,21 +341,21 @@ SECURESPACE          YES
 <p><img src="/images/2012-09-05-oracle-net-services/netca-5.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;いいえ&#8221;</li>
+<li>&ldquo;いいえ&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-6.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;次へ&#8221;</li>
+<li>&ldquo;次へ&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-7.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;完了&#8221;</li>
+<li>&ldquo;完了&rdquo;</li>
 </ul>
 
 
@@ -387,14 +386,14 @@ ADR_BASE_LISTENER = /u01/app/oracle
 <li><p><code>netca</code> を起動</p>
 
 <p>  $ netca</p></li>
-<li><p>&#8220;ローカル・ネット・サービス名構成&#8221; を選択</p></li>
+<li><p>&ldquo;ローカル・ネット・サービス名構成&rdquo; を選択</p></li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-9.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;追加&#8221;</li>
+<li>&ldquo;追加&rdquo;</li>
 </ul>
 
 
@@ -436,21 +435,21 @@ ADR_BASE_LISTENER = /u01/app/oracle
 <p><img src="/images/2012-09-05-oracle-net-services/netca-15.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;いいえ&#8221;</li>
+<li>&ldquo;いいえ&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-16.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;次へ&#8221;</li>
+<li>&ldquo;次へ&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-05-oracle-net-services/netca-17.png" width="600" height="400"></p>
 
 <ul>
-<li>&#8220;完了&#8221;</li>
+<li>&ldquo;完了&rdquo;</li>
 </ul>
 
 
@@ -805,7 +804,7 @@ $ git push origin source
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -824,7 +823,6 @@ $ git push origin source
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

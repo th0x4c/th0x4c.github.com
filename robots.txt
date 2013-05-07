@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: 
+
+Sitemap: http://th0x4c.github.com/sitemap.xml 

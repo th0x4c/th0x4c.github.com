@@ -21,13 +21,14 @@ GDB: GNU gdb 7.0.1-23. &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2013/04/10/gdb-calling-convention/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2013/04/10/gdb-calling-convention">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -46,8 +47,6 @@ GDB: GNU gdb 7.0.1-23. &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -372,7 +371,7 @@ mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
 </ul>
 
 
-<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&#8230; というふうに存在することになる。</p>
+<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&hellip; というふうに存在することになる。</p>
 
 <p>関数 sum から返った後に レジスタ RAX にて戻り値が分かる。</p>
 
@@ -1181,7 +1180,7 @@ rbp --&gt; 0x7fffffffe2d0 +------------------+
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -1200,7 +1199,6 @@ rbp --&gt; 0x7fffffffe2d0 +------------------+
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

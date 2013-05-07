@@ -20,13 +20,14 @@ EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/07/oracle-em-agent-installation">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -45,8 +46,6 @@ EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -123,14 +122,14 @@ EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
 事前に EM エージェントをインストールするサーバに ssh 接続できることを確認しておくこと。</p>
 
 <ul>
-<li>&#8220;デプロイ&#8221; タブから &#8220;エージェントのインストール&#8221; をクリック</li>
+<li>&ldquo;デプロイ&rdquo; タブから &ldquo;エージェントのインストール&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-1.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;フレッシュ・インストール&#8221; をクリック</li>
+<li>&ldquo;フレッシュ・インストール&rdquo; をクリック</li>
 </ul>
 
 
@@ -140,11 +139,11 @@ EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
 <li>以下のように設定
 
 <ul>
-<li>&#8220;ホスト・リストの指定&#8221; : DB サーバのホスト名</li>
-<li>&#8220;OS 資格証明&#8221; : DB サーバの OS ユーザ</li>
-<li>&#8220;root.sh の実行&#8221; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
-<li>&#8220;インストールのベース・ディレクトリ&#8221; : /u01/app/oracle/Middleware</li>
-<li>&#8220;管理サーバの登録パスワード&#8221; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
+<li>&ldquo;ホスト・リストの指定&rdquo; : DB サーバのホスト名</li>
+<li>&ldquo;OS 資格証明&rdquo; : DB サーバの OS ユーザ</li>
+<li>&ldquo;root.sh の実行&rdquo; のチェックははずす(sudo が使えるようになっていないといけないため。)</li>
+<li>&ldquo;インストールのベース・ディレクトリ&rdquo; : /u01/app/oracle/Middleware</li>
+<li>&ldquo;管理サーバの登録パスワード&rdquo; : oracle11g (EM Grid Control インストール時に指定した SYSMAN パスワードと同じにした)</li>
 </ul>
 </li>
 </ul>
@@ -155,14 +154,14 @@ EM: Oracle Enterprise Manager Grid Control 11g &hellip;">
 <img src="/images/2012-09-07-oracle-em-agent-installation/em-5.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&#8221; のチェックははずす。</li>
+<li>&ldquo;セキュリティ・アップデートをMy Oracle Support経由で受け取ります。&rdquo; のチェックははずす。</li>
 </ul>
 
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-6.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;はい&#8221;</li>
+<li>&ldquo;はい&rdquo;</li>
 </ul>
 
 
@@ -201,7 +200,7 @@ $ su
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-10.png" width="720" height="450"></p>
 
 <ul>
-<li>DB インスタンスを選択して &#8220;構成&#8221; をクリック</li>
+<li>DB インスタンスを選択して &ldquo;構成&rdquo; をクリック</li>
 </ul>
 
 
@@ -212,7 +211,7 @@ $ su
 </ul>
 
 
-<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &#8220;接続テスト&#8221; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
+<p>dbsnmp のパスワード(デフォルト:dbsnmp)を入力して &ldquo;接続テスト&rdquo; をクリックすると、失敗するので dbsnmp のパスワード変更を行う。</p>
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-12.png" width="720" height="450"></p>
 
@@ -220,12 +219,12 @@ $ su
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-14.png" width="720" height="450"></p>
 
-<p>dbsnmp のパスワードを変更したらもう一度 &#8220;接続テスト&#8221; を行い成功することを確認して &#8220;次へ&#8221; をクリック</p>
+<p>dbsnmp のパスワードを変更したらもう一度 &ldquo;接続テスト&rdquo; を行い成功することを確認して &ldquo;次へ&rdquo; をクリック</p>
 
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-15.png" width="720" height="450"></p>
 
 <ul>
-<li>確認して &#8220;発行&#8221;</li>
+<li>確認して &ldquo;発行&rdquo;</li>
 </ul>
 
 
@@ -239,7 +238,7 @@ $ su
 <p><img src="/images/2012-09-07-oracle-em-agent-installation/em-17.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;OK&#8221;</li>
+<li>&ldquo;OK&rdquo;</li>
 </ul>
 
 
@@ -345,7 +344,7 @@ $ su
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -364,7 +363,6 @@ $ su
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

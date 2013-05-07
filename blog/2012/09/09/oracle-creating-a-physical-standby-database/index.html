@@ -20,13 +20,14 @@ EM: Oracle Enterprise Manager &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-creating-a-physical-standby-database/">
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2012/09/09/oracle-creating-a-physical-standby-database">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
@@ -45,8 +46,6 @@ EM: Oracle Enterprise Manager &hellip;">
   </script>
 
 
-
-  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 
 <body   >
@@ -122,7 +121,7 @@ EM: Oracle Enterprise Manager &hellip;">
 <p>EM Grid Control を使用してフィジカル・スタンバイ・データベースを作成する。</p>
 
 <ul>
-<li>プライマリ DB インスタンスの &#8220;可用性&#8221; タブ内の &#8220;スタンバイ・データベースの追加&#8221; をクリック</li>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の &ldquo;スタンバイ・データベースの追加&rdquo; をクリック</li>
 </ul>
 
 
@@ -136,70 +135,70 @@ EM: Oracle Enterprise Manager &hellip;">
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-2.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;スタンバイ・データベースの追加&#8221; をクリック</li>
+<li>&ldquo;スタンバイ・データベースの追加&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-3.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;新規のフィジカル・スタンバイ・データベースの作成&#8221; を選択し、&#8221;続行&#8221; をクリック</li>
+<li>&ldquo;新規のフィジカル・スタンバイ・データベースの作成&rdquo; を選択し、&#8221;続行&#8221; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-4.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;Recovery Manager (RMAN)を使用してデータベース・ファイルをコピーします&#8221; のままで &#8220;次へ&#8221; をクリック</li>
+<li>&ldquo;Recovery Manager (RMAN)を使用してデータベース・ファイルをコピーします&rdquo; のままで &ldquo;次へ&rdquo; をクリック</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-5.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;プライマリ・ホスト資格証明&#8221; に OS ユーザとパスワードを入力。&#8221;スタンバイREDOログ・ファイルにOracle Managed Files(OMF)を使用&#8221; のチェックを外す</li>
+<li>&ldquo;プライマリ・ホスト資格証明&rdquo; に OS ユーザとパスワードを入力。&#8221;スタンバイREDOログ・ファイルにOracle Managed Files(OMF)を使用&#8221; のチェックを外す</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-6.png" width="720" height="450"></p>
 
 <ul>
-<li>スタンバイ DB の &#8220;インスタンス名&#8221;, &#8220;ホスト&#8221; を環境に合わせて変更</li>
+<li>スタンバイ DB の &ldquo;インスタンス名&rdquo;, &ldquo;ホスト&rdquo; を環境に合わせて変更</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-7.png" width="720" height="450"></p>
 
 <ul>
-<li>スタンバイ DB のファイルの場所として &#8220;ファイル名と場所をプライマリ・データベースと同じ場所に保持&#8221; を選択</li>
+<li>スタンバイ DB のファイルの場所として &ldquo;ファイル名と場所をプライマリ・データベースと同じ場所に保持&rdquo; を選択</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-8.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;続行&#8221;</li>
+<li>&ldquo;続行&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-9.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;一意のデータベース名&#8221;, &#8220;ターゲット名&#8221; (EM で表示されるターゲット名)を変更、スタンバイ DB の資格証明として &#8220;SYSDBA監視資格証明の使用&#8221; を選択</li>
+<li>&ldquo;一意のデータベース名&rdquo;, &ldquo;ターゲット名&rdquo; (EM で表示されるターゲット名)を変更、スタンバイ DB の資格証明として &ldquo;SYSDBA監視資格証明の使用&rdquo; を選択</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-10.png" width="720" height="450"></p>
 
 <ul>
-<li>&#8220;終了&#8221;</li>
+<li>&ldquo;終了&rdquo;</li>
 </ul>
 
 
 <p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-11.png" width="720" height="450"></p>
 
 <ul>
-<li>処理中 -> 完了となるが、なぜか完了の画面のまま &#8220;概要&#8221; のページに戻らない。</li>
+<li>処理中 &ndash;> 完了となるが、なぜか完了の画面のまま &ldquo;概要&rdquo; のページに戻らない。</li>
 </ul>
 
 
@@ -210,7 +209,7 @@ EM: Oracle Enterprise Manager &hellip;">
 <p>alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
 
 <ul>
-<li>もう一度プライマリ DB インスタンスの &#8220;可用性&#8221; タブに行くと Data Guard の項目が変わっているので &#8220;設定および管理&#8221; をクリックして、正常にスタンバイ DB が作成されていることを確認</li>
+<li>もう一度プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブに行くと Data Guard の項目が変わっているので &ldquo;設定および管理&rdquo; をクリックして、正常にスタンバイ DB が作成されていることを確認</li>
 </ul>
 
 
@@ -311,7 +310,7 @@ EM: Oracle Enterprise Manager &hellip;">
   <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
   
   <script type="text/javascript">
-    $.domReady(function(){
+    $(document).ready(function(){
         if (!window.jXHR){
             var jxhr = document.createElement('script');
             jxhr.type = 'text/javascript';
@@ -330,7 +329,6 @@ EM: Oracle Enterprise Manager &hellip;">
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
-
 
 
 

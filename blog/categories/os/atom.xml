@@ -4,7 +4,7 @@
   <title><![CDATA[Category: OS | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/os/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-05-07T22:37:13+09:00</updated>
+  <updated>2013-05-07T23:28:57+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -133,7 +133,7 @@ on the stack and the return value is stored in RAX.</p></blockquote>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">ret</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">44</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">66</span><span class="p">,</span> <span class="mi">77</span><span class="p">,</span> <span class="mi">88</span><span class="p">,</span> <span class="mi">99</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sum: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">sum</span><span class="o">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">ret</span><span class="p">);</span>
 </span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
@@ -300,7 +300,7 @@ mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
 </ul>
 
 
-<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,... というふうに存在することになる。</p>
+<p>という処理が一般的に行われるためである。結果としてスタックに積まれた引数は <code>$rbp + 0x10</code> の位置から、第7引数が <code>$rbp + 0x10</code>, 第8引数が <code>$rbp + 0x18</code>, 第9引数が <code>$rbp + 0x20</code>,&hellip; というふうに存在することになる。</p>
 
 <p>関数 sum から返った後に レジスタ RAX にて戻り値が分かる。</p>
 
@@ -2087,14 +2087,14 @@ sit0      Link encap:IPv6-in-IPv4
 <h2>参考</h2>
 
 <ul>
-<li><a href="http://www.atmarkit.co.jp/ait/articles/0810/01/news134.html">Linuxトラブルシューティング探偵団　番外編（1）：減り続けるメモリ残量！ 果たしてその原因は!? (1/3) - ＠IT</a></li>
-<li><a href="http://www.atmarkit.co.jp/ait/articles/0903/25/news131.html"> Linuxトラブルシューティング探偵団　番外編（3）：SystemTapで真犯人を捕まえろ！ (1/4) - ＠IT</a></li>
+<li><a href="http://www.atmarkit.co.jp/ait/articles/0810/01/news134.html">Linuxトラブルシューティング探偵団　番外編（1）：減り続けるメモリ残量！ 果たしてその原因は!? (1/3) &ndash; ＠IT</a></li>
+<li><a href="http://www.atmarkit.co.jp/ait/articles/0903/25/news131.html"> Linuxトラブルシューティング探偵団　番外編（3）：SystemTapで真犯人を捕まえろ！ (&frac14;) &ndash; ＠IT</a></li>
 <li><a href="https://users.miraclelinux.com/technet/document/linux/training/2_5_2.html">2.CPU使用率(第5章 パフォーマンス管理～上級:基本管理コースII)</a></li>
 <li><a href="https://users.miraclelinux.com/technet/document/linux/training/2_5_4.html">4.メモリ使用率(第5章 パフォーマンス管理～上級:基本管理コースII)</a></li>
 <li><a href="http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-3-520773-ja.html">3. 性能管理実践編(システムリソース管理)</a></li>
 <li><a href="http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-6-520778-ja.html">6. システムがパフォーマンスを維持するためのメモリ管理について</a></li>
 <li><a href="http://www.oracle.com/technetwork/jp/ats-tech/tech/useful-class-9-520784-ja.html">9. I/Oボトルネックの計測</a></li>
-<li><a href="http://www.atmarkit.co.jp/fnetwork/netcom/netstat/netstat.html">netstat - ホストのネットワーク統計や状態を確認する</a></li>
+<li><a href="http://www.atmarkit.co.jp/fnetwork/netcom/netstat/netstat.html">netstat &ndash; ホストのネットワーク統計や状態を確認する</a></li>
 <li><a href="http://www.redbooks.ibm.com/abstracts/redp4285.html">Linux Performance and Tuning Guidelines</a></li>
 </ul>
 
@@ -2228,11 +2228,11 @@ sit0      Link encap:IPv6-in-IPv4
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">str</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">my_alloc</span><span class="p">(</span><span class="n">STR_BYTES</span><span class="p">);</span>
 </span><span class='line'>  <span class="n">leak_str</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">my_alloc</span><span class="p">(</span><span class="n">STR_BYTES</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">snprintf</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="s">&quot;freed memory&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">snprintf</span><span class="p">(</span><span class="n">leak_str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="s">&quot;leaked memory&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">snprintf</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">freed</span> <span class="n">memory</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+</span><span class='line'>  <span class="n">snprintf</span><span class="p">(</span><span class="n">leak_str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">leaked</span> <span class="n">memory</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: 0x%016lx, &quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: 0x%016lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">s</span><span class="o">:</span> <span class="mi">0</span><span class="n">x</span><span class="o">%</span><span class="mo">016l</span><span class="n">x</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">str</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">s</span><span class="o">:</span> <span class="mi">0</span><span class="n">x</span><span class="o">%</span><span class="mo">016l</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">leak_str</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">my_free</span><span class="p">((</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">str</span><span class="p">);</span>
 </span><span class='line'>  <span class="n">leak_str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">leak_str</span> <span class="err">が</span> <span class="n">free</span><span class="p">()</span> <span class="err">されていないのでリークする</span> <span class="err">*/</span>
@@ -2243,7 +2243,7 @@ sit0      Link encap:IPv6-in-IPv4
 </span><span class='line'>  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">leak_func</span><span class="p">();</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Press enter key:&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Press</span> <span class="n">enter</span> <span class="n">key</span><span class="o">:&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
 </span><span class='line'>  <span class="n">getchar</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">100</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
@@ -2251,7 +2251,7 @@ sit0      Link encap:IPv6-in-IPv4
 </span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">leak_func</span><span class="p">();</span>
 </span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Press enter key:&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Press</span> <span class="n">enter</span> <span class="n">key</span><span class="o">:&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
 </span><span class='line'>  <span class="n">getchar</span><span class="p">();</span>
 </span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
 </span><span class='line'><span class="p">}</span>
@@ -2502,7 +2502,7 @@ $ mv core.16639 core.16639.after
 &gt; 0000000007b8e000     264     208     208 rw---    [ anon ]
 </code></pre>
 
-<p>仮想メモリ量が 132Kbytes -> 264Kbytes (+132Kbytes)に増加している。
+<p>仮想メモリ量が 132Kbytes &ndash;> 264Kbytes (+132Kbytes)に増加している。
 増加したアドレスのメモリダンプを確認して、どのように利用されているか確認してみる。</p>
 
 <p>具体的にはメモリ増加後の core で 0x0000000007b8e000 + 132Kbytes のアドレス(0x7baf000)から
@@ -2545,7 +2545,7 @@ $ mv core.16639 core.16639.after
 0x7bc0e60:      0x6d2064656b61656c      0x00000079726f6d65
 </code></pre>
 
-<p><code>0x6d2064656b61656c 0x00000079726f6d65</code> は ASCII で直すと "leaked memory"</p>
+<p><code>0x6d2064656b61656c 0x00000079726f6d65</code> は ASCII で直すと &ldquo;leaked memory&rdquo;</p>
 
 <pre><code>$ ruby -e 's="6d2064656b61656c"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.chr}; puts'
 m dekael
@@ -2553,7 +2553,7 @@ $ ruby -e 's="00000079726f6d65"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.
 yrome
 </code></pre>
 
-<p>よってプログラム中で "leaked memory" を入れている領域がリークしていると分かる。
+<p>よってプログラム中で &ldquo;leaked memory&rdquo; を入れている領域がリークしていると分かる。
 こんなに明らかに分かるケースは少なく、実際のプログラムではポインタが見えていたり
 して、さらに core を追わないとリーク原因箇所が追えないケースが多いと思うがメモリ
 リーク原因究明のとっかかりにはなる。</p>
@@ -2772,7 +2772,7 @@ The address of the last match is stored as the value of "$_".
 Convenience variable "$numfound" is set to the number of matches.
 </code></pre>
 
-<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に "leaked memory" という文字列を見つける。</p>
+<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に &ldquo;leaked memory&rdquo; という文字列を見つける。</p>
 
 <pre><code>$ gdb
 (gdb) core-file core.16639.after
@@ -2818,14 +2818,14 @@ Convenience variable "$numfound" is set to the number of matches.
 
 <p>36 個所で見つかった。
 なお、<code>find</code> の引数で文字列を渡して探すときは文字列は NULL 終端を含むことに注意。
-例えば、上記の例で部分文字列で探そうと "leaked" としても引っかからない。</p>
+例えば、上記の例で部分文字列で探そうと &ldquo;leaked&rdquo; としても引っかからない。</p>
 
 <pre><code>(gdb)  find 0x7baf000, +(132 * 1024), "leaked"
 Pattern not found.
 </code></pre>
 
 <p>部分文字列で探す場合は文字列を16進数にするしかなさそう。
-(リトルエンディアンで "leaked" は <code>0x64656b61656c</code> になる。)</p>
+(リトルエンディアンで &ldquo;leaked&rdquo; は <code>0x64656b61656c</code> になる。)</p>
 
 <pre><code>(gdb)  find /b  0x7baf000, +(132 * 1024), 0x64656b61656c
 0x7baf430
@@ -3015,15 +3015,15 @@ Pattern not found.
 </span><span class='line'><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">STRSIZE</span> <span class="mi">64</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">hello</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">);</span>
-</span><span class='line'><span class="kt">void</span> <span class="n">hello_local_world</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">hello_local_world</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">char</span> <span class="n">not_initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
-</span><span class='line'><span class="kt">char</span> <span class="n">initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;initialized global world&quot;</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'><span class="kt">char</span> <span class="n">initialized_global_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">initialized</span> <span class="n">global</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">argv</span><span class="p">[])</span>
 </span><span class='line'><span class="p">{</span>
 </span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">not_initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span>
-</span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;initialized static world&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">static</span> <span class="kt">char</span> <span class="n">initialized_static_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">]</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">initialized</span> <span class="k">static</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;;</span>
 </span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">malloc_world</span><span class="p">;</span>
 </span><span class='line'>  <span class="kt">int</span> <span class="n">shmid</span><span class="p">;</span>
 </span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">shared_memory_world</span><span class="p">;</span>
@@ -3031,25 +3031,25 @@ Pattern not found.
 </span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">medium_malloc_world_1</span><span class="p">;</span>
 </span><span class='line'>  <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">medium_malloc_world_2</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">,</span> <span class="s">&quot;not initialized global world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">not</span> <span class="n">initialized</span> <span class="n">global</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_static_world</span><span class="p">,</span> <span class="s">&quot;not initialized static world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">not_initialized_static_world</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">not</span> <span class="n">initialized</span> <span class="k">static</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">malloc_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="o">*</span> <span class="n">STRSIZE</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">,</span> <span class="s">&quot;malloc world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">malloc_world</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">malloc</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">shmid</span> <span class="o">=</span> <span class="n">shmget</span><span class="p">(</span><span class="n">IPC_PRIVATE</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">)</span> <span class="o">*</span> <span class="n">STRSIZE</span><span class="p">,</span> <span class="mo">0666</span> <span class="o">|</span> <span class="n">IPC_CREAT</span><span class="p">);</span>
 </span><span class='line'>  <span class="n">shared_memory_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">shmat</span><span class="p">(</span><span class="n">shmid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">,</span> <span class="s">&quot;shared memory world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">shared_memory_world</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">shared</span> <span class="n">memory</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">big_malloc_world</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">256</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">,</span> <span class="s">&quot;big malloc world&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">big_malloc_world</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">big</span> <span class="n">malloc</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">medium_malloc_world_1</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">131</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="mi">905</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">,</span> <span class="s">&quot;medium malloc world 1&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">medium</span> <span class="n">malloc</span> <span class="n">world</span> <span class="mi">1</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">medium_malloc_world_2</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">131</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">+</span> <span class="mi">904</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">,</span> <span class="s">&quot;medium malloc world 2&quot;</span><span class="p">);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">medium_malloc_world_2</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">medium</span> <span class="n">malloc</span> <span class="n">world</span> <span class="mi">2</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">hello</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
 </span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">not_initialized_global_world</span><span class="p">);</span>
@@ -3077,14 +3077,14 @@ Pattern not found.
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">hello</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
 </span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;hello, %s: 0x%016lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">hello</span><span class="p">,</span> <span class="o">%</span><span class="n">s</span><span class="o">:</span> <span class="mi">0</span><span class="n">x</span><span class="o">%</span><span class="mo">016l</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
 </span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">hello_local_world</span><span class="p">()</span>
 </span><span class='line'><span class="p">{</span>
 </span><span class='line'>  <span class="kt">char</span> <span class="n">local_world</span><span class="p">[</span><span class="n">STRSIZE</span><span class="p">];</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">local_world</span><span class="p">,</span> <span class="s">&quot;local world&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">strcpy</span><span class="p">(</span><span class="n">local_world</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">local</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
 </span><span class='line'>  <span class="n">hello</span><span class="p">(</span><span class="n">local_world</span><span class="p">);</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
