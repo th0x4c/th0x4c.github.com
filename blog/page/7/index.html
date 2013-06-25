@@ -9,8 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard の &ldquo;リアルタイム問い合わせ&rdquo; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: &hellip;">
+  <meta name="description" content="目的 Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル Data Guard概要および管理
+& &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +79,121 @@ DB: &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-rman-configuration/">[Oracle] Data Guard 環境での RMAN の構成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T23:00:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>Data Guard概要および管理<br/>
+&ndash;> 11 Recovery Managerを使用したファイルのバックアップおよびリストア<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56302/rman.htm#BAJHHAEB">11.3.2 プライマリ・データベースでのRecovery Manager構成</a></li>
+</ul>
+
+
+<h2>Data Guard 環境での RMAN の構成</h2>
+
+<p>Data Guard 環境での RMAN のアーカイブ・ログ削除方針を変更する。</p>
+
+<ul>
+<li>現在の設定の確認</li>
+</ul>
+
+
+<p>プライマリ DB をターゲットとして接続し、<code>show all</code> コマンドで現在の設定を確認</p>
+
+<pre><code>$ export ORACLE_SID=PROD1
+$ rman target /
+RMAN&gt; show all;
+
+using target database control file instead of recovery catalog
+RMAN configuration parameters for database with db_unique_name PROD1 are:
+CONFIGURE RETENTION POLICY TO REDUNDANCY 1; # default
+CONFIGURE BACKUP OPTIMIZATION OFF; # default
+CONFIGURE DEFAULT DEVICE TYPE TO DISK; # default
+CONFIGURE CONTROLFILE AUTOBACKUP OFF; # default
+CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F'; # default
+CONFIGURE DEVICE TYPE DISK PARALLELISM 1 BACKUP TYPE TO BACKUPSET; # default
+CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 1; # default
+CONFIGURE MAXSETSIZE TO UNLIMITED; # default
+CONFIGURE ENCRYPTION FOR DATABASE OFF; # default
+CONFIGURE ENCRYPTION ALGORITHM 'AES128'; # default
+CONFIGURE COMPRESSION ALGORITHM 'BASIC' AS OF RELEASE 'DEFAULT' OPTIMIZE FOR LOAD TRUE ; # default
+CONFIGURE ARCHIVELOG DELETION POLICY TO NONE; # default
+CONFIGURE SNAPSHOT CONTROLFILE NAME TO '/u01/app/oracle/product/11.2.0/dbhome_1/dbs/snapcf_PROD1.f'; # default
+</code></pre>
+
+<p>アーカイブ・ログの削除方針(<code>CONFIGURE ARCHIVELOG DELETION POLICY</code>)はデフォルトの <code>NONE</code> になっている。</p>
+
+<ul>
+<li>アーカイブ・ログの削除方針を変更する。</li>
+</ul>
+
+
+<p><code>CONFIGURE ARCHIVELOG DELETION POLICY</code> コマンドによりアーカイブ・ログの削除方針を変更する。</p>
+
+<p>すべてのスタンバイ DB への<strong>送信(SHIPPED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
+
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
+
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO SHIPPED TO ALL STANDBY;
+new RMAN configuration parameters are successfully stored
+</code></pre>
+
+<p>すべてのスタンバイ DB への<strong>適用(APPLIED)</strong>を確認するまでアーカイブ・ログを削除しないようにする場合は、次のようにする。</p>
+
+<pre><code>RMAN&gt; CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
+
+new RMAN configuration parameters:
+CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON ALL STANDBY;
+new RMAN configuration parameters are successfully stored
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -298,110 +414,6 @@ Table created.
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-switchover/">[Oracle] Data Guard スイッチオーバー</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T21:19:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>スイッチオーバーの実施</h2>
-
-<p>EM Grid Control を使用してスイッチオーバーを行う。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;スイッチオーバー&rdquo; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-1.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ・サイト に接続する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-2.png" width="720" height="450"></p>
-
-<ul>
-<li>プライマリ・サイト に接続する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-3.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;はい&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-4.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 &ndash;> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-5.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-6.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>今度は元スタンバイでプライマリになったインスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、スイッチオーバーされている(プライマリ/スタンバイが切り替わっている)ことを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-data-guard-switchover/dgso-7.png" width="720" height="450"></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/8/">&larr; Older</a>
@@ -419,6 +431,10 @@ Table created.
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
       </li>
     
@@ -432,10 +448,6 @@ Table created.
     
       <li class="post">
         <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
       </li>
     
   </ul>

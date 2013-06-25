@@ -9,10 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Linux x86-64 の呼出規約(calling convention)を gdb で確認する。 環境 OS: CentOS 5.5
+  <meta name="description" content="目的 LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する。 環境 OS: CentOS 5.5
 Kernel: 2.6.18-194.el5 x86_64
-GCC: gcc 4.1.2 20080704
-GDB: GNU gdb 7.0.1-23. &hellip;">
+GCC: gcc 4.1.2 20080704 使用する機能 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +79,380 @@ GDB: GNU gdb 7.0.1-23. &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, Dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-25T23:23:00+09:00" pubdate data-updated="true">Jun 25<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: CentOS 5.5</li>
+<li>Kernel: 2.6.18-194.el5 x86_64</li>
+<li>GCC: gcc 4.1.2 20080704</li>
+</ul>
+
+
+<h2>使用する機能</h2>
+
+<h3>LD_PRELOAD</h3>
+
+<p>環境変数 LD_PRELOAD に共有ライブラリを指定すると、そのライブラリがすべてのライブラリに先立ってロードされる。
+これを利用して通常ロードしている共有ライブラリ内の関数を置き換えることができる。(参考: <code>man ld.so</code>)</p>
+
+<h3>dlsym</h3>
+
+<p>dlsym(3) は、シンボル名の文字列を引数に取り、そのシンボルのアドレスを返す。
+これを利用して、関数のアドレスを得ることができる。(参考: <code>man dlsym</code>)</p>
+
+<h3>GCC 拡張 <code>__attribute__((constructor))</code>, <code>__attribute__((deconstructor))</code></h3>
+
+<p>GCC 拡張で <code>__attribute__</code> キーワードと共に関数の属性(attribute)を指定することができる。(参考: <code>info gcc</code> &ndash;> &ldquo;C Extensions&rdquo; &ndash;> &ldquo;Function Attributes&rdquo;)</p>
+
+<p>constructor 属性が指定された関数は、main() 関数が呼ばれる前に実行される。
+deconstructor 属性が指定された関数は、main() 関数が完了するか exit() が呼ばれた後で実行される。</p>
+
+<h2>具体例</h2>
+
+<p>実際に LD_PRELOAD, dlsym, GCC拡張機能により共有ライブラリの関数の呼出し前後で任意の処理を実行してみる。</p>
+
+<h3>準備</h3>
+
+<p>今回使用するのは共有ライブラリを使用する以下のプログラム。</p>
+
+<ul>
+<li>foo.so 共有ライブラリ foo.h</li>
+</ul>
+
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">z</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>foo.so 共有ライブラリ foo.c</li>
+</ul>
+
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/* $ gcc -g -Wall -fPIC -shared -o libfoo.so foo.c */</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &quot;foo.h&quot;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">z</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[foo ] hello</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[foo ] request: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">z</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[foo ] bye</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>main 関数(foo.so の関数を利用)</li>
+</ul>
+
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/* $ gcc -g -Wall -L. -lfoo main.c */</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &quot;foo.h&quot;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">r</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[main] hello</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">r</span> <span class="o">=</span> <span class="n">foo</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="s">&quot;ten plus twenty&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[main] return from foo: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">r</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[main] bye</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>コンパイル方法と実行結果は以下。main 関数から共有ライブラリ foo.so 内の関数 foo() を呼んでいる。</p>
+
+<pre><code>$ gcc -g -Wall -fPIC -shared -o libfoo.so foo.c
+$ gcc -g -Wall -L. -lfoo main.c
+$ ./a.out
+[main] hello
+[foo ] hello
+[foo ] request: ten plus twenty
+[foo ] bye
+[main] return from foo: 30
+[main] bye
+</code></pre>
+
+<h3>dlsym, GCC 拡張を使用した共有ライブラリの作成</h3>
+
+<p>上記の共有ライブラリ foo.so 内の関数 foo() の前後で処理をするために以下の bar.c から共有ライブラリ bar.so を作成する。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * $ gcc -g -Wall -D_GNU_SOURCE -fPIC -shared -o libbar.so bar.c -ldl</span>
+</span><span class='line'><span class="cm"> * $ env LD_PRELOAD=./libbar.so ./a.out</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;  </span><span class="cm">/* printf */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;dlfcn.h&gt;  </span><span class="cm">/* dlsym RTLD_NEXT */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt; </span><span class="cm">/* _exit */</span><span class="cp"></span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">init</span><span class="p">()</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">constructor</span><span class="p">));</span>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">fini</span><span class="p">()</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">destructor</span><span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="nf">long</span> <span class="p">(</span><span class="o">*</span><span class="n">original_foo</span><span class="p">)(</span><span class="kt">long</span> <span class="n">arg1</span><span class="p">,</span> <span class="kt">long</span> <span class="n">arg2</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg3</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">init</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">original_foo</span> <span class="o">=</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">RTLD_NEXT</span><span class="p">,</span> <span class="s">&quot;foo&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] orignal_foo: %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">original_foo</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">original_foo</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">_exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">fini</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] fini</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">long</span> <span class="nf">foo</span><span class="p">(</span><span class="kt">long</span> <span class="n">arg1</span><span class="p">,</span> <span class="kt">long</span> <span class="n">arg2</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg3</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">long</span> <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] before foo arg1: %ld, arg2: %ld, arg3: %p(</span><span class="se">\&quot;</span><span class="s">%s</span><span class="se">\&quot;</span><span class="s">)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+</span><span class='line'>         <span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">arg3</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">arg3</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">original_foo</span><span class="p">)(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">arg3</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] after foo ret: %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以下、コードの解説。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">init</span><span class="p">()</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">constructor</span><span class="p">));</span>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">fini</span><span class="p">()</span> <span class="n">__attribute__</span><span class="p">((</span><span class="n">destructor</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>GCC 拡張機能により、関数 init() に constructor 属性を設定し、main() 関数が呼ばれる前に実行されるようにしている。
+また、関数 fini() に destructor 属性を設定し、プログラム終了直前に実行されるようにしている。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="nf">long</span> <span class="p">(</span><span class="o">*</span><span class="n">original_foo</span><span class="p">)(</span><span class="kt">long</span> <span class="n">arg1</span><span class="p">,</span> <span class="kt">long</span> <span class="n">arg2</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg3</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">init</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">original_foo</span> <span class="o">=</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">RTLD_NEXT</span><span class="p">,</span> <span class="s">&quot;foo&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] orignal_foo: %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">original_foo</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">original_foo</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">_exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>main() 関数が呼ばれる前に実行される init() 関数内で、オリジナルの foo() 関数(のアドレス)をグローバル変数 original_foo に格納している。dlsym() の引数に RTLD_NEXT を指定することで現在のライブラリ(この例では bar.so)以降で最初に関数が現れるところを探す。この機能により別の共有ライブラリ(この例では foo.so)の関数へのラッパーを提供することができる。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">long</span> <span class="nf">foo</span><span class="p">(</span><span class="kt">long</span> <span class="n">arg1</span><span class="p">,</span> <span class="kt">long</span> <span class="n">arg2</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg3</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">long</span> <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] before foo arg1: %ld, arg2: %ld, arg3: %p(</span><span class="se">\&quot;</span><span class="s">%s</span><span class="se">\&quot;</span><span class="s">)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+</span><span class='line'>         <span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">arg3</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">arg3</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">original_foo</span><span class="p">)(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">arg3</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[bar ] after foo ret: %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">ret</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>オリジナルの foo() のラッパー関数として同一関数名を定義し、先ほど格納したオリジナルの関数を呼んでいる。その前後で任意の処理を実行している。(この例では引数や返値を出力している)</p>
+
+<p>なお、この例のようにオリジナルの関数の引数の数は合わせたが、引数や返値の型が一致していなくても <code>long</code> や <code>void *</code> などオリジナルの型が入るような型であれば暗黙的に型変換してうまく動いてくれるようだ。(クローズドソースの共有ライブラリとかオリジナルの関数の引数の型が分からないようなケースでも推測してある程度合わせればOKということ。)</p>
+
+<p>コンパイルは以下のように実施して libbar.so を作成する。<code>RTLD_NEXT</code> マクロを使用するため、<code>-D_GNU_SOURCE</code> を加えていることと、dlsym() を使用するために <code>-ldl</code> を加えていることに注意。</p>
+
+<pre><code>$ gcc -g -Wall -D_GNU_SOURCE -fPIC -shared -o libbar.so bar.c -ldl
+</code></pre>
+
+<h3>LD_PRELOAD の使用</h3>
+
+<p>あとは、作成した libbar.so を LD_PRELOAD で指定してロードされるようにすればよい。
+元の実行ファイルや共有ライブラリは再コンパイル、リリンクすることなしに foo() 関数を置き換えて、前後に処理を実行できている。
+これを利用すれば、既存の共有ライブラリの関数の引数を出力するなど、デバックが容易にできる。</p>
+
+<pre><code>$ env LD_PRELOAD=./libbar.so ./a.out
+[bar ] init
+[bar ] orignal_foo: 0x2b5fdd50d55c
+[main] hello
+[bar ] before foo arg1: 10, arg2: 20, arg3: 0x400785("ten plus twenty")
+[foo ] hello
+[foo ] request: ten plus twenty
+[foo ] bye
+[bar ] after foo ret: 30
+[main] return from foo: 30
+[main] bye
+[bar ] fini
+</code></pre>
+
+<p>LD_PRELOAD しなかったときの出力と比較して、foo() 関数の前後で引数情報などが出力できている。
+また、main 関数前後でも処理が実行されていることが分かる。</p>
+
+<h2>参考</h2>
+
+<ul>
+<li><a href="http://memo.wnishida.com/?date=20060730">WATARU&rsquo;S MEMO: [UNIX] malloc failure (その４)</a></li>
+<li><a href="http://g1g0.com/2012/04/1790/">Garbage In Garbage Out: Linux 共有ライブラリ(.so)の動作を変える。LD_PRELOADで楽しく遊ぶ</a></li>
+</ul>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -2208,755 +2581,6 @@ sit0      Link encap:IPv6-in-IPv4
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-04-06T17:29:00+09:00" pubdate data-updated="true">Apr 6<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>メモリリークの調査方法をまとめる。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: CentOS 5.5</li>
-<li>Kernel: 2.6.18-194.el5 x86_64</li>
-<li>GCC: gcc 4.1.2 20080704</li>
-<li>GDB: GNU gdb 7.0.1-23.el5</li>
-<li>Valgrind: valgrind-3.5.0</li>
-</ul>
-
-
-<h2>サンプルプログラム</h2>
-
-<p>メモリリークが起きるサンプルとして以下を利用する。
-<code>leak_func()</code> が実行される度に 2048 bytes メモリリークする。
-合計で 101 回 <code>leak_func()</code> が実行されるので 206848bytes(= 2048 * 101 bytes) リークする。</p>
-
-<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#define STR_BYTES 2048</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="o">*</span><span class="nf">my_alloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">void</span> <span class="o">*</span><span class="n">ret</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">{</span>
-</span><span class='line'>    <span class="n">fprintf</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="s">&quot;Cannot malloc struct</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">my_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">free</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">leak_func</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">leak_str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">str</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">my_alloc</span><span class="p">(</span><span class="n">STR_BYTES</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">leak_str</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">my_alloc</span><span class="p">(</span><span class="n">STR_BYTES</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">snprintf</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="s">&quot;freed memory&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">snprintf</span><span class="p">(</span><span class="n">leak_str</span><span class="p">,</span> <span class="n">STR_BYTES</span><span class="p">,</span> <span class="s">&quot;leaked memory&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: 0x%016lx, &quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s: 0x%016lx</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">,</span> <span class="n">leak_str</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">my_free</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">leak_str</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span> <span class="cm">/* leak_str が free() されていないのでリークする */</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">leak_func</span><span class="p">();</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Press enter key:&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">getchar</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">leak_func</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Press enter key:&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">getchar</span><span class="p">();</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>実行結果は以下。</p>
-
-<pre><code>$ gcc -o memory_leak_sample memory_leak_sample.c
-$ ./memory_leak_sample
-freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a19820
-Press enter key:
-freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a1a030
-freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a1a840
-freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a1b050
-&lt;中略&gt;
-freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a4b650
-freed memory: 0x0000000009a19010, leaked memory: 0x0000000009a4be60
-Press enter key:
-</code></pre>
-
-<h2>valgrind による調査</h2>
-
-<p><a href="http://valgrind.org">Valgrind</a> は、メモリリークの検出等を行うツール。
-プロファイリング等メモリリーク検出以外の機能もあり、メモリリー検出で使用する場合は <code>--tool=memcheck</code> を指定する。</p>
-
-<p>Valgrind を使用して上記サンプルを動作させた例が以下。なお、Valgrind を通してプログラムを実行するとすごく遅くなるので注意。</p>
-
-<pre><code>$ valgrind --tool=memcheck --leak-check=yes --leak-resolution=high --num-callers=40 --undef-value-errors=no --run-libc-freeres=no -v ./memory_leak_sample
-==16207== Memcheck, a memory error detector
-==16207== Copyright (C) 2002-2009, and GNU GPL'd, by Julian Seward et al.
-==16207== Using Valgrind-3.5.0 and LibVEX; rerun with -h for copyright info
-==16207== Command: ./memory_leak_sample
-==16207==
---16207-- Valgrind options:
---16207--    --tool=memcheck
---16207--    --leak-check=yes
---16207--    --leak-resolution=high
---16207--    --num-callers=40
---16207--    --undef-value-errors=no
---16207--    --run-libc-freeres=no
---16207--    -v
---16207-- Contents of /proc/version:
---16207--   Linux version 2.6.18-194.el5 (mockbuild@builder10.centos.org) (gcc version 4.1.2 20080704 (Red Hat 4.1.2-48)) #1 SMP Fri Apr 2
- 14:58:14 EDT 2010
---16207-- Arch and hwcaps: AMD64, amd64-sse3-cx16
---16207-- Page sizes: currently 4096, max supported 4096
---16207-- Valgrind library directory: /usr/lib64/valgrind
---16207-- Reading syms from /home/hashi/tmp/memory_leak_sample (0x400000)
---16207-- Reading syms from /usr/lib64/valgrind/memcheck-amd64-linux (0x38000000)
---16207--    object doesn't have a dynamic symbol table
---16207-- Reading syms from /lib64/ld-2.5.so (0x3e1c600000)
---16207-- Reading suppressions file: /usr/lib64/valgrind/default.supp
---16207-- REDIR: 0x3e1c614620 (strlen) redirected to 0x3803e767 (vgPlain_amd64_linux_REDIR_FOR_strlen)
---16207-- Reading syms from /usr/lib64/valgrind/vgpreload_core-amd64-linux.so (0x4802000)
---16207-- Reading syms from /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so (0x4a03000)
-==16207== WARNING: new redirection conflicts with existing -- ignoring it
---16207--     new: 0x3e1c614620 (strlen              ) R-&gt; 0x04a06dc0 strlen
---16207-- REDIR: 0x3e1c614440 (index) redirected to 0x4a06c30 (index)
---16207-- REDIR: 0x3e1c6145f0 (strcmp) redirected to 0x4a06e90 (strcmp)
---16207-- Reading syms from /lib64/libc-2.5.so (0x3e1ca00000)
---16207-- REDIR: 0x3e1ca79ba0 (rindex) redirected to 0x4a06ae0 (rindex)
---16207-- REDIR: 0x3e1ca74c70 (malloc) redirected to 0x4a05d9a (malloc)
---16207-- REDIR: 0x3e1ca797b0 (strlen) redirected to 0x4a06d80 (strlen)
-freed memory: 0x0000000004c24040, leaked memory: 0x0000000004c24880
---16207-- REDIR: 0x3e1ca72720 (free) redirected to 0x4a059aa (free)
-Press enter key:
-freed memory: 0x0000000004c250c0, leaked memory: 0x0000000004c25900
-freed memory: 0x0000000004c26140, leaked memory: 0x0000000004c26980
-&lt;中略&gt;
-freed memory: 0x0000000004c89140, leaked memory: 0x0000000004c89980
-freed memory: 0x0000000004c8a1c0, leaked memory: 0x0000000004c8aa00
-freed memory: 0x0000000004c8b240, leaked memory: 0x0000000004c8ba80
-Press enter key:
-==16207==
-==16207== HEAP SUMMARY:
-==16207==     in use at exit: 206,848 bytes in 101 blocks
-==16207==   total heap usage: 202 allocs, 101 frees, 413,696 bytes allocated
-==16207==
-==16207== Searching for pointers to 101 not-freed blocks
-==16207== Checked 73,400 bytes
-==16207==
-==16207== 2,048 bytes in 1 blocks are definitely lost in loss record 1 of 2
-==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
-==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x4007AE: main (in /home/hashi/tmp/memory_leak_sample)
-==16207==
-==16207== 204,800 bytes in 100 blocks are definitely lost in loss record 2 of 2
-==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
-==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x4007D5: main (in /home/hashi/tmp/memory_leak_sample)
-==16207==
-==16207== LEAK SUMMARY:
-==16207==    definitely lost: 206,848 bytes in 101 blocks
-==16207==    indirectly lost: 0 bytes in 0 blocks
-==16207==      possibly lost: 0 bytes in 0 blocks
-==16207==    still reachable: 0 bytes in 0 blocks
-==16207==         suppressed: 0 bytes in 0 blocks
-==16207==
-==16207== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
-==16207== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
-</code></pre>
-
-<p>いろいろ出力があるが、以下の出力からどの Call Stack で確保されたメモリがどれだけリークしているか分かる。</p>
-
-<pre><code>==16207== 2,048 bytes in 1 blocks are definitely lost in loss record 1 of 2
-==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
-==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x4007AE: main (in /home/hashi/tmp/memory_leak_sample)
-==16207==
-==16207== 204,800 bytes in 100 blocks are definitely lost in loss record 2 of 2
-==16207==    at 0x4A05E1C: malloc (vg_replace_malloc.c:195)
-==16207==    by 0x40069C: my_alloc (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x400719: leak_func (in /home/hashi/tmp/memory_leak_sample)
-==16207==    by 0x4007D5: main (in /home/hashi/tmp/memory_leak_sample)
-</code></pre>
-
-<p>上述のやり方だと、シェルから valgrind と共に直接実行できるプログラムでないと調査できない。
-デーモンなど直接実行できないプログラムの場合は、ラップするシェルスクリプトを用意するとよい。</p>
-
-<p>例えば、最終的に <code>some_daemon.bin</code> というバイナリが実行されるデーモンがあるとして、以下の
-ようにラップするシェルスクリプトを同一名で用意して、元のデーモンと同じように起動・停止すればよい。</p>
-
-<pre><code>$ cp -p /path/to/some_daemon.bin /path/to/some_daemon.bin.backup
-$ mv /path/to/some_daemon.bin /path/to/some_daemon.bin.orig
-$ vi some_daemon.bin # 以下の内容で作成
---------
-#!/bin/sh
-
-ORG_BIN=/path/to/some_daemon.bin.orig
-LOG_LOC_AND_PREFIX=/tmp/valgrind_instance.%p.log
-VALG_PATH=/usr/bin/valgrind
-VALGRIND_OPTS="--log-file=$LOG_LOC_AND_PREFIX --leak-check=yes --leak-resolution=high --num-callers=40 --undef-value-errors=no --run-libc-freeres=no --error-limit=no -v"
-export VALGRIND_OPTS
-
-exec $VALG_PATH --tool=memcheck $ORG_BIN "$*"
---------
-$ chown root:root some_daemon.bin # 元のバイナリと同じオーナーにする
-$ chmod 755 some_daemon.bin       # 元のバイナリと同じパーミッションにする
-</code></pre>
-
-<p>これで上記<code>LOG_LOC_AND_PREFIX</code>に指定したファイルにログが出力される。</p>
-
-<h2>pmap と gdb による調査</h2>
-
-<p>プロセスのメモリマップを表示する <code>pmap</code> を採取してリークしている領域を特定し、その内容を <code>gdb</code> から確認する。</p>
-
-<p>まず、<code>pmap</code> を採取して増加している領域を特定する。合わせメモリダンプを確認するために <code>gcore</code> により core を採取しておく。</p>
-
-<p>プログラムを実行</p>
-
-<pre><code>$ ./memory_leak_sample
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8e820
-Press enter key:
-</code></pre>
-
-<p>この時の pmap の結果は以下</p>
-
-<pre><code>$ ps -ef | grep memory_leak_sample
-hashi    16639 29479  0 10:47 pts/10   00:00:00 ./memory_leak_sample
-$ pmap -x 16639
-16639:   ./memory_leak_sample
-Address           Kbytes     RSS   Dirty Mode   Mapping
-0000000000400000       4       4       0 r-x--  memory_leak_sample
-0000000000600000       4       4       4 rw---  memory_leak_sample
-0000000007b8e000     132       8       8 rw---    [ anon ]
-0000003e1c600000     112      96       0 r-x--  ld-2.5.so
-0000003e1c81b000       4       4       4 r----  ld-2.5.so
-0000003e1c81c000       4       4       4 rw---  ld-2.5.so
-0000003e1ca00000    1336     260       0 r-x--  libc-2.5.so
-0000003e1cb4e000    2044       0       0 -----  libc-2.5.so
-0000003e1cd4d000      16      12       8 r----  libc-2.5.so
-0000003e1cd51000       4       4       4 rw---  libc-2.5.so
-0000003e1cd52000      20      16      16 rw---    [ anon ]
-00002b2fac886000      12       8       8 rw---    [ anon ]
-00002b2fac89f000       8       8       8 rw---    [ anon ]
-00007fff1b3a6000      84      12      12 rw---    [ stack ]
-ffffffffff600000    8192       0       0 -----    [ anon ]
-----------------  ------  ------  ------
-total kB           11976     440      76
-</code></pre>
-
-<p>合わせて core を採取しておく(上書きされないようにリネームしておく)</p>
-
-<pre><code>$ gcore 16639
-0x0000003e1cac5ff0 in __read_nocancel () from /lib64/libc.so.6
-Saved corefile core.16639
-
-$ mv core.16639 core.16639.before
-</code></pre>
-
-<p>プログラムを進める</p>
-
-<pre><code>$ ./memory_leak_sample
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8e820
-Press enter key:  &lt;=== エンターキーを押下
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8f030
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007b8f840
-&lt;中略&gt;
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bae410
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007baec20
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007baf430
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bafc40
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bb0450
-&lt;中略&gt;
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bc0650
-freed memory: 0x0000000007b8e010, leaked memory: 0x0000000007bc0e60
-Press enter key:
-</code></pre>
-
-<p>この時の pmap と core を採取しておく</p>
-
-<pre><code>$ pmap -x 16639
-16639:   ./memory_leak_sample
-Address           Kbytes     RSS   Dirty Mode   Mapping
-0000000000400000       4       4       0 r-x--  memory_leak_sample
-0000000000600000       4       4       4 rw---  memory_leak_sample
-0000000007b8e000     264     208     208 rw---    [ anon ]
-0000003e1c600000     112      96       0 r-x--  ld-2.5.so
-0000003e1c81b000       4       4       4 r----  ld-2.5.so
-0000003e1c81c000       4       4       4 rw---  ld-2.5.so
-0000003e1ca00000    1336     260       0 r-x--  libc-2.5.so
-0000003e1cb4e000    2044       0       0 -----  libc-2.5.so
-0000003e1cd4d000      16      12       8 r----  libc-2.5.so
-0000003e1cd51000       4       4       4 rw---  libc-2.5.so
-0000003e1cd52000      20      16      16 rw---    [ anon ]
-00002b2fac886000      12      12      12 rw---    [ anon ]
-00002b2fac89f000       8       8       8 rw---    [ anon ]
-00007fff1b3a6000      84      12      12 rw---    [ stack ]
-ffffffffff600000    8192       0       0 -----    [ anon ]
-----------------  ------  ------  ------
-total kB           12108     644     280
-
-$ gcore 16639
-0x0000003e1cac5ff0 in __read_nocancel () from /lib64/libc.so.6
-Saved corefile core.16639
-
-$ mv core.16639 core.16639.after
-</code></pre>
-
-<p>1回目と2回目の pmap の結果を比較すると、以下の個所で仮想メモリ量が増加している(リークしている)ことが分かる。</p>
-
-<pre><code>5c5
-&lt; 0000000007b8e000     132       8       8 rw---    [ anon ]
----
-&gt; 0000000007b8e000     264     208     208 rw---    [ anon ]
-</code></pre>
-
-<p>仮想メモリ量が 132Kbytes &ndash;> 264Kbytes (+132Kbytes)に増加している。
-増加したアドレスのメモリダンプを確認して、どのように利用されているか確認してみる。</p>
-
-<p>具体的にはメモリ増加後の core で 0x0000000007b8e000 + 132Kbytes のアドレス(0x7baf000)から
-増加した 132Kbytes 分のメモリダンプを確認する。
-ダンプを採るときに <code>x/16896xg 0x7baf000</code> としているのは、アドレス <code>0x7baf000</code> から、
-8バイト(ジャイアント・ワード)単位で(<code>g</code>)、16896個分を、16進数で(<code>x</code>)出力するということ。
-つまり、<code>16896 * 8 = 135168 = 132Kbytes</code> 分が出力される。</p>
-
-<pre><code>$ gdb
-(gdb) set height 0
-(gdb) file ./memory_leak_sample
-(gdb) core-file core.16639.after
-(gdb) set logging file core.16639.after.gdb.log
-(gdb) set logging on
-(gdb) x/16896xg 0x7baf000
-0x7baf000:      0x0000000000000000      0x0000000000000000
-0x7baf010:      0x0000000000000000      0x0000000000000000
-&lt;中略&gt;
-0x7baf410:      0x0000000000000000      0x0000000000000000
-0x7baf420:      0x0000000000000000      0x0000000000000811
-0x7baf430:      0x6d2064656b61656c      0x00000079726f6d65
-0x7baf440:      0x0000000000000000      0x0000000000000000
-&lt;中略&gt;
-0x7bcffe0:      0x0000000000000000      0x0000000000000000
-0x7bcfff0:      0x0000000000000000      0x0000000000000000
-(gdb) quit
-</code></pre>
-
-<p>このメモリダンプが pmap 上増加した分。内容を確認すると以下の文字列が見える。</p>
-
-<pre><code>$ grep -v "0x0000000000000000" core.16639.after.gdb.log
-0x7baf430:      0x6d2064656b61656c      0x00000079726f6d65
-0x7bafc40:      0x6d2064656b61656c      0x00000079726f6d65
-0x7bb0450:      0x6d2064656b61656c      0x00000079726f6d65
-0x7bb0c60:      0x6d2064656b61656c      0x00000079726f6d65
-&lt;中略&gt;
-0x7bbf630:      0x6d2064656b61656c      0x00000079726f6d65
-0x7bbfe40:      0x6d2064656b61656c      0x00000079726f6d65
-0x7bc0650:      0x6d2064656b61656c      0x00000079726f6d65
-0x7bc0e60:      0x6d2064656b61656c      0x00000079726f6d65
-</code></pre>
-
-<p><code>0x6d2064656b61656c 0x00000079726f6d65</code> は ASCII で直すと &ldquo;leaked memory&rdquo;</p>
-
-<pre><code>$ ruby -e 's="6d2064656b61656c"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.chr}; puts'
-m dekael
-$ ruby -e 's="00000079726f6d65"; s.unpack("a2" * (s.size / 2)) {|c| print c.hex.chr}; puts'
-yrome
-</code></pre>
-
-<p>よってプログラム中で &ldquo;leaked memory&rdquo; を入れている領域がリークしていると分かる。
-こんなに明らかに分かるケースは少なく、実際のプログラムではポインタが見えていたり
-して、さらに core を追わないとリーク原因箇所が追えないケースが多いと思うがメモリ
-リーク原因究明のとっかかりにはなる。</p>
-
-<h3>追記</h3>
-
-<h4>gdb によるメモリダンプについて</h4>
-
-<p>gdb による core のメモリダンプは <code>dump binary memory</code> によって行うことができる。
-(こちらのほうが <code>x</code> でダンプするより速い。)</p>
-
-<pre><code>(gdb) help dump binary memory
-Write contents of memory to a raw binary file.
-Arguments are FILE START STOP.  Writes the contents of memory
-within the range [START .. STOP) to the specifed FILE in binary format.
-</code></pre>
-
-<p>例えば上述したもの同じように core で 0x7baf000 から 132Kbytes 分(0x7bd0000 まで)メモリダンプする場合は
-以下のように行う。</p>
-
-<pre><code>$ gdb
-(gdb) core-file core.16639.after
-(gdb) dump binary memory core.16639.after.gdb.dump.log 0x7baf000 0x7bd0000
-(gdb) quit
-</code></pre>
-
-<p>これでファイル <code>core.16639.after.gdb.dump.log</code> にダンプされている。
-中身はバイナリなので <code>od</code> や <code>hexdump</code> で内容を確認する。</p>
-
-<pre><code>$ od -v -t x8z -A x ./core.16639.after.gdb.dump.log
-000000 0000000000000000 0000000000000000  &gt;................&lt;
-000010 0000000000000000 0000000000000000  &gt;................&lt;
-&lt;中略&gt;
-000410 0000000000000000 0000000000000000  &gt;................&lt;
-000420 0000000000000000 0000000000000811  &gt;................&lt;
-000430 6d2064656b61656c 00000079726f6d65  &gt;leaked memory...&lt;
-000440 0000000000000000 0000000000000000  &gt;................&lt;
-&lt;中略&gt;
-020fe0 0000000000000000 0000000000000000  &gt;................&lt;
-020ff0 0000000000000000 0000000000000000  &gt;................&lt;
-021000
-</code></pre>
-
-<p>同じ内容が連続する場合に省略する場合は <code>-v</code> を付けなければよい。</p>
-
-<pre><code>$ od -t x8z -A x ./core.16639.after.gdb.dump.log
-000000 0000000000000000 0000000000000000  &gt;................&lt;
-*
-000420 0000000000000000 0000000000000811  &gt;................&lt;
-000430 6d2064656b61656c 00000079726f6d65  &gt;leaked memory...&lt;
-000440 0000000000000000 0000000000000000  &gt;................&lt;
-*
-000c30 0000000000000000 0000000000000811  &gt;................&lt;
-000c40 6d2064656b61656c 00000079726f6d65  &gt;leaked memory...&lt;
-000c50 0000000000000000 0000000000000000  &gt;................&lt;
-*
-&lt;中略&gt;
-011e50 0000000000000000 0000000000000811  &gt;................&lt;
-011e60 6d2064656b61656c 00000079726f6d65  &gt;leaked memory...&lt;
-011e70 0000000000000000 0000000000000000  &gt;................&lt;
-*
-012660 0000000000000000 000000000000e9a1  &gt;................&lt;
-012670 0000000000000000 0000000000000000  &gt;................&lt;
-*
-021000
-</code></pre>
-
-<h4>core から pmap と同じような情報を得る方法</h4>
-
-<p>gdb の <code>info target</code> とか <code>info files</code> で <code>pmap</code> と同じような情報を確認できる。
-(<code>pmap</code> を採っていなくても core から同じような情報が何とか見れる。)</p>
-
-<pre><code>$ gdb
-(gdb) file ./memory_leak_sample
-(gdb) core-file core.16639.after
-(gdb) info target
-Symbols from "/home/hashi/tmp/memory_leak_sample".
-Local core dump file:
-        `/home/hashi/tmp/core.16639.after', file type elf64-x86-64.
-        0x0000000000400000 - 0x0000000000400000 is load1
-        0x0000000000600000 - 0x0000000000601000 is load2
-        0x0000000007b8e000 - 0x0000000007bd0000 is load3
-        0x0000003e1c600000 - 0x0000003e1c600000 is load4
-        0x0000003e1c81b000 - 0x0000003e1c81b000 is load5
-        0x0000003e1c81c000 - 0x0000003e1c81d000 is load6
-        0x0000003e1ca00000 - 0x0000003e1ca00000 is load7
-        0x0000003e1cd4d000 - 0x0000003e1cd4d000 is load8
-        0x0000003e1cd51000 - 0x0000003e1cd52000 is load9
-        0x0000003e1cd52000 - 0x0000003e1cd57000 is load10
-        0x00002b2fac886000 - 0x00002b2fac889000 is load11
-        0x00002b2fac89f000 - 0x00002b2fac8a1000 is load12
-        0x00007fff1b3a6000 - 0x00007fff1b3bb000 is load13
-Local exec file:
-        `/home/hashi/tmp/memory_leak_sample', file type elf64-x86-64.
-        Entry point: 0x4005b0
-        0x0000000000400200 - 0x000000000040021c is .interp
-        0x000000000040021c - 0x000000000040023c is .note.ABI-tag
-        0x0000000000400240 - 0x0000000000400264 is .gnu.hash
-        0x0000000000400268 - 0x0000000000400370 is .dynsym
-        0x0000000000400370 - 0x00000000004003d8 is .dynstr
-        0x00000000004003d8 - 0x00000000004003ee is .gnu.version
-        0x00000000004003f0 - 0x0000000000400410 is .gnu.version_r
-        0x0000000000400410 - 0x0000000000400440 is .rela.dyn
-        0x0000000000400440 - 0x0000000000400500 is .rela.plt
-        0x0000000000400500 - 0x0000000000400518 is .init
-        0x0000000000400518 - 0x00000000004005a8 is .plt
-        0x00000000004005b0 - 0x00000000004008d8 is .text
-        0x00000000004008d8 - 0x00000000004008e6 is .fini
-        0x00000000004008e8 - 0x0000000000400957 is .rodata
-        0x0000000000400958 - 0x0000000000400994 is .eh_frame_hdr
-        0x0000000000400998 - 0x0000000000400a8c is .eh_frame
-        0x0000000000600a90 - 0x0000000000600aa0 is .ctors
-        0x0000000000600aa0 - 0x0000000000600ab0 is .dtors
-        0x0000000000600ab0 - 0x0000000000600ab8 is .jcr
-        0x0000000000600ab8 - 0x0000000000600c48 is .dynamic
-        0x0000000000600c48 - 0x0000000000600c50 is .got
-        0x0000000000600c50 - 0x0000000000600ca8 is .got.plt
-        0x0000000000600ca8 - 0x0000000000600cac is .data
-        0x0000000000600cb0 - 0x0000000000600cc8 is .bss
-</code></pre>
-
-<p>アドレスぐらいしか分からないが <code>Local core dump file:</code> の項が <code>pmap</code> の出力と対応している。
-(アドレスを引けばサイズが分かる。)</p>
-
-<pre><code>Local core dump file:
-        `/home/hashi/tmp/core.16639.after', file type elf64-x86-64.
-        0x0000000000400000 - 0x0000000000400000 is load1  &lt;=== TEXT 領域など
-        0x0000000000600000 - 0x0000000000601000 is load2  &lt;=== BSS 領域など
-        0x0000000007b8e000 - 0x0000000007bd0000 is load3  &lt;=== size: 264Kbytes (= 0x0000000007bd0000 - 0x0000000007b8e000)
-        0x0000003e1c600000 - 0x0000003e1c600000 is load4  &lt;=== size:   0?
-        0x0000003e1c81b000 - 0x0000003e1c81b000 is load5  &lt;=== size:   0?
-        0x0000003e1c81c000 - 0x0000003e1c81d000 is load6  &lt;=== size:   4Kbytes
-        0x0000003e1ca00000 - 0x0000003e1ca00000 is load7  &lt;=== size:   0?
-        0x0000003e1cd4d000 - 0x0000003e1cd4d000 is load8  &lt;=== size:   0?
-        0x0000003e1cd51000 - 0x0000003e1cd52000 is load9  &lt;=== size:   4Kbytes
-        0x0000003e1cd52000 - 0x0000003e1cd57000 is load10 &lt;=== size:  20Kbytes
-        0x00002b2fac886000 - 0x00002b2fac889000 is load11 &lt;=== size:  12Kbytes
-        0x00002b2fac89f000 - 0x00002b2fac8a1000 is load12 &lt;=== size:   8Kbytes
-        0x00007fff1b3a6000 - 0x00007fff1b3bb000 is load13 &lt;=== size:  84Kbytes
-</code></pre>
-
-<p>ちなみに <code>maintenace info sections</code> でも同じような情報が採れる。</p>
-
-<pre><code>(gdb) maintenance info sections
-Exec file:
-    `/home/hashi/tmp/memory_leak_sample', file type elf64-x86-64.
-    0x00400200-&gt;0x0040021c at 0x00000200: .interp ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x0040021c-&gt;0x0040023c at 0x0000021c: .note.ABI-tag ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400240-&gt;0x00400264 at 0x00000240: .gnu.hash ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400268-&gt;0x00400370 at 0x00000268: .dynsym ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400370-&gt;0x004003d8 at 0x00000370: .dynstr ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x004003d8-&gt;0x004003ee at 0x000003d8: .gnu.version ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x004003f0-&gt;0x00400410 at 0x000003f0: .gnu.version_r ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400410-&gt;0x00400440 at 0x00000410: .rela.dyn ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400440-&gt;0x00400500 at 0x00000440: .rela.plt ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400500-&gt;0x00400518 at 0x00000500: .init ALLOC LOAD READONLY CODE HAS_CONTENTS
-    0x00400518-&gt;0x004005a8 at 0x00000518: .plt ALLOC LOAD READONLY CODE HAS_CONTENTS
-    0x004005b0-&gt;0x004008d8 at 0x000005b0: .text ALLOC LOAD READONLY CODE HAS_CONTENTS
-    0x004008d8-&gt;0x004008e6 at 0x000008d8: .fini ALLOC LOAD READONLY CODE HAS_CONTENTS
-    0x004008e8-&gt;0x00400957 at 0x000008e8: .rodata ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400958-&gt;0x00400994 at 0x00000958: .eh_frame_hdr ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00400998-&gt;0x00400a8c at 0x00000998: .eh_frame ALLOC LOAD READONLY DATA HAS_CONTENTS
-    0x00600a90-&gt;0x00600aa0 at 0x00000a90: .ctors ALLOC LOAD DATA HAS_CONTENTS
-    0x00600aa0-&gt;0x00600ab0 at 0x00000aa0: .dtors ALLOC LOAD DATA HAS_CONTENTS
-    0x00600ab0-&gt;0x00600ab8 at 0x00000ab0: .jcr ALLOC LOAD DATA HAS_CONTENTS
-    0x00600ab8-&gt;0x00600c48 at 0x00000ab8: .dynamic ALLOC LOAD DATA HAS_CONTENTS
-    0x00600c48-&gt;0x00600c50 at 0x00000c48: .got ALLOC LOAD DATA HAS_CONTENTS
-    0x00600c50-&gt;0x00600ca8 at 0x00000c50: .got.plt ALLOC LOAD DATA HAS_CONTENTS
-    0x00600ca8-&gt;0x00600cac at 0x00000ca8: .data ALLOC LOAD DATA HAS_CONTENTS
-    0x00600cb0-&gt;0x00600cc8 at 0x00000cac: .bss ALLOC
-    0x00000000-&gt;0x00000114 at 0x00000cac: .comment READONLY HAS_CONTENTS
-Core file:
-    `/home/hashi/tmp/core.16639.after', file type elf64-x86-64.
-    0x00000000-&gt;0x00000528 at 0x00000350: note0 READONLY HAS_CONTENTS
-    0x00000000-&gt;0x000000d8 at 0x00000470: .reg/16639 HAS_CONTENTS
-    0x00000000-&gt;0x000000d8 at 0x00000470: .reg HAS_CONTENTS
-    0x00000000-&gt;0x00000200 at 0x00000564: .reg2/16639 HAS_CONTENTS
-    0x00000000-&gt;0x00000200 at 0x00000564: .reg2 HAS_CONTENTS
-    0x00000000-&gt;0x00000100 at 0x00000778: .auxv HAS_CONTENTS
-    0x00400000-&gt;0x00400000 at 0x00000878: load1 ALLOC READONLY CODE
-    0x00600000-&gt;0x00601000 at 0x00000878: load2 ALLOC LOAD HAS_CONTENTS
-    0x07b8e000-&gt;0x07bd0000 at 0x00001878: load3 ALLOC LOAD HAS_CONTENTS
-    0x3e1c600000-&gt;0x3e1c600000 at 0x00043878: load4 ALLOC READONLY CODE
-    0x3e1c81b000-&gt;0x3e1c81b000 at 0x00043878: load5 ALLOC READONLY
-    0x3e1c81c000-&gt;0x3e1c81d000 at 0x00043878: load6 ALLOC LOAD HAS_CONTENTS
-    0x3e1ca00000-&gt;0x3e1ca00000 at 0x00044878: load7 ALLOC READONLY CODE
-    0x3e1cd4d000-&gt;0x3e1cd4d000 at 0x00044878: load8 ALLOC READONLY
-    0x3e1cd51000-&gt;0x3e1cd52000 at 0x00044878: load9 ALLOC LOAD HAS_CONTENTS
-    0x3e1cd52000-&gt;0x3e1cd57000 at 0x00045878: load10 ALLOC LOAD HAS_CONTENTS
-    0x2b2fac886000-&gt;0x2b2fac889000 at 0x0004a878: load11 ALLOC LOAD HAS_CONTENTS
-    0x2b2fac89f000-&gt;0x2b2fac8a1000 at 0x0004d878: load12 ALLOC LOAD HAS_CONTENTS
-    0x7fff1b3a6000-&gt;0x7fff1b3bb000 at 0x0004f878: load13 ALLOC LOAD HAS_CONTENTS
-</code></pre>
-
-<p>なお、<code>info proc mappings</code> というコマンドもあるが、これはプロセス起動中に gdb でアタッチしたときに
-使用して <code>/proc</code> から情報を採るものなので、core からの調査には使えないようだ。
-(core に対して実行すると PID:1 の <code>/sbin/init</code> の <code>/proc/1/maps</code> 情報が出てきてしまい役に立たない。)</p>
-
-<h3>core から文字列等を検索する</h3>
-
-<p>リークしている領域の特徴に当たりがついていれば gdb の <code>find</code> で見つけるという方法もある。</p>
-
-<pre><code>(gdb) help find
-Search memory for a sequence of bytes.
-Usage:
-find [/size-char] [/max-count] start-address, end-address, expr1 [, expr2 ...]
-find [/size-char] [/max-count] start-address, +length, expr1 [, expr2 ...]
-size-char is one of b,h,w,g for 8,16,32,64 bit values respectively,
-and if not specified the size is taken from the type of the expression
-in the current language.
-Note that this means for example that in the case of C-like languages
-a search for an untyped 0x42 will search for "(int) 0x42"
-which is typically four bytes.
-
-The address of the last match is stored as the value of "$_".
-Convenience variable "$numfound" is set to the number of matches.
-</code></pre>
-
-<p>例えば上述の例で 0x7baf000 から 132Kbytes 分の間に &ldquo;leaked memory&rdquo; という文字列を見つける。</p>
-
-<pre><code>$ gdb
-(gdb) core-file core.16639.after
-(gdb) find 0x7baf000, +(132 * 1024), "leaked memory"
-0x7baf430
-0x7bafc40
-0x7bb0450
-0x7bb0c60
-0x7bb1470
-0x7bb1c80
-0x7bb2490
-0x7bb2ca0
-0x7bb34b0
-0x7bb3cc0
-0x7bb44d0
-0x7bb4ce0
-0x7bb54f0
-0x7bb5d00
-0x7bb6510
-0x7bb6d20
-0x7bb7530
-0x7bb7d40
-0x7bb8550
-0x7bb8d60
-0x7bb9570
-0x7bb9d80
-0x7bba590
-0x7bbada0
-0x7bbb5b0
-0x7bbbdc0
-0x7bbc5d0
-0x7bbcde0
-0x7bbd5f0
-0x7bbde00
-0x7bbe610
-0x7bbee20
-0x7bbf630
-0x7bbfe40
-0x7bc0650
-0x7bc0e60
-36 patterns found.
-</code></pre>
-
-<p>36 個所で見つかった。
-なお、<code>find</code> の引数で文字列を渡して探すときは文字列は NULL 終端を含むことに注意。
-例えば、上記の例で部分文字列で探そうと &ldquo;leaked&rdquo; としても引っかからない。</p>
-
-<pre><code>(gdb)  find 0x7baf000, +(132 * 1024), "leaked"
-Pattern not found.
-</code></pre>
-
-<p>部分文字列で探す場合は文字列を16進数にするしかなさそう。
-(リトルエンディアンで &ldquo;leaked&rdquo; は <code>0x64656b61656c</code> になる。)</p>
-
-<pre><code>(gdb)  find /b  0x7baf000, +(132 * 1024), 0x64656b61656c
-0x7baf430
-0x7bafc40
-&lt;中略&gt;
-0x7bc0650
-0x7bc0e60
-36 patterns found.
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -2972,6 +2596,10 @@ Pattern not found.
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
       </li>
     
@@ -2985,10 +2613,6 @@ Pattern not found.
     
       <li class="post">
         <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
       </li>
     
   </ul>

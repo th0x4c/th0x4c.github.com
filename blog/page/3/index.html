@@ -9,9 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 カーソルを無効化せずに統計情報を取得する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス
-&ndash &hellip;">
+  <meta name="description" content="目的 SQL 計画管理により、実行計画を固定化する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング・ガイド
+&ndash;> 15 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +79,234 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケー�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-sql-plan-management/">[Oracle] SQL 計画管理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T23:28:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>SQL 計画管理により、実行計画を固定化する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+&ndash;> 15 SQL計画の管理の使用方法<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/optplanmgmt.htm#BABEGJGB">15.2 SQL計画ベースラインの管理</a></li>
+</ul>
+
+
+<h2>SQL 計画管理</h2>
+
+<p>SQL 計画管理により、実行計画を固定化することができる。具体的には次のステップで行う。</p>
+
+<ol>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+<li>実行計画を管理する SQL を 2 回以上実行</li>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ol>
+
+
+<p>実際に実行してみる。</p>
+
+<ul>
+<li>SQL 計画の自動取得(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>FALSE</code>)を <code>TRUE</code> に設定することで SQL 計画の自動取得が有効になる。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL を 2 回以上実行</li>
+</ul>
+
+
+<p>SQL を 2 回以上実行して、SQL 計画ベースラインに保存する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+</code></pre>
+
+<ul>
+<li>SQL 計画の自動取得を無効化(<code>OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE</code>)</li>
+</ul>
+
+
+<p>SQL 計画の自動取得を無効化する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_CAPTURE_SQL_PLAN_BASELINES=FALSE;
+
+Session altered.
+</code></pre>
+
+<ul>
+<li>SQL が SQL 計画ベースラインに保存されたことを確認</li>
+</ul>
+
+
+<p><code>DBA_SQL_PLAN_BASELINES</code> を確認する。</p>
+
+<pre><code>SQL&gt; col sql_text for a60
+     col sql_handle for a30
+     col plan_name for a30
+     set lines 200
+SQL&gt; SELECT SQL_TEXT, SQL_HANDLE, PLAN_NAME, ENABLED, ACCEPTED, FIXED
+     FROM   DBA_SQL_PLAN_BASELINES;
+
+SQL_TEXT                                                     SQL_HANDLE                     PLAN_NAME                      ENABLED   ACCEPTED  FIXED
+------------------------------------------------------------ ------------------------------ ------------------------------ --------- --------- ---------
+SELECT * FROM scott.emp WHERE empno = 7900                   SQL_84ec680ef31d6de4           SQL_PLAN_89v381vtjuvg4695cc014 YES       YES       NO
+</code></pre>
+
+<p>実行計画を確認する。</p>
+
+<pre><code>SQL&gt; SELECT * FROM TABLE(
+       DBMS_XPLAN.DISPLAY_SQL_PLAN_BASELINE(
+         sql_handle=&gt;'SQL_84ec680ef31d6de4',
+         format=&gt;'basic'));
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SQL handle: SQL_84ec680ef31d6de4
+SQL text: SELECT * FROM scott.emp WHERE empno = 7900
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Plan name: SQL_PLAN_89v381vtjuvg4695cc014         Plan id: 1767686164
+Enabled: YES     Fixed: NO      Accepted: YES     Origin: AUTO-CAPTURE
+--------------------------------------------------------------------------------
+
+
+PLAN_TABLE_OUTPUT
+----------------------------------------------
+Plan hash value: 2949544139
+
+----------------------------------------------
+| Id  | Operation                   | Name   |
+----------------------------------------------
+|   0 | SELECT STATEMENT            |        |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |
+|   2 |   INDEX UNIQUE SCAN         | PK_EMP |
+----------------------------------------------
+
+20 rows selected.
+</code></pre>
+
+<ul>
+<li>取得した SQL 計画の使用(<code>OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE</code>)</li>
+</ul>
+
+
+<p><code>OPTIMIZER_USE_SQL_PLAN_BASELINES</code> 初期化パラメータ(デフォルト <code>TRUE</code>)を <code>TRUE</code> に設定することで取得した SQL 計画を使用する。</p>
+
+<pre><code>SQL&gt; ALTER SESSION SET OPTIMIZER_USE_SQL_PLAN_BASELINES=TRUE;
+
+Session altered.
+</code></pre>
+
+<p>あとは普通に SQL を実行するだけで取得した SQL 計画が使用される。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT * FROM scott.emp WHERE empno = 7900;
+
+     EMPNO ENAME                          JOB                                MGR HIREDATE        SAL       COMM     DEPTNO
+---------- ------------------------------ --------------------------- ---------- -------- ---------- ---------- ----------
+      7900 JAMES                          CLERK                             7698 81-12-03        960                    30
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2949544139
+
+--------------------------------------------------------------------------------------
+| Id  | Operation                   | Name   | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |        |     1 |    39 |     1   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP    |     1 |    39 |     1   (0)| 00:00:01 |
+|*  2 |   INDEX UNIQUE SCAN         | PK_EMP |     1 |       |     0   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("EMPNO"=7900)
+
+Note 
+-----
+   - SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          2  consistent gets
+          0  physical reads
+          0  redo size
+        889  bytes sent via SQL*Net to client
+        512  bytes received via SQL*Net from client
+          1  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>Note の <code>SQL plan baseline "SQL_PLAN_89v381vtjuvg4695cc014" used for this statement</code> という出力から取得した SQL 計画が使用されていることが分かる。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -476,207 +704,6 @@ COL_GROUP                      NUM_DISTINCT HISTOGRAM
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-result-cache/">[Oracle] 結果キャッシュ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T18:40:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>&ldquo;結果キャッシュ&rdquo; 機能を使用する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>パフォーマンス・チューニング・ガイド<br/>
-&ndash;> 7 メモリーの構成および使用方法<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/memory.htm#BGBCABED">7.6 サーバーおよびクライアントの結果キャッシュの管理</a></li>
-</ul>
-
-
-<h2>結果キャッシュの使用</h2>
-
-<p>&ldquo;結果キャッシュ&rdquo; 機能を使用することで、問い合わせ結果を再利用してパフォーマンスを向上させることができる。</p>
-
-<ul>
-<li>初期化パラメータの設定</li>
-</ul>
-
-
-<p>結果キャッシュを有効にするためには初期化パラメータ <code>RESULT_CACHE_MAX_SIZE</code> を 0 より大きくする必要がある。</p>
-
-<p>0 の場合は結果キャッシュは無効となる。(以下のように <code>DBMS_RESULT_CACHE.STATUS</code> の結果が <code>DISABLED</code> となっている。)</p>
-
-<pre><code>SQL&gt; show parameter result_cache_max_size
-
-NAME                                 TYPE                              VALUE
------------------------------------- --------------------------------- ------------------------------
-result_cache_max_size                big integer                       0
-SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
-
-STATUS
-----------
-DISABLED
-</code></pre>
-
-<p>初期化パラメータ <code>RESULT_CACHE_MAX_SIZE</code> は以下のように動的に変更できるが、実際はインスタンスを再起動しないと有効にならなかった。</p>
-
-<pre><code>SQL&gt; ALTER SYSTEM SET result_cache_max_size = 15M SCOPE=both;
-
-System altered.
-
-SQL&gt; show parameter result_cache_max_size
-
-NAME                                 TYPE                              VALUE
------------------------------------- --------------------------------- ------------------------------
-result_cache_max_size                big integer                       15M
-SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
-
-STATUS
-----------
-DISABLED
-</code></pre>
-
-<p>インスタンスを再起動すると、有効になり、<code>DBMS_RESULT_CACHE.STATUS</code> も <code>ENABLED</code> に変わる。</p>
-
-<pre><code>SQL&gt; shutdown immediate
-Database closed.
-Database dismounted.
-ORACLE instance shut down.
-SQL&gt; startup
-ORACLE instance started.
-
-Total System Global Area  835104768 bytes
-Fixed Size                  2232960 bytes
-Variable Size             734006656 bytes
-Database Buffers           92274688 bytes
-Redo Buffers                6590464 bytes
-Database mounted.
-Database opened.
-SQL&gt; show parameter result_cache_max_size
-
-NAME                                 TYPE                              VALUE
------------------------------------- --------------------------------- ------------------------------
-result_cache_max_size                big integer                       15M
-SQL&gt; SELECT DBMS_RESULT_CACHE.STATUS FROM DUAL;
-
-STATUS
-----------
-ENABLED
-</code></pre>
-
-<ul>
-<li>結果キャッシュの使用</li>
-</ul>
-
-
-<p>結果キャッシュを使用するには <code>/*+ RESULT_CACHE */</code> ヒントを付与して問い合わせを実行すればよい。</p>
-
-<pre><code>SQL&gt; SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp;
-</code></pre>
-
-<ul>
-<li>結果キャッシュの確認</li>
-</ul>
-
-
-<p>実行計画で、<code>RESULT CACHE</code> と出ていると結果キャッシュが使われている。</p>
-
-<pre><code>SQL&gt; set lines 200
-SQL&gt; set autotrace on
-SQL&gt; SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp;
-
-  AVG(SAL)
-----------
-2083.21429
-
-
-Execution Plan
-----------------------------------------------------------
-Plan hash value: 2083865914
-
---------------------------------------------------------------------------------------------------
-| Id  | Operation           | Name                       | Rows  | Bytes | Cost (%CPU)| Time     |
---------------------------------------------------------------------------------------------------
-|   0 | SELECT STATEMENT    |                            |     1 |     4 |     3   (0)| 00:00:01 |
-|   1 |  RESULT CACHE       | 4z1ag1pqa9zqm704zf4nuj9tq4 |       |       |            |          |
-|   2 |   SORT AGGREGATE    |                            |     1 |     4 |            |          |
-|   3 |    TABLE ACCESS FULL| EMP                        |    14 |    56 |     3   (0)| 00:00:01 |
---------------------------------------------------------------------------------------------------
-
-Result Cache Information (identified by operation id):
-------------------------------------------------------
-
-   1 - column-count=1; dependencies=(SCOTT.EMP); attributes=(single-row); name="SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp"
-
-
-Statistics
-----------------------------------------------------------
-          0  recursive calls
-          0  db block gets
-          0  consistent gets
-          0  physical reads
-          0  redo size
-        545  bytes sent via SQL*Net to client
-        523  bytes received via SQL*Net from client
-          2  SQL*Net roundtrips to/from client
-          0  sorts (memory)
-          0  sorts (disk)
-          1  rows processed
-</code></pre>
-
-<p>また、<code>V$RESULT_CACHE_OBJECTS</code> からも結果キャッシュについて確認できる。</p>
-
-<pre><code>SQL&gt; SELECT type, status, name FROM v$result_cache_objects;
-
-TYPE                           STATUS
------------------------------- ---------------------------
-NAME
---------------------------------------------------------------------------------
-Dependency                     Published
-SCOTT.EMP
-
-Result                         Published
-SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/4/">&larr; Older</a>
@@ -694,6 +721,10 @@ SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
       </li>
     
@@ -707,10 +738,6 @@ SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
     
       <li class="post">
         <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/gdb-analyze-a-core-file/">[GDB] 別環境で採取した core ファイルを解析する方法</a>
       </li>
     
   </ul>
