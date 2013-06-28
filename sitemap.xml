@@ -146,7 +146,7 @@
     </url>
     <url>
         <loc>
-            http://th0x4c.github.com/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/
+            http://th0x4c.github.com/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/
         </loc>
         <lastmod>2013-06-25T23:48:05+09:00</lastmod>
     </url>

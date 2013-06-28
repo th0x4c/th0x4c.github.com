@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Linux | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-06-25T23:49:13+09:00</updated>
+  <updated>2013-06-28T23:35:47+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する]]></title>
-    <link href="http://th0x4c.github.com/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/"/>
+    <link href="http://th0x4c.github.com/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/"/>
     <updated>2013-06-25T23:23:00+09:00</updated>
-    <id>http://th0x4c.github.com/blog/2013/06/25/override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes</id>
+    <id>http://th0x4c.github.com/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes</id>
     <content type="html"><![CDATA[<h2>目的</h2>
 
 <p>LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する。</p>
