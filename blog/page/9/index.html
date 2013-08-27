@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 マルチセクション・バックアップにより効率的にバックアップを行う。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップおよびリカバリ・ユーザーズ・ガイド
-& &hellip;">
+  <meta name="description" content="目的 RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +78,153 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル バックアップ�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-archival-backup/">[Oracle] アーカイブ・バックアップの作成</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T04:16:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
+&ndash;> 9 データベースのバックアップ<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
+</ul>
+
+
+<h2>アーカイブ・バックアップの作成</h2>
+
+<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。これは <code>DELETE OBSOLETE</code> しても削除されないバックアップになる。</p>
+
+<p><code>BACKUP ... KEEP</code> によりアーカイブ・バックアップが作成される。</p>
+
+<ul>
+<li><strong>注意</strong>
+
+<ul>
+<li><strong><code>KEEP FOREVER</code> の場合にはリカバリ・カタログが必要。</strong></li>
+<li><strong>アーカイブ・バックアップは初期化パラメータ <code>DB_RECOVERY_FILE_DEST</code> で指定したディレクトリ(高速リカバリ領域)以外に保存する必要がある。</strong>
+もし、保存先を高速リカバリ領域のままにしていると、<code>ORA-19811: cannot have files in DB_RECOVERY_FILE_DEST with keep attributes</code> が発生して失敗する。
+保存先は <code>FORMAT</code> で指定できる。</li>
+</ul>
+</li>
+</ul>
+
+
+<p>以下の例では、タグと通常のリストア・ポイントを指定して、アーカイブ・バックアップを作成している。</p>
+
+<pre><code>RMAN&gt; BACKUP DATABASE
+      FORMAT '/home/oracle/backup/%U'
+      TAG quarterly
+      KEEP FOREVER
+      RESTORE POINT FY12Q3;
+
+Starting backup at 12-09-09
+current log archived
+
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+input datafile file number=00001 name=/u01/app/oracle/oradata/PROD1/system01.dbf
+input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_2: starting full datafile backup set
+channel ORA_DISK_2: specifying datafile(s) in backup set
+input datafile file number=00002 name=/u01/app/oracle/oradata/PROD1/sysaux01.dbf
+input datafile file number=00003 name=/u01/app/oracle/oradata/PROD1/undotbs01.dbf
+input datafile file number=00004 name=/u01/app/oracle/oradata/PROD1/users01.dbf
+channel ORA_DISK_2: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2mnko5ao_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:07
+channel ORA_DISK_2: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2nnko5ao_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_2: backup set complete, elapsed time: 00:00:07
+
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+including current SPFILE in backup set
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2onko5av_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+
+
+current log archived
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting archived log backup set
+channel ORA_DISK_1: specifying archived log(s) in backup set
+input archived log thread=1 sequence=10 RECID=3 STAMP=793515360
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2pnko5b1_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+
+using channel ORA_DISK_1
+using channel ORA_DISK_2
+backup will never be obsolete
+archived logs required to recover from this backup will be backed up
+channel ORA_DISK_1: starting full datafile backup set
+channel ORA_DISK_1: specifying datafile(s) in backup set
+including current control file in backup set
+channel ORA_DISK_1: starting piece 1 at 12-09-09
+channel ORA_DISK_1: finished piece 1 at 12-09-09
+piece handle=/home/oracle/backup/2qnko5b3_1_1 tag=QUARTERLY comment=NONE
+channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
+Finished backup at 12-09-09
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -371,185 +517,6 @@ ENABLED  /u01/app/oracle/oradata/PROD1/rman_change_track.f
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/08/oracle-setup-recovery-catalog/">[Oracle] リカバリ・カタログのセットアップ</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-08T23:44:00+09:00" pubdate data-updated="true">Sep 8<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Recovery Manager(RMAN) のリカバリ・カタログをセットアップする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
-&ndash;> 13 リカバリ・カタログの管理<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#i1013599">リカバリ・カタログの作成</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmcatdb.htm#CIHECCEF">リカバリ・カタログへのデータベースの登録</a></li>
-</ul>
-
-
-<h2>リカバリ・カタログとは</h2>
-
-<p>リカバリ・カタログには、RMAN で使用するメタデータ情報(バックアップ・ファイルの情報など)が格納されている。RMAN が使用するメタデータは通常は制御ファイルに格納されているが、リカバリ・カタログとして(リカバリのターゲットとなる DB とは別の) DB に格納することができる。リカバリ・カタログを使用するメリットは次のようなものがある。</p>
-
-<ul>
-<li><p>制御ファイルに格納されているメタデータと同様の情報が格納されているので、冗長性が確保される。制御ファイルが消失した場合も、リカバリ・カタログを使用すればいい。制御ファイルとの同期はバックアップ実行時などに自動で実行される。</p></li>
-<li><p>複数の DB の RMAN メタデータを集中管理できる。</p></li>
-<li><p>リカバリ・カタログには、制御ファイルより長期のメタデータ履歴を格納できる。よって、制御ファイルの履歴より前の時点にリカバリすることができる。</p></li>
-<li><p>一部の RMAN 機能は、リカバリ・カタログが必須。例えば、リカバリ・カタログには Recovery Manager スクリプトを格納することができる。</p></li>
-<li><p>Data Guard 環境で RMAN を使用する場合は、リカバリ・カタログが必要。</p></li>
-</ul>
-
-
-<h2>リカバリ・カタログの作成</h2>
-
-<p>リカバリ・カタログを作成する DB にリカバリ・カタログを所有するスキーマを作成して、必要な権限を与え、リカバリ・カタログを作成する。</p>
-
-<ul>
-<li>リカバリ・カタログを所有するスキーマを作成</li>
-</ul>
-
-
-<p>リカバリ・カタログを格納する DB に接続してスキーマを作成。</p>
-
-<pre><code>$ sqlplus sys/oracle@EMREP as sysdba
-SQL&gt; CREATE USER rman IDENTIFIED BY rman
-     TEMPORARY TABLESPACE temp
-     DEFAULT TABLESPACE users
-     QUOTA UNLIMITED ON users;
-
-User created.
-</code></pre>
-
-<ul>
-<li>必要な権限の付与</li>
-</ul>
-
-
-<p>リカバリ・カタログの管理に必要なすべての権限を含む <code>RECOVERY_CATALOG_OWNER</code> ロールを付与する。</p>
-
-<pre><code>SQL&gt; GRANT RECOVERY_CATALOG_OWNER TO rman;
-
-Grant succeeded.
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログの作成</li>
-</ul>
-
-
-<p>RMAN を使用して先ほど作成したリカバリ・カタログを所有するスキーマで接続して、リカバリ・カタログを作成。</p>
-
-<pre><code>$ rman catalog rman/rman@EMREP
-RMAN&gt; CREATE CATALOG;
-
-recovery catalog created
-</code></pre>
-
-<h2>リカバリ・カタログへの DB の登録</h2>
-
-<p>リカバリ・カタログにターゲットとなる DB を登録する。</p>
-
-<ul>
-<li><p>ターゲット DB がマウントしていない場合は、マウントまたはオープンする。</p></li>
-<li><p>RMAN からターゲット DB, リカバリ・カタログに接続する。</p></li>
-</ul>
-
-
-<p>RMAN から以下のようにして接続</p>
-
-<pre><code>$ export ORACLE_SID=PROD1
-$ rman target / catalog rman/rman@EMREP
-
-Recovery Manager: Release 11.2.0.3.0 - Production on Sun Sep 9 00:37:33 2012
-
-Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
-
-connected to target database: PROD1 (DBID=2014160803)
-connected to recovery catalog database
-</code></pre>
-
-<ul>
-<li>リカバリ・カタログにターゲット DB を登録</li>
-</ul>
-
-
-<p><code>REGISTER DATABASE</code> によりターゲット DB を登録する。</p>
-
-<pre><code>RMAN&gt; REGISTER DATABASE;
-
-database registered in recovery catalog
-starting full resync of recovery catalog
-full resync complete
-</code></pre>
-
-<ul>
-<li>正常に登録されていることを確認</li>
-</ul>
-
-
-<p><code>REPORT SCHEMA</code> により正常に登録されていることを確認する。</p>
-
-<pre><code>RMAN&gt; REPORT SCHEMA;
-
-Report of database schema for database with db_unique_name PROD1
-
-List of Permanent Datafiles
-===========================
-File Size(MB) Tablespace           RB segs Datafile Name
----- -------- -------------------- ------- ------------------------
-1    720      SYSTEM               YES     /u01/app/oracle/oradata/PROD1/system01.dbf
-2    550      SYSAUX               NO      /u01/app/oracle/oradata/PROD1/sysaux01.dbf
-3    95       UNDOTBS1             YES     /u01/app/oracle/oradata/PROD1/undotbs01.dbf
-4    5        USERS                NO      /u01/app/oracle/oradata/PROD1/users01.dbf
-5    345      EXAMPLE              NO      /u01/app/oracle/oradata/PROD1/example01.dbf
-
-List of Temporary Files
-=======================
-File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
----- -------- -------------------- ----------- --------------------
-1    29       TEMP                 32767       /u01/app/oracle/oradata/PROD1/temp01.dbf
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/10/">&larr; Older</a>
@@ -567,6 +534,10 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバック</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
       </li>
     
@@ -580,10 +551,6 @@ File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
     
       <li class="post">
         <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
   </ul>

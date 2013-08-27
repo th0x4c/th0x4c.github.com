@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard のスイッチオーバーを実行して、プライマリとスタンバイを切り替える。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3)
-EM: Oracle Enterprise &hellip;">
+  <meta name="description" content="目的 Data Guard の &ldquo;スナップショット・スタンバイ・データベース&rdquo; 機能により、スタンバイ DB を一時的に更新可能にする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +78,108 @@ EM: Oracle Enterprise &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-snapshot-standby-database/">[Oracle] Data Guard スナップショット・スタンバイ・データベース</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T21:51:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Data Guard の &ldquo;スナップショット・スタンバイ・データベース&rdquo; 機能により、スタンバイ DB を一時的に更新可能にする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>スナップショット・スタンバイ・データベースへの変換</h2>
+
+<p>Data Guard の &ldquo;スナップショット・スタンバイ・データベース&rdquo; 機能により、スタンバイ DB が一時的に更新可能にできる。&#8221;スナップショット・スタンバイ・データベース&#8221; となっている間はプライマリからの REDO は適用されず、元に戻すとスタンバイ DB での更新は破棄されて、プライマリからの REDO 適用が再開される。例えば、一時的にスタンバイ DB をテスト環境として使用する場合に使える。</p>
+
+<p>EM Grid Control を使用すると変換が楽にできる。(&ldquo;変換&rdquo; をクリックするだけ)</p>
+
+<ul>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>&ldquo;変換&rdquo; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&ldquo;はい&rdquo;</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 &ndash;> 完了</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
+
+<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
+
+<ul>
+<li>ロールが &ldquo;スナップショット・スタンバイ&rdquo; になる。</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-snapshot-standby-database/dgss-4.png" width="720" height="450"></p>
+
+<p>スナップショット・スタンバイ DB に対しては DB に変更も可能。</p>
+
+<pre><code>$ sqlplus scott/tiger@STDBY1_DGMGRL
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+</code></pre>
+
+<p>フィジカル・スタンバイ DB に戻す場合はもう一度 EM から &ldquo;変換&rdquo; をクリックすればよい。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -332,153 +433,6 @@ EM: Oracle Enterprise &hellip;">
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-archival-backup/">[Oracle] アーカイブ・バックアップの作成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T04:16:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>バックアップおよびリカバリ・ユーザーズ・ガイド<br/>
-&ndash;> 9 データベースのバックアップ<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/backup.112/b56269/rcmbckba.htm#CHDHAFHJ">長期格納用のデータベース・バックアップの作成</a></li>
-</ul>
-
-
-<h2>アーカイブ・バックアップの作成</h2>
-
-<p>RMAN でバックアップの保存方針(RETENTION POLICY)から除外するアーカイブ・バックアップを作成する。これは <code>DELETE OBSOLETE</code> しても削除されないバックアップになる。</p>
-
-<p><code>BACKUP ... KEEP</code> によりアーカイブ・バックアップが作成される。</p>
-
-<ul>
-<li><strong>注意</strong>
-
-<ul>
-<li><strong><code>KEEP FOREVER</code> の場合にはリカバリ・カタログが必要。</strong></li>
-<li><strong>アーカイブ・バックアップは初期化パラメータ <code>DB_RECOVERY_FILE_DEST</code> で指定したディレクトリ(高速リカバリ領域)以外に保存する必要がある。</strong>
-もし、保存先を高速リカバリ領域のままにしていると、<code>ORA-19811: cannot have files in DB_RECOVERY_FILE_DEST with keep attributes</code> が発生して失敗する。
-保存先は <code>FORMAT</code> で指定できる。</li>
-</ul>
-</li>
-</ul>
-
-
-<p>以下の例では、タグと通常のリストア・ポイントを指定して、アーカイブ・バックアップを作成している。</p>
-
-<pre><code>RMAN&gt; BACKUP DATABASE
-      FORMAT '/home/oracle/backup/%U'
-      TAG quarterly
-      KEEP FOREVER
-      RESTORE POINT FY12Q3;
-
-Starting backup at 12-09-09
-current log archived
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-input datafile file number=00001 name=/u01/app/oracle/oradata/PROD1/system01.dbf
-input datafile file number=00005 name=/u01/app/oracle/oradata/PROD1/example01.dbf
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_2: starting full datafile backup set
-channel ORA_DISK_2: specifying datafile(s) in backup set
-input datafile file number=00002 name=/u01/app/oracle/oradata/PROD1/sysaux01.dbf
-input datafile file number=00003 name=/u01/app/oracle/oradata/PROD1/undotbs01.dbf
-input datafile file number=00004 name=/u01/app/oracle/oradata/PROD1/users01.dbf
-channel ORA_DISK_2: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2mnko5ao_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:07
-channel ORA_DISK_2: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2nnko5ao_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_2: backup set complete, elapsed time: 00:00:07
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-including current SPFILE in backup set
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2onko5av_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-
-
-current log archived
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting archived log backup set
-channel ORA_DISK_1: specifying archived log(s) in backup set
-input archived log thread=1 sequence=10 RECID=3 STAMP=793515360
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2pnko5b1_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-
-using channel ORA_DISK_1
-using channel ORA_DISK_2
-backup will never be obsolete
-archived logs required to recover from this backup will be backed up
-channel ORA_DISK_1: starting full datafile backup set
-channel ORA_DISK_1: specifying datafile(s) in backup set
-including current control file in backup set
-channel ORA_DISK_1: starting piece 1 at 12-09-09
-channel ORA_DISK_1: finished piece 1 at 12-09-09
-piece handle=/home/oracle/backup/2qnko5b3_1_1 tag=QUARTERLY comment=NONE
-channel ORA_DISK_1: backup set complete, elapsed time: 00:00:01
-Finished backup at 12-09-09
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/9/">&larr; Older</a>
@@ -496,6 +450,10 @@ Finished backup at 12-09-09
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバック</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
       </li>
     
@@ -509,10 +467,6 @@ Finished backup at 12-09-09
     
       <li class="post">
         <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
   </ul>

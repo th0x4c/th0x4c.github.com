@@ -9,8 +9,10 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 OS の NFS クライアントのかわりに、Oracle の&#8221;ダイレクト NFS クライアント&#8221;を使用して NFS 上のファイルにアクセスするように Oracle の構成を変更する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: &hellip;">
+  <meta name="description" content="目的 Oracle Database のログ出力先を変更する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
+&ndash;> 9 診断データの管理
+& &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +80,120 @@ DB: &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-automatic-diagnostic-repository/">[Oracle] 自動診断リポジトリの設定</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T21:27:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Oracle Database のログ出力先を変更する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>管理者ガイド<br/>
+&ndash;> 9 診断データの管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/diag001.htm#CHDIABAA">自動診断リポジトリの構造、内容および場所</a></p></li>
+<li><p>リファレンス<br/>
+&ndash;> 1 初期化パラメータ<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56311/initparams077.htm#I1010280">DIAGNOSTIC_DEST</a></p></li>
+<li><p>Net Services管理者ガイド<br/>
+&ndash;> 16 Oracle Net Servicesのトラブルシューティング<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56288/trouble.htm#BABHDHGG">自動診断リポジトリの理解</a></p></li>
+</ul>
+
+
+<h2>設定</h2>
+
+<p>Oracle Database 11gR1 より、各種ログの出力先が&#8221;自動診断リポジトリ(Automatic Diagnostic Repository, ADR)&ldquo;という構造になった。</p>
+
+<ul>
+<li>Oracle Database のログ</li>
+</ul>
+
+
+<p>Oracle Database のログの出力先は初期化パラメータ <code>DIAGNOSTIC_DEST</code> にて設定する。
+例えば、<code>/home/oracle</code> 配下に変更する場合は以下のようにパラメータ変更を行う。
+(動的に変更可能なので DB 再起動は不要。)</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; ALTER SYSTEM SET DIAGNOSTIC_DEST = "/home/oracle" SCOPE = BOTH;
+
+System altered.
+</code></pre>
+
+<p>指定したディレクトリ配下に <code>diag/rdbms</code> ディレクトリが作成され、その配下に alert.log やトレースが出力される。</p>
+
+<ul>
+<li>Listener のログ</li>
+</ul>
+
+
+<p>Listener のログ出力先は <code>listener.ora</code> 内の <code>ADR_BASE_&lt;リスナー名&gt;</code> で設定する。</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/listener.ora # 以下を編集 or 追加
+ADR_BASE_LISTENER = /home/oracle
+</code></pre>
+
+<p>設定を反映させるために Listener を再起動</p>
+
+<pre><code>$ lsnrctl stop
+$ lsnrctl start
+</code></pre>
+
+<p>これで、指定したディレクトリ配下に <code>diag/tnslsnr</code> ディレクトリができて、その配下に listener.log が出力される。</p>
+
+<ul>
+<li>Oracle Net Client のログ</li>
+</ul>
+
+
+<p>Oracle Net Client のログは <code>sqlnet.ora</code> 内の <code>ADR_BASE</code> パラメータで設定する。</p>
+
+<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora # 以下を編集 or 追加
+ADR_BASE = /home/oracle
+</code></pre>
+
+<p>これで、ログ出力時は指定したディレクトリ配下に <code>diag/clients</code> ディレクトリができて、そこに出力される。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -371,338 +487,6 @@ SECURESPACE          YES
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/05/oracle-net-services/">[Oracle] ネットワーク構成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-05T21:50:00+09:00" pubdate data-updated="true">Sep 5<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Oracle DB にネットワーク接続できるように構成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>サーバー側のネットワーク構成</h2>
-
-<p><code>netca</code> により構成する。</p>
-
-<ul>
-<li><p><code>netca</code> を起動</p>
-
-<p>  $ netca</p></li>
-<li><p>&ldquo;リスナー構成&rdquo; を選択</p></li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-1.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;追加&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-2.png" width="600" height="400"></p>
-
-<ul>
-<li>リスナー名の設定。今回はリスナー名はデフォルトの&#8221;LISTENER&#8221;のまま。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-3.png" width="600" height="400"></p>
-
-<ul>
-<li>プロトコルの選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-4.png" width="600" height="400"></p>
-
-<ul>
-<li>ポート番号の指定。今回は標準ポート 1521 を使用。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-5.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;いいえ&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-6.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;次へ&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-7.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;完了&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-8.png" width="600" height="400"></p>
-
-<p>これでリスナーの設定ファイル <code>$ORACLE_HOME/network/admin/listener.ora</code> が作成される。</p>
-
-<pre><code>$ cat $ORACLE_HOME/network/admin/listener.ora
-# listener.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-# Generated by Oracle configuration tools.
-
-LISTENER =
-  (DESCRIPTION_LIST =
-    (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
-      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
-    )
-  )
-
-ADR_BASE_LISTENER = /u01/app/oracle
-</code></pre>
-
-<h2>クライアント側のネットワーク構成</h2>
-
-<p>同じく <code>netca</code> により構成する。</p>
-
-<ul>
-<li><p><code>netca</code> を起動</p>
-
-<p>  $ netca</p></li>
-<li><p>&ldquo;ローカル・ネット・サービス名構成&rdquo; を選択</p></li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-9.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;追加&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-10.png" width="600" height="400"></p>
-
-<ul>
-<li>サービス名を設定。通常は DB のグローバル・データベース名(db_name.db_domain)を入力。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-11.png" width="600" height="400"></p>
-
-<ul>
-<li>プロトコルの選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-12.png" width="600" height="400"></p>
-
-<ul>
-<li>ホスト名, ポート番号を設定</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-13.png" width="600" height="400"></p>
-
-<ul>
-<li>接続テスト。今回は行わない。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-14.png" width="600" height="400"></p>
-
-<ul>
-<li>ネット・サービス名の設定。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-15.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;いいえ&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-16.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;次へ&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-17.png" width="600" height="400"></p>
-
-<ul>
-<li>&ldquo;完了&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-05-oracle-net-services/netca-18.png" width="600" height="400"></p>
-
-<p>これでクライアントのネットワーク設定ファイル <code>$ORACLE_HOME/network/admin/tnsnames.ora</code> が作成される。</p>
-
-<pre><code>$ cat $ORACLE_HOME/network/admin/tnsnames.ora 
-# tnsnames.ora Network Configuration File: /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/tnsnames.ora
-# Generated by Oracle configuration tools.
-
-PROD1 =
-  (DESCRIPTION =
-    (ADDRESS_LIST =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = sv1.local)(PORT = 1521))
-    )
-    (CONNECT_DATA =
-      (SERVICE_NAME = PROD1.local)
-    )
-  )
-</code></pre>
-
-<h2>接続テスト</h2>
-
-<p>クライアントから DB にネットワーク接続できるか確認する。</p>
-
-<ul>
-<li>リスナーの起動</li>
-</ul>
-
-
-<p><code>lsnrctl start</code> を実行</p>
-
-<pre><code>$ lsnrctl start
-
-LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:02:48
-
-Copyright (c) 1991, 2011, Oracle.  All rights reserved.
-
-Starting /u01/app/oracle/product/11.2.0/dbhome_1/bin/tnslsnr: please wait...
-
-TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-System parameter file is /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Log messages written to /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-Listening on: (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-Start Date                05-SEP-2012 23:02:48
-Uptime                    0 days 0 hr. 0 min. 0 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-The listener supports no services
-The command completed successfully
-</code></pre>
-
-<ul>
-<li>DB インスタンスの起動</li>
-</ul>
-
-
-<p><code>sqlplus</code> からインスタンスの起動</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; startup
-</code></pre>
-
-<ul>
-<li>インスタンスがリスナーに登録されていることを確認</li>
-</ul>
-
-
-<p><code>lsnrctl status</code> でサービスが登録されていることを確認する。</p>
-
-<pre><code>$ lsnrctl status
-
-LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 05-SEP-2012 23:05:17
-
-Copyright (c) 1991, 2011, Oracle.  All rights reserved.
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=sv1.local)(PORT=1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
-Start Date                05-SEP-2012 23:02:48
-Uptime                    0 days 0 hr. 2 min. 28 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   /u01/app/oracle/product/11.2.0/dbhome_1/network/admin/listener.ora
-Listener Log File         /u01/app/oracle/diag/tnslsnr/sv1/listener/alert/log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=sv1.local)(PORT=1521)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
-Services Summary...
-Service "PROD1.local" has 1 instance(s).
-  Instance "PROD1", status READY, has 1 handler(s) for this service...
-Service "PROD1XDB.local" has 1 instance(s).
-  Instance "PROD1", status READY, has 1 handler(s) for this service...
-The command completed successfully
-</code></pre>
-
-<ul>
-<li>クライアントからネットワーク接続できることを確認</li>
-</ul>
-
-
-<p>クライアント側のネットワーク構成で指定したネット・サービス名で接続できることを確認する。</p>
-
-<pre><code>$ sqlplus scott/tiger@PROD1
-
-SQL*Plus: Release 11.2.0.3.0 Production on Wed Sep 5 23:07:13 2012
-
-Copyright (c) 1982, 2011, Oracle.  All rights reserved.
-
-
-Connected to:
-Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
-With the Partitioning, OLAP, Data Mining and Real Application Testing options
-
-SQL&gt; 
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/12/">&larr; Older</a>
@@ -720,6 +504,10 @@ SQL&gt;
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバック</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
       </li>
     
@@ -733,10 +521,6 @@ SQL&gt;
     
       <li class="post">
         <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
   </ul>

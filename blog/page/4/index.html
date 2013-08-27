@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 &ldquo;結果キャッシュ&rdquo; 機能を使用する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング・ガイド
-&ndash;> 7 &hellip;">
+  <meta name="description" content="目的 相関のある複数列を列グループとして統計情報採取することでよりよい実行計画となるようにする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +78,290 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマン�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-multicolumn-statistics/">[Oracle] 複数列の統計</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T20:21:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>相関のある複数列を列グループとして統計情報採取することでよりよい実行計画となるようにする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>パフォーマンス・チューニング・ガイド<br/>
+&ndash;> 13 オプティマイザ統計の管理<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56312/stats.htm#CIHFICCB">13.3.1.6 複数列の統計</a></li>
+</ul>
+
+
+<h2>複数列の統計収集</h2>
+
+<p>相関のある複数列を列グループとして統計情報を採取することで、オプティマイザが個々の列でなく列グループとして実行計画を計算するようにする。</p>
+
+<ul>
+<li>検証で使用する表の作成</li>
+</ul>
+
+
+<p>C1 列、C2 列が同じになる(つまり相関がある)ような表を作成する。</p>
+
+<pre><code>SQL&gt; CREATE TABLE multi_col_tab (c1 NUMBER, c2 NUMBER);
+
+Table created.
+
+SQL&gt; BEGIN
+       FOR i IN 1..5 LOOP
+         FOR j IN 1..100 LOOP
+           INSERT INTO multi_col_tab VALUES(i, i);
+         END LOOP;
+       END LOOP;
+       COMMIT;
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>1 〜 5 までそれぞれ 100 行ずつ、計 500 行を INSERT。</p>
+
+<ul>
+<li>複数列統計を採取しない場合</li>
+</ul>
+
+
+<p>複数列統計を採取しない場合の実行計画</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |    20 |   120 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 20 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> だが、相関があることを知らないので、選択行が <code>500行 * 1/5(c1 の選択率) * 1/5(c2 の選択率)</code> = 20行 となっていて正確でない。</p>
+
+<ul>
+<li>複数列統計を採取した場合</li>
+</ul>
+
+
+<p>複数列統計を採取する。<code>c1</code> および <code>c2</code> 列で構成させる列グループを追加して、統計情報取得。</p>
+
+<pre><code>SQL&gt; DECLARE
+       cg_name varchar2(30);
+     BEGIN
+       cg_name := dbms_stats.create_extended_stats(null,'multi_col_tab',  
+                 '(c1,c2)');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>なお、<code>DBMS_STATS.CREATE_EXTENDED_STATS</code> で明示的に列グループを作成しない場合は、以下のように統計情報収集時に <code>METHOD_OPT</code> で複数列を指定してもよい。</p>
+
+<pre><code>SQL&gt; BEGIN
+       DBMS_STATS.GATHER_TABLE_STATS(null,'MULTI_COL_TAB',
+         METHOD_OPT =&gt; 'FOR ALL COLUMNS SIZE SKEWONLY FOR COLUMNS (C1,C2) SIZE SKEWONLY');
+     END;
+     /
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p>先ほどと同じ SQL で実行計画を確認してみる。</p>
+
+<pre><code>SQL&gt; set autotrace on
+SQL&gt; SELECT COUNT(*) FROM multi_col_tab WHERE c1 = 1 AND c2 = 1;
+
+  COUNT(*)
+----------
+       100
+
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 610516676
+
+------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("C1"=1 AND "C2"=1)
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+          6  consistent gets
+          0  physical reads
+          0  redo size
+        526  bytes sent via SQL*Net to client
+        523  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+</code></pre>
+
+<p>実行計画の <code>MULTI_COL_TAB</code> の出力行に注目</p>
+
+<pre><code>------------------------------------------------------------------------------------
+| Id  | Operation          | Name          | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |               |     1 |     6 |     3   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE    |               |     1 |     6 |            |          |
+|*  2 |   TABLE ACCESS FULL| MULTI_COL_TAB |   100 |   600 |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+</code></pre>
+
+<p><code>Rows</code> が 100 となっている。
+条件が <code>WHERE c1 = 1 AND c2 = 1</code> で相関があることを認識して正確に 100 行と計算している。</p>
+
+<ul>
+<li>複数列統計の確認</li>
+</ul>
+
+
+<p>拡張統計として、複数列が認識されていることを確認。</p>
+
+<pre><code>SQL&gt; col extension_name for a30
+     col extension for a30
+SQL&gt; Select extension_name, extension 
+     from user_stat_extensions 
+     where table_name='MULTI_COL_TAB';
+
+EXTENSION_NAME                 EXTENSION
+------------------------------ ------------------------------
+SYS_STUF3GLKIOP5F4B0BTTCFTMX0W ("C1","C2")
+</code></pre>
+
+<p>実際に複数列の統計が採られていることを確認</p>
+
+<pre><code>SQL&gt; col col_group for a30
+SQL&gt; select e.extension col_group, t.num_distinct, t.histogram
+     from user_stat_extensions e, user_tab_col_statistics t
+     where e.extension_name=t.column_name
+     and e.table_name=t.table_name
+     and t.table_name='MULTI_COL_TAB';
+
+COL_GROUP                      NUM_DISTINCT HISTOGRAM
+------------------------------ ------------ ---------------------------------------------
+("C1","C2")                               5 FREQUENCY
+</code></pre>
+
+<p><code>HISTGRAM</code> 列が <code>NONE</code> 以外であればヒストグラムが採られている。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -400,130 +683,6 @@ EMP                            SCOTT                          FLA1              
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-interval-partitioned-table/">[Oracle] 時間隔パーティション表</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T16:46:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>時間隔パーティション表を作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>VLDBおよびパーティショニング・ガイド<br/>
-&ndash;> 4 パーティションの管理<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56316/part_admin001.htm#BAJHFFBE">時間隔パーティション表の作成</a></li>
-</ul>
-
-
-<h2>時間隔パーティション表の作成</h2>
-
-<p>時間隔パーティション表はレンジ・パーティションの一種で、例えば月単位の時間隔パーティション表を作成すると、パーティションを明示的に作成しなくても自動で必要な月のパーティションをデータ insert 時に作成してくれる。</p>
-
-<p><code>DATE</code> 型の <code>time_id</code> をパーティション・キーとして、2009年までは年単位でパーティション化し、2010年1月1日以降は月単位でパーティションを自動作成するような時間隔パーティション表を作成してみる。</p>
-
-<pre><code>SQL&gt; CREATE TABLE interval_sales
-         ( prod_id        NUMBER(6)
-         , cust_id        NUMBER
-         , time_id        DATE
-         , channel_id     CHAR(1)
-         , promo_id       NUMBER(6)
-         , quantity_sold  NUMBER(3)
-         , amount_sold    NUMBER(10,2)
-         ) 
-       PARTITION BY RANGE (time_id) 
-       INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
-         ( PARTITION p0 VALUES LESS THAN (TO_DATE('1-1-2008', 'DD-MM-YYYY')),
-           PARTITION p1 VALUES LESS THAN (TO_DATE('1-1-2009', 'DD-MM-YYYY')),
-           PARTITION p2 VALUES LESS THAN (TO_DATE('1-1-2010', 'DD-MM-YYYY')) );
-
-Table created.
-</code></pre>
-
-<p>ちなみに追加されるパーティションを日単位にする場合は、<code>NUMTODSINTERVAL(1, 'DAY')</code> 関数を利用する。</p>
-
-<p>パーティション情報の確認。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col partitioning_type for a20
-     set lines 200
-SQL&gt; SELECT table_name, partitioning_type FROM user_part_tables;
-
-TABLE_NAME                     PARTITIONING_TYPE   
------------------------------- --------------------
-INTERVAL_SALES                 RANGE
-
-SQL&gt; col partition_name for a30
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p>最初はパーティションは作られていないが、上記の範囲を超える行を insert するとパーティションが自動で作成される。</p>
-
-<pre><code>SQL&gt; INSERT INTO interval_sales(prod_id, time_id) VALUES(1, TO_DATE('2012-09-16', 'YYYY-MM-DD'));
-
-1 row created.
-
-SQL&gt; COMMIT;
-
-Commit complete.
-
-SQL&gt; SELECT table_name, partition_name, high_value FROM user_tab_partitions ORDER BY table_name, partition_position;
-
-TABLE_NAME                     PARTITION_NAME                 HIGH_VALUE
------------------------------- ------------------------------ --------------------------------------------------------------------------------
-INTERVAL_SALES                 P0                             TO_DATE(' 2008-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P1                             TO_DATE(' 2009-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 P2                             TO_DATE(' 2010-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS', 'NLS_CALENDAR=GREGORIA
-</code></pre>
-
-<p><code>SYS_P41</code> というパーティションが自動で作成された。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -541,6 +700,10 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバック</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
       </li>
     
@@ -554,10 +717,6 @@ INTERVAL_SALES                 SYS_P41                        TO_DATE(' 2012-10-
     
       <li class="post">
         <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
   </ul>

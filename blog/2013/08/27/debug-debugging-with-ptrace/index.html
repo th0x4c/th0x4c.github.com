@@ -1,0 +1,777 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Debug] ptrace によるデバック - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 システムコール ptrace(2) を使用してデバックする。
+ptrace を使用したデバッカ・プログラムを作成することで、GDB などの汎用デバッカより細かい制御を行うことも可能になる。 環境 OS: CentOS 5.5
+Kernel: 2.6.18-194.el5 x86_64
+CPU &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2013/08/27/debug-debugging-with-ptrace">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-40023249-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+
+  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Debug] Ptrace によるデバック</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-27T20:21:00+09:00" pubdate data-updated="true">Aug 27<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>システムコール ptrace(2) を使用してデバックする。
+ptrace を使用したデバッカ・プログラムを作成することで、GDB などの汎用デバッカより細かい制御を行うことも可能になる。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: CentOS 5.5</li>
+<li>Kernel: 2.6.18-194.el5 x86_64</li>
+<li>CPU: Intel&reg; Xeon&reg; CPU E5345 (Virtual Machine on VMware)</li>
+</ul>
+
+
+<h2>前提知識</h2>
+
+<h3>システムコール ptrace(2)</h3>
+
+<p>別のプロセスにアタッチしたり、別のプロセスのメモリやレジスタを参照、書込み等を行うことができるシステムコール。
+デバッカを実装するために使用される。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;sys/ptrace.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">long</span> <span class="nf">ptrace</span><span class="p">(</span><span class="k">enum</span> <span class="n">__ptrace_request</span> <span class="n">request</span><span class="p">,</span> <span class="n">pid_t</span> <span class="n">pid</span><span class="p">,</span>
+</span><span class='line'>            <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>request</code> にアタッチしたプロセスに何を行うかを指定する。
+例えば、以下が指定できる。(参考: <code>man ptrace</code>)</p>
+
+<ul>
+<li><p>PTRACE_ATTACH</p>
+
+<p><code>pid</code> で指定したプロセスにアタッチする。アタッチしたプロセスは子プロセスとしてトレースできるようにする。(引数 <code>addr</code> と <code>data</code> は無視される。)</p></li>
+<li><p>PTRACE_PEEKTEXT, PTRACE_PEEKDATA</p>
+
+<p>メモリの <code>addr</code> の位置を参照する。(引数 <code>data</code> は無視される。)</p></li>
+<li><p>PTRACE_PEEKUSR</p>
+
+<p>USER 領域のオフセット <code>addr</code> の位置を参照する。(引数 <code>data</code> は無視される。)</p></li>
+<li><p>PTRACE_POKETEXT, PTRACE_POKEDATA</p>
+
+<p><code>data</code> をメモリの <code>addr</code> の位置に書込む。</p></li>
+<li><p>PTRACE_POKEUSR</p>
+
+<p><code>data</code> を USER 領域のオフセット <code>addr</code> の位置に書き込む。</p></li>
+<li><p>PTRACE_GETREGS</p>
+
+<p>レジスタの値を <code>data</code> にコピーする。<code>data</code> は user_regs_struct 構造体(&lt;linux/user.h>)。(引数 <code>addr</code> は無視される。)</p></li>
+<li><p>PTRACE_SETREGS</p>
+
+<p><code>data</code> をレジスタにコピーする。<code>data</code> は user_regs_struct 構造体(&lt;linux/user.h>)。(引数 <code>addr</code> は無視される。)</p></li>
+</ul>
+
+
+<h3>インストラクション INT 3</h3>
+
+<p><code>INT X</code>(X は 0～255 の数値) は x86, x86-64 プロセッサのインストラクションで、ソフトウェア割り込みを発生させる。</p>
+
+<p>特に <code>INT 3</code>(オペコード: <code>0xCC</code>) により SIGTRAP シグナルが発生し、処理が中断される。これは、デバッカがブレイクポイントを設定するために使用される。</p>
+
+<h3>レジスタ IP</h3>
+
+<p>x86-64 プロセッサのレジスタ RIP (インストラクションポインタ)には次に実行される命令のアドレスが格納されている。(プログラムカウンタとも呼ばれる。)</p>
+
+<h2>ptrace によるブレイクポイントの設定</h2>
+
+<p>ptrace では、アタッチしたプロセスのメモリやレジスタを参照したり、書込むといった原始的なことしかできない。</p>
+
+<p>したがって、ptrace によってブレイクポイントを設定してデバックするには、以下のような手順が必要。</p>
+
+<ol>
+<li><p>PTRACE_ATTACH でターゲットのプロセスにアタッチ。</p></li>
+<li><p>PTRACE_PEEKTEXT でブレイクポイントを設定したいアドレスの命令を一時的に保存しておく。</p></li>
+<li><p>PTRACE_POKETEXT で 2. のアドレスの命令を INT 3 (0xCC)に書換える。</p></li>
+<li><p>PTRACE_CONT でプロセスを再開させる。</p></li>
+<li><p>waitpid(2) でブレイクするのを待つ。</p></li>
+<li><p>プロセスが INT 3 で書換えたアドレスでブレイクする。</p></li>
+<li><p>次に実行する命令のアドレスを示すレジスタ IP は INT 3 で書換えたアドレス(ブレイクポイントを設定したアドレス)の次の位置(+1バイトの位置)を指しているので、PTRACE_GETREGS/PTRACE_SETREGS で IP をブレイクポイントを設定したアドレスに書換えて戻す。</p></li>
+<li><p>PTRACE_POKETEXT で 3. で書換えた命令を 2. で保存していたオリジナルに戻す。(ブレイクポイントを設定したアドレスのメモリを元の命令に戻す。)</p></li>
+<li><p>これでブレイクしたい位置で中断されているので、レジスタを見たり、メモリを参照したりして任意のデバックを行う。</p></li>
+<li><p>再度ブレイクさせたかったら 2. に戻る。
+ただし、同じ命令のアドレスでブレイクさせたかったら、PTRACE_SINGLESTEP で 1 命令だけ進めてから、2. に戻る。(そうでないと現在の IP 位置を INT 3 で書換えてしまい、すぐにブレイクして処理が進まなくなってしまう。)</p></li>
+<li><p>デバックが終わったら、PTRACE_DETACH でプロセスからデタッチする。</p></li>
+</ol>
+
+
+<h2>具体例</h2>
+
+<p>上述のような方法でブレイクポイントを設定してデバックするデバッカ・プログラムを作成する。</p>
+
+<h3>デバッカ・プログラム</h3>
+
+<p>引数としてアタッチしたいプロセスの PID と、ブレイクするアドレスを指定して、ブレイクポイントでレジスタ RDI の値を表示するデバッカ・プログラム。</p>
+
+<p>ブレイクするアドレスとして関数の先頭アドレスを指定すれば、レジスタ RDI には第 1 引数が入っているはずなので、このプログラムを使って第 1 引数を表示するデバックができる。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;      </span><span class="cm">/* printf */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;     </span><span class="cm">/* memset */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;sys/ptrace.h&gt; </span><span class="cm">/* ptrace */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;sys/reg.h&gt;    </span><span class="cm">/* RIP */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;  </span><span class="cm">/* waitpid, stat */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;sys/wait.h&gt;   </span><span class="cm">/* waitpid */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;     </span><span class="cm">/* atoi, strtol, exit */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;linux/user.h&gt; </span><span class="cm">/* user_regs_struct */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;sys/stat.h&gt;   </span><span class="cm">/* stat */</span><span class="cp"></span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;     </span><span class="cm">/* stat */</span><span class="cp"></span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">my_command</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">user_regs_struct</span> <span class="n">regs</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">regs</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">regs</span><span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_GETREGS</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">regs</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;arg 1: %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">regs</span><span class="p">.</span><span class="n">rdi</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">p_attach</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">status</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_ATTACH</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">long</span> <span class="nf">p_break</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">long</span> <span class="n">original_text</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">original_text</span> <span class="o">=</span> <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_PEEKTEXT</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_POKETEXT</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="p">((</span><span class="n">original_text</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFFFFFFFF00</span><span class="p">)</span> <span class="o">|</span> <span class="mh">0xCC</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Breakpoint at %p.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">original_text</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">p_delete</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="kt">long</span> <span class="n">original_text</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_POKEUSER</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">long</span><span class="p">)</span> <span class="o">*</span> <span class="n">RIP</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_POKETEXT</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">original_text</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">p_continue</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">status</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_CONT</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Continuing.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">WIFEXITED</span><span class="p">(</span><span class="n">status</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Program exited normally.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">WIFSTOPPED</span><span class="p">(</span><span class="n">status</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Breakpoint.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">p_stepi</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">status</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_SINGLESTEP</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">p_quit</span><span class="p">(</span><span class="n">pid_t</span> <span class="n">pid</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_DETACH</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">pid_t</span> <span class="n">pid</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">long</span> <span class="n">original_text</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">stat</span> <span class="n">buf</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Usage: ptrace_demo &lt;pid&gt; &lt;addr&gt;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Example: ptrace_demo 1234 0xabcdef0123456789</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">pid</span> <span class="o">=</span> <span class="n">atoi</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>  <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">strtol</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">p_attach</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">original_text</span> <span class="o">=</span> <span class="n">p_break</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="n">p_continue</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">p_delete</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">original_text</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">stat</span><span class="p">(</span><span class="s">&quot;./quit&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/* do stuff */</span>
+</span><span class='line'>    <span class="n">my_command</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">p_stepi</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">original_text</span> <span class="o">=</span> <span class="n">p_break</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">p_quit</span><span class="p">(</span><span class="n">pid</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>なお、レジスタの書換えは以下のように PTRACE_GETREGS/PTRACE_SETREGS でなくて、PTRACE_POKEUSER でも行けた。(43行目)</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_POKEUSER</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">long</span><span class="p">)</span> <span class="o">*</span> <span class="n">RIP</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>もちろん、PTRACE_GETREGS/PTRACE_SETREGS を使って以下のようにしてもよい。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="k">struct</span> <span class="n">user_regs_struct</span> <span class="n">regs</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_GETREGS</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">regs</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">regs</span><span class="p">.</span><span class="n">rip</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span> <span class="n">addr</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_SETREGS</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">regs</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>あと、デバックを止めるときはカレントディレクトリに <code>quit</code> というファイルを置くことにした。(<code>$ touch ./quit</code> とかで作ればよい。)</p>
+
+<p>コンパイルしておく。</p>
+
+<pre><code>$ gcc -o ptrace_demo ptrace_demo.c
+</code></pre>
+
+<h3>デバックするプログラム</h3>
+
+<p>デバック対象として以下の簡単なプログラムを用意。1秒毎に func 関数が呼ばれている。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;hello, world: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">func</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>コンパイルしておく</p>
+
+<pre><code>$ gcc -o sample sample.c
+</code></pre>
+
+<h2>デバック例</h2>
+
+<p>上記の func 関数が呼ばれる度に第 1 引数(レジスタ RDI) の値を出力するデバックを行う。</p>
+
+<p>まず、func のアドレスを確認。</p>
+
+<pre><code>$ nm sample | grep func
+00000000004004d8 T func
+</code></pre>
+
+<p>func のアドレスは 0x00000000004004d8 。</p>
+
+<p>プログラムを実行。</p>
+
+<pre><code>$ ./sample
+hello, world: 1
+hello, world: 2
+hello, world: 3
+hello, world: 4
+hello, world: 5
+hello, world: 6
+...&lt;略&gt;
+</code></pre>
+
+<p>PID, アドレスを指定してデバッカ・プログラムを実行してみる。</p>
+
+<pre><code>$ ps -ef | grep sample
+hashi    21250 32254  0 17:33 pts/2    00:00:00 ./sample
+
+$ ./ptrace_demo 21250 0x00000000004004d8
+Breakpoint at 0x4004d8.
+Continuing.
+Breakpoint.
+arg 1: 27
+Breakpoint at 0x4004d8.
+Continuing.
+Breakpoint.
+arg 1: 28
+Breakpoint at 0x4004d8.
+Continuing.
+Breakpoint.
+arg 1: 29
+Breakpoint at 0x4004d8.
+Continuing.
+Breakpoint.
+...&lt;略&gt;
+</code></pre>
+
+<p>func でブレイクして、第 1 引数(レジスタ RDI) の値が出力できている。</p>
+
+<p>止めるときは同じディレクトリに quit という名前のファイルを作れば、デタッチしてデバック終了する。</p>
+
+<pre><code>$ touch quit
+</code></pre>
+
+<h3>GDB で実行した場合</h3>
+
+<p>上述の方法で GDB で以下のようにしたときと同じようにデバックすることができた。</p>
+
+<pre><code>$ gdb ./sample 21250
+(gdb) b func
+Breakpoint 1 at 0x4004dc
+(gdb) command
+Type commands for when breakpoint 1 is hit, one per line.
+End with a line saying just "end".
+&gt;p $rdi
+&gt;c
+&gt;end
+(gdb) c
+Continuing.
+
+Breakpoint 1, 0x00000000004004dc in func ()
+$1 = 27
+
+Breakpoint 1, 0x00000000004004dc in func ()
+$2 = 28
+
+Breakpoint 1, 0x00000000004004dc in func ()
+$3 = 29
+
+...&lt;略&gt;
+</code></pre>
+
+<p>ptrace を使用したデバッカ・プログラムを作るとで GDB より柔軟に情報採取をすることも可能になる。</p>
+
+<h2>参考</h2>
+
+<ul>
+<li><a href="http://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints/">Eli Bendersky&rsquo;s website: How debuggers work: Part 2 &ndash; Breakpoints</a></li>
+<li><a href="http://mainisusuallyafunction.blogspot.jp/2011/01/implementing-breakpoints-on-x86-linux.html">main is usually a function: Implementing breakpoints on x86 Linux</a></li>
+<li><a href="http://d.hatena.ne.jp/yupo5656/20071008/p1">memologue: hogetrace &ndash; 関数コールトレーサ</a></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-27T20:21:00+09:00" pubdate data-updated="true">Aug 27<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/debug/'>Debug</a>, <a class='category' href='/blog/categories/linux/'>Linux</a>, <a class='category' href='/blog/categories/os/'>OS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2013/08/27/debug-debugging-with-ptrace/" data-via="" data-counturl="http://th0x4c.github.com/blog/2013/08/27/debug-debugging-with-ptrace/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/" title="Previous Post: [Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する">&laquo; [Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバック</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

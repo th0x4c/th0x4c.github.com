@@ -9,10 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 トランスポータブル表領域により DB 間で表領域の移動を行う。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
-&ndash;> 14 表領域の管理
-& &hellip;">
+  <meta name="description" content="目的 スター型変換を行い、スター・クエリーをチューニングする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル データ・ウェアハウス・ガイド
+&ndash;> 20 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +79,358 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/13/oracle-star-transformation/">[Oracle] スター型変換の使用</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-13T01:14:00+09:00" pubdate data-updated="true">Sep 13<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>スター型変換を行い、スター・クエリーをチューニングする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>データ・ウェアハウス・ガイド<br/>
+&ndash;> 20 スキーマのモデリング化技法<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56309/schemas.htm#CIHGHEFB">スター・クエリーの最適化</a></li>
+</ul>
+
+
+<h2>スター型変換を使用したスター・クエリーのチューニング</h2>
+
+<p>スター型変換を行い、スター・クエリーをチューニングする。
+スター・クエリーは1つの大規模なファクト表と、複数の小規模なディメンション表を結合するようなクエリー。ファクト表が大きいため、ファクト表をなるべく条件を絞り込んだ後でアクセスするような特別な結合(スター結合)をしたほうが効率がよい。このために暗黙的に SQL をリライト(または変換)する機能をスター型変換という。</p>
+
+<p>スター型変換を行うためには、以下に従う必要がある。</p>
+
+<ol>
+<li>ビットマップ索引をファクト表の各外部キー列上に作成する必要がある。</li>
+<li>初期化パラメータ <code>STAR_TRANSFORMATION_ENABLED</code> を <code>TRUE</code> に設定する必要がある。</li>
+</ol>
+
+
+<p>検証してみる。</p>
+
+<ul>
+<li>表、データを準備</li>
+</ul>
+
+
+<p>ディメンション表 <code>jobs</code>, <code>dates</code>, ファクト表 <code>emp_fact</code> を作成</p>
+
+<pre><code>$ sqlplus scott/tiger
+SQL&gt; -- ディメンション表 jobs
+SQL&gt; CREATE TABLE jobs
+     AS SELECT rownum job_id, job
+     FROM (SELECT DISTINCT job FROM emp);
+
+Table created.
+
+SQL&gt; ALTER TABLE jobs ADD (CONSTRAINT jobs_pk PRIMARY KEY (job_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; -- ディメンション表 dates
+SQL&gt; CREATE TABLE dates
+     AS SELECT rownum date_id, hiredate, to_char(hiredate, 'YYYY') year
+     FROM (SELECT DISTINCT hiredate FROM emp);
+
+Table created.
+
+SQL&gt; ALTER TABLE dates ADD (CONSTRAINT dates_pk PRIMARY KEY (date_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; -- ファクト表 emp_fact
+SQL&gt; CREATE TABLE emp_fact
+     AS SELECT e.empno, e.ename, j.job_id, e.mgr, d.date_id, e.sal, e.comm, e.deptno
+     FROM emp e, dates d, jobs j
+     WHERE e.job = j.job AND e.hiredate = d.hiredate;
+
+Table created.
+
+SQL&gt; ALTER TABLE emp_fact ADD (CONSTRAINT emp_fact_jobs_fk FOREIGN KEY(job_id) REFERENCES jobs(job_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; ALTER TABLE emp_fact ADD (CONSTRAINT emp_fact_dates_fk FOREIGN KEY(date_id) REFERENCES dates(date_id) VALIDATE);
+
+Table altered.
+
+SQL&gt; -- データロード
+SQL&gt; INSERT INTO emp_fact SELECT * FROM emp_fact;
+
+14 rows created.
+
+SQL&gt; /
+
+28 rows created.
+...(以下繰り返す)
+
+SQL&gt; /
+
+114688 rows created.
+
+SQL&gt; COMMIT;
+
+Commit complete.
+
+SQL&gt; -- 統計情報取得
+SQL&gt; EXEC DBMS_STATS.GATHER_SCHEMA_STATS('scott');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<ul>
+<li>スター変換の確認方法</li>
+</ul>
+
+
+<p>スター変換されているかどうかは <code>set autotrace trace exp</code> 等の実行計画から確認する。
+例えば <code>set autotrace trace exp</code> で <code>Note</code> に以下の出力があればスター変換されている。</p>
+
+<pre><code>Note 
+-----
+   - star transformation used for this statement
+</code></pre>
+
+<p>ちなみに <code>set autotrace</code> を使用するためには <code>PLUSTRACE</code> ロールが必要で、以下のように作成する。</p>
+
+<pre><code>SQL&gt; connect /as sysdba              
+Connected.
+SQL&gt; @?/sqlplus/admin/plustrce.sql
+
+SQL&gt; GRANT plustrace TO scott;
+
+Grant succeeded.
+</code></pre>
+
+<ul>
+<li>スター変換なしの場合</li>
+</ul>
+
+
+<p>以下の SELECT 文で試してみる。</p>
+
+<pre><code>SQL&gt; set timing on
+SQL&gt; set autotrace on
+SQL&gt; set lines 200
+SQL&gt; SELECT j.job, d.year, SUM(e.sal), d.dname
+     FROM emp_fact e, jobs j, dates d, dept d
+     WHERE e.job_id = j.job_id
+     AND   e.date_id = d.date_id
+     AND   e.deptno = d.deptno
+     AND   j.job = 'CLERK'
+     AND   d.year in ('1980', '1987')
+     GROUP BY j.job, d.year, d.dname;
+
+JOB                         YEAR         SUM(E.SAL) DNAME
+--------------------------- ------------ ---------- ------------------------------------------
+CLERK                       1987           18022400 RESEARCH
+CLERK                       1980           13107200 RESEARCH
+
+Elapsed: 00:00:00.04
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 3373499036
+
+------------------------------------------------------------------------------------
+| Id  | Operation               | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT        |          |     4 |   180 |   324   (3)| 00:00:04 |
+|   1 |  HASH GROUP BY          |          |     4 |   180 |   324   (3)| 00:00:04 |
+|*  2 |   HASH JOIN             |          | 22938 |  1008K|   323   (2)| 00:00:04 |
+|   3 |    TABLE ACCESS FULL    | DEPT     |     4 |    52 |     3   (0)| 00:00:01 |
+|*  4 |    HASH JOIN            |          | 22938 |   716K|   319   (2)| 00:00:04 |
+|   5 |     MERGE JOIN CARTESIAN|          |     7 |   133 |     6   (0)| 00:00:01 |
+|*  6 |      TABLE ACCESS FULL  | JOBS     |     1 |    11 |     3   (0)| 00:00:01 |
+|   7 |      BUFFER SORT        |          |     7 |    56 |     3   (0)| 00:00:01 |
+|*  8 |       TABLE ACCESS FULL | DATES    |     7 |    56 |     3   (0)| 00:00:01 |
+|   9 |     TABLE ACCESS FULL   | EMP_FACT |   229K|  2912K|   312   (2)| 00:00:04 |
+------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("E"."DEPTNO"="D"."DEPTNO")
+   4 - access("E"."JOB_ID"="J"."JOB_ID" AND "E"."DATE_ID"="D"."DATE_ID")
+   6 - filter("J"."JOB"='CLERK')
+   8 - filter("D"."YEAR"='1980' OR "D"."YEAR"='1987')
+
+
+Statistics
+----------------------------------------------------------
+          0  recursive calls
+          1  db block gets
+       1098  consistent gets
+          0  physical reads
+          0  redo size
+        824  bytes sent via SQL*Net to client
+        524  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          1  sorts (memory)
+          0  sorts (disk)
+          2  rows processed
+</code></pre>
+
+<p>0.04 秒かかっている。</p>
+
+<ul>
+<li>スター型変換</li>
+</ul>
+
+
+<p>スター型変換するようにビットマップ索引を作成し、初期化パラメータ<code>ALTER SESSION SET STAR_TRANSFORMATION_ENABLED</code> を <code>TRUE</code> にして再実行する。</p>
+
+<pre><code>SQL&gt; -- ビットマップ索引を作成
+SQL&gt; CREATE BITMAP INDEX emp_fact_job_bix ON emp_fact(job_id);
+
+Index created.
+
+SQL&gt; CREATE BITMAP INDEX emp_fact_date_bix ON emp_fact(date_id);
+
+Index created.
+
+SQL&gt; CREATE BITMAP INDEX emp_fact_dept_bix ON emp_fact(deptno);
+
+Index created.
+
+SQL&gt; -- 統計情報採取
+SQL&gt; EXEC DBMS_STATS.GATHER_SCHEMA_STATS('scott');
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; -- 初期化パラメータ変更
+SQL&gt; SQL&gt; ALTER SESSION SET STAR_TRANSFORMATION_ENABLED = TRUE
+
+Session altered.
+</code></pre>
+
+<p>先ほどと同じ SELECT を実行する。</p>
+
+<pre><code>SQL&gt; set timing on
+SQL&gt; set autotrace on
+SQL&gt; set lines 200
+SQL&gt; SELECT j.job, d.year, SUM(e.sal), d.dname
+     FROM emp_fact e, jobs j, dates d, dept d
+     WHERE e.job_id = j.job_id
+     AND   e.date_id = d.date_id
+     AND   e.deptno = d.deptno
+     AND   j.job = 'CLERK'
+     AND   d.year in ('1980', '1987')
+     GROUP BY j.job, d.year, d.dname;
+
+JOB                         YEAR         SUM(E.SAL) DNAME
+--------------------------- ------------ ---------- ------------------------------------------
+CLERK                       1987           18022400 RESEARCH
+CLERK                       1980           13107200 RESEARCH
+
+Elapsed: 00:00:00.02
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 4243144607
+
+------------------------------------------------------------------------------------------------------
+| Id  | Operation                        | Name              | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                 |                   |     4 |   216 |   322   (1)| 00:00:04 |
+|   1 |  HASH GROUP BY                   |                   |     4 |   216 |   322   (1)| 00:00:04 |
+|*  2 |   HASH JOIN                      |                   |  8823 |   465K|   321   (1)| 00:00:04 |
+|   3 |    TABLE ACCESS FULL             | DEPT              |     4 |    52 |     3   (0)| 00:00:01 |
+|*  4 |    HASH JOIN                     |                   |  8823 |   353K|   318   (1)| 00:00:04 |
+|   5 |     MERGE JOIN CARTESIAN         |                   |     3 |    57 |     6   (0)| 00:00:01 |
+|*  6 |      TABLE ACCESS FULL           | JOBS              |     1 |    11 |     3   (0)| 00:00:01 |
+|   7 |      BUFFER SORT                 |                   |     3 |    24 |     3   (0)| 00:00:01 |
+|*  8 |       TABLE ACCESS FULL          | DATES             |     3 |    24 |     3   (0)| 00:00:01 |
+|   9 |     VIEW                         | VW_ST_7A68B670    | 10587 |   227K|   311   (0)| 00:00:04 |
+|  10 |      NESTED LOOPS                |                   | 10587 |   444K|   305   (0)| 00:00:04 |
+|  11 |       BITMAP CONVERSION TO ROWIDS|                   | 10586 |   186K|     6   (0)| 00:00:01 |
+|  12 |        BITMAP AND                |                   |       |       |            |          |
+|  13 |         BITMAP MERGE             |                   |       |       |            |          |
+|  14 |          BITMAP KEY ITERATION    |                   |       |       |            |          |
+|* 15 |           TABLE ACCESS FULL      | JOBS              |     1 |    11 |     3   (0)| 00:00:01 |
+|* 16 |           BITMAP INDEX RANGE SCAN| EMP_FACT_JOB_BIX  |       |       |            |          |
+|  17 |         BITMAP MERGE             |                   |       |       |            |          |
+|  18 |          BITMAP KEY ITERATION    |                   |       |       |            |          |
+|* 19 |           TABLE ACCESS FULL      | DATES             |     3 |    24 |     3   (0)| 00:00:01 |
+|* 20 |           BITMAP INDEX RANGE SCAN| EMP_FACT_DATE_BIX |       |       |            |          |
+|  21 |       TABLE ACCESS BY USER ROWID | EMP_FACT          |     1 |    25 |   305   (1)| 00:00:04 |
+------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("ITEM_1"="D"."DEPTNO")
+   4 - access("ITEM_3"="J"."JOB_ID" AND "ITEM_2"="D"."DATE_ID")
+   6 - filter("J"."JOB"='CLERK')
+   8 - filter("D"."YEAR"='1980' OR "D"."YEAR"='1987')
+  15 - filter("J"."JOB"='CLERK')
+  16 - access("E"."JOB_ID"="J"."JOB_ID")
+  19 - filter("D"."YEAR"='1980' OR "D"."YEAR"='1987')
+  20 - access("E"."DATE_ID"="D"."DATE_ID")
+
+Note
+-----
+   - star transformation used for this statement
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+       1075  consistent gets
+          0  physical reads
+          0  redo size
+        824  bytes sent via SQL*Net to client
+        524  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          1  sorts (memory)
+          0  sorts (disk)
+          2  rows processed
+</code></pre>
+
+<p>今回は、<code>star transformation used for this statement</code> の出力があるようにスター型変換されており、実行時間も 0.02秒と改善されている。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -755,280 +1106,6 @@ PCT_TABLE_REWRITE              N   DEPT       relation is not a partitioned tabl
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/11/oracle-data-guard-fast-start-failover/">[Oracle] Data Guard ファスト・スタート・フェイルオーバー</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-11T19:54:00+09:00" pubdate data-updated="true">Sep 11<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにする。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>ファスト・スタート・フェイルオーバーの構成</h2>
-
-<p>Data Guard のファスト・スタート・フェイルオーバーにより、プライマリ DB での障害発生時に自動でフェイルオーバーするようにできる。
-ファスト・スタート・フェイルオーバーには、プライマリ DB、スタンバイ DB を監視する&#8221;オブザーバ&#8221;が必要。オブザーバはプライマリ DB、スタンバイ DB とは別のサーバに配置することが望ましいが、今回はスタンバイ DB と同じサーバに構成する。</p>
-
-<p>EM Grid Control を使用してファスト・スタート・フェイルオーバーを有効にする。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;ファスト・スタート・フェイルオーバー&rdquo; の &ldquo;無効&rdquo; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-1.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;オブザーバの構成&rdquo; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-2.png" width="720" height="450"></p>
-
-<ul>
-<li>オブザーバの場所として今回はスタンバイ DB と同じサーバを指定。ORACLE_HOME の位置も入力する。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-3.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;続行&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-4.png" width="720" height="450"></p>
-
-<ul>
-<li>オブザーバを起動する OS ユーザを入力</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-5.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;続行&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-6.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;はい&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-7.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 &ndash;> 完了</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-8.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-9.png" width="720" height="450"></p>
-
-<p>なぜか上記画面のまま &ldquo;概要&rdquo; のページに戻らない。alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>Data Guard の構成画面に戻ると &ldquo;ファスト・スタート・フェイルオーバー&rdquo; が &ldquo;stdby1.localに対して有効&rdquo; になり、&#8221;オブザーバの場所&#8221; が &ldquo;sv2.local&rdquo; になっている。(<code>stdby1.local</code> はスタンバイ DB, <code>sv2.local</code> はオブザーバを構成したサーバで今回はスタンバイ DB と同じサーバ)</li>
-</ul>
-
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-10.png" width="720" height="450"></p>
-
-<h2>ファスト・スタート・フェイルオーバーの検証</h2>
-
-<p>ファスト・スタート・フェイルオーバーが動作するか検証してみる。
-<a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#BCGHEJFH">マニュアル Data Guard Broker</a> によると次の場合にファスト・スタート・フェイルオーバーが試行される。</p>
-
-<ul>
-<li>プライマリ・データベースと、オブザーバおよびターゲット・スタンバイ・データベースの両方との接続が失われた場合</li>
-<li>インスタンス障害</li>
-<li>強制終了(ABORT オプションでの停止)</li>
-</ul>
-
-
-<p>正常にデータベースを停止した場合(NORMAL, IMMEDIATE, TRANSACTIONAL)では、ファスト・スタート・フェイルオーバーは試行されないので、プライマリ DB を停止するときは通常通り ABORT 以外のオプションで SHUTDOWN すればいい。</p>
-
-<p>ファスト・スタート・フェイルオーバーを検証するためにプライマリ DB を <code>shutdown abort</code> で強制終了する。</p>
-
-<pre><code># プライマリ側で実施
-$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; shutdown abort
-ORACLE instance shut down.
-</code></pre>
-
-<p>これで、プライマリ DB の異常をオブザーバが検知して、フェイルオーバーが自動で開始される。
-オブザーバは Data Guard Broker の dgmgrl コマンドで実行されているので、ログは <code>$ORACLE_HOME/rdbms/log/dgmgrl_XXXX_XXXX.log</code> に出力されている。</p>
-
-<pre><code># オブザーバ配置サーバで実施
-$ ps -ef | grep dgmgrl
-oracle   12805     1  0 20:27 ?        00:00:01 /u01/app/oracle/product/11.2.0/dbhome_1/bin/dgmgrl -logfile /u01/app/oracle/product/11.2.0/dbhome_1/rdbms/log/dgmgrl_PROD1_12804.log
-
-$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
-Observer started
-[W000 09/11 20:27:30.89] Observer started.
-
-21:07:33.37  2012年9月11日 Tuesday
-Initiating Fast-Start Failover to database "stdby1"...
-Performing failover NOW, please wait...
-Failover succeeded, new primary is "stdby1"
-21:07:35.66  2012年9月11日 Tuesday
-</code></pre>
-
-<p>これで、フェイルオーバーが実施された。EM の元スタンバイ DB 側を確認すると以下のようになっている。</p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-11.png" width="720" height="450"></p>
-
-<p>この後、元プライマリ DB を起動すると、自動でスタンバイ DB として構成してくれる。</p>
-
-<pre><code># 元プライマリ側で実施
-$ export ORACLE_SID=PROD1
-$ sqlplus '/as sysdba'
-SQL&gt; shutdown abort
-ORACLE instance shut down.
-SQL&gt; startup
-ORACLE instance started.
-
-Total System Global Area  835104768 bytes
-Fixed Size                  2232960 bytes
-Variable Size             511708544 bytes
-Database Buffers          314572800 bytes
-Redo Buffers                6590464 bytes
-Database mounted.
-ORA-16649: possible failover to another database prevents this database from
-being opened
-</code></pre>
-
-<p>オブザーバのログを確認すると、元プライマリ DB が新たにスタンバイ DB としてマウントされたログ出力がある。</p>
-
-<pre><code># オブザーバ配置サーバで実施
-$ cat $ORACLE_HOME/rdbms/log/dgmgrl_PROD1_12804.log 
-21:18:47.02  2012年9月11日 Tuesday
-Initiating reinstatement for database "PROD1"...
-Reinstating database "PROD1", please wait...
-Operation requires shutdown of instance "PROD1" on database "PROD1"
-Shutting down instance "PROD1"...
-ORA-01109: database not open
-
-Database dismounted.
-ORACLE instance shut down.
-Operation requires startup of instance "PROD1" on database "PROD1"
-Starting instance "PROD1"...
-ORACLE instance started.
-Database mounted.
-Continuing to reinstate database "PROD1" ...
-Reinstatement of database "PROD1" succeeded
-21:19:33.19  2012年9月11日 Tuesday
-</code></pre>
-
-<p>EM の元スタンバイ DB 側を確認すると以下のように元プライマリ DB が新たにスタンバイ DB として構成されていることが分かる。</p>
-
-<p><img src="/images/2012-09-11-oracle-data-guard-fast-start-failover/dgfsf-12.png" width="720" height="450"></p>
-
-<p>この後、スイッチオーバすれば、元の構成に戻る。</p>
-
-<h2>ファスト・スタート・フェイルオーバー環境でのデータベースの停止</h2>
-
-<p><a href="http://docs.oracle.com/cd/E16338_01/server.112/b56304/sofo.htm#CHDJCDDB">マニュアル</a> に記載があるように、ファスト・スタート・フェイルオーバー環境でのデータベースの停止する場合は次のようにする。</p>
-
-<ol>
-<li><p>オブザーバを停止し、プライマリ DB およびターゲット・スタンバイ DB の両方について、V$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になるまで待機する。こうすると、プライマリ DB の停止中に、ファスト・スタート・フェイルオーバーは実行されない。</p></li>
-<li><p>プライマリ DB およびターゲット・スタンバイ DB を停止(<code>SHUTDOWN</code>)する。</p></li>
-</ol>
-
-
-<p>以下が実行例。</p>
-
-<p><code>dgmgrl</code> にてオブザーバを停止</p>
-
-<pre><code>$ export ORACLE_SID=stdby1
-$ dgmgrl
-DGMGRL for Linux: Version 11.2.0.3.0 - 64bit Production
-
-Copyright (c) 2000, 2009, Oracle. All rights reserved.
-
-Welcome to DGMGRL, type "help" for information.
-DGMGRL&gt; connect sys/oracle
-Connected.
-DGMGRL&gt; stop observer;
-Done.
-DGMGRL&gt; exit
-</code></pre>
-
-<p>プライマリ DB およびスタンバイ DB にてV$DATABASE.FS_FAILOVER_OBSERVER_PRESENT 列が <code>NO</code> になることを確認して <code>SHUTDOWN</code> する。</p>
-
-<pre><code># プライマリ DB および スタンバイ DB でそれぞれ実施
-$ sqlplus 'as sysdba'
-SQL&gt; SELECT FS_FAILOVER_OBSERVER_PRESENT FROM V$DATABASE;
-
-FS_FAILOVER_OBSERVER_
----------------------
-YES
-
-SQL&gt; /
-
-FS_FAILOVER_OBSERVER_
----------------------
-NO
-
-SQL&gt; shutdown immediate
-Database closed.
-Database dismounted.
-ORACLE instance shut down.
-SQL&gt; exit
-</code></pre>
-
-<p>起動時はプライマリ DB およびスタンバイ DB を起動した後に、<code>dgmgrl</code> でオブザーバを起動(<code>start observer</code>)する。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/7/">&larr; Older</a>
@@ -1046,6 +1123,10 @@ SQL&gt; exit
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバック</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
       </li>
     
@@ -1059,10 +1140,6 @@ SQL&gt; exit
     
       <li class="post">
         <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/10/os-virtual-memory-map/">[OS] 仮想メモリ空間のメモリマップを調べる</a>
       </li>
     
   </ul>
