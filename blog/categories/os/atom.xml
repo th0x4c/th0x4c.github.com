@@ -4,7 +4,7 @@
   <title><![CDATA[Category: OS | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/os/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-08-27T22:24:33+09:00</updated>
+  <updated>2013-08-28T19:32:34+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -14,14 +14,14 @@
 
   
   <entry>
-    <title type="html"><![CDATA[[Debug] ptrace によるデバック]]></title>
+    <title type="html"><![CDATA[[Debug] ptrace によるデバッグ]]></title>
     <link href="http://th0x4c.github.com/blog/2013/08/27/debug-debugging-with-ptrace/"/>
     <updated>2013-08-27T20:21:00+09:00</updated>
     <id>http://th0x4c.github.com/blog/2013/08/27/debug-debugging-with-ptrace</id>
     <content type="html"><![CDATA[<h2>目的</h2>
 
-<p>システムコール ptrace(2) を使用してデバックする。
-ptrace を使用したデバッカ・プログラムを作成することで、GDB などの汎用デバッカより細かい制御を行うことも可能になる。</p>
+<p>システムコール ptrace(2) を使用してデバッグする。
+ptrace を使用して簡易的なデバッガを作成することで、GDB などの汎用デバッガより細かい制御を行うことも可能になる。</p>
 
 <h2>環境</h2>
 
@@ -37,7 +37,7 @@ ptrace を使用したデバッカ・プログラムを作成することで、G
 <h3>システムコール ptrace(2)</h3>
 
 <p>別のプロセスにアタッチしたり、別のプロセスのメモリやレジスタを参照、書込み等を行うことができるシステムコール。
-デバッカを実装するために使用される。</p>
+デバッガを実装するために使用される。</p>
 
 <p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -93,7 +93,7 @@ ptrace を使用したデバッカ・プログラムを作成することで、G
 
 <p><code>INT X</code>(X は 0～255 の数値) は x86, x86-64 プロセッサのインストラクションで、ソフトウェア割り込みを発生させる。</p>
 
-<p>特に <code>INT 3</code>(オペコード: <code>0xCC</code>) により SIGTRAP シグナルが発生し、処理が中断される。これは、デバッカがブレイクポイントを設定するために使用される。</p>
+<p>特に <code>INT 3</code>(オペコード: <code>0xCC</code>) により SIGTRAP シグナルが発生し、処理が中断される。これは、デバッガがブレイクポイントを設定するために使用される。</p>
 
 <h3>レジスタ IP</h3>
 
@@ -103,7 +103,7 @@ ptrace を使用したデバッカ・プログラムを作成することで、G
 
 <p>ptrace では、アタッチしたプロセスのメモリやレジスタを参照したり、書込むといった原始的なことしかできない。</p>
 
-<p>したがって、ptrace によってブレイクポイントを設定してデバックするには、以下のような手順が必要。</p>
+<p>したがって、ptrace によってブレイクポイントを設定してデバッグするには、以下のような手順が必要。</p>
 
 <ol>
 <li><p>PTRACE_ATTACH でターゲットのプロセスにアタッチ。</p></li>
@@ -114,22 +114,22 @@ ptrace を使用したデバッカ・プログラムを作成することで、G
 <li><p>プロセスが INT 3 で書換えたアドレスでブレイクする。</p></li>
 <li><p>次に実行する命令のアドレスを示すレジスタ IP は INT 3 で書換えたアドレス(ブレイクポイントを設定したアドレス)の次の位置(+1バイトの位置)を指しているので、PTRACE_GETREGS/PTRACE_SETREGS で IP をブレイクポイントを設定したアドレスに書換えて戻す。</p></li>
 <li><p>PTRACE_POKETEXT で 3. で書換えた命令を 2. で保存していたオリジナルに戻す。(ブレイクポイントを設定したアドレスのメモリを元の命令に戻す。)</p></li>
-<li><p>これでブレイクしたい位置で中断されているので、レジスタを見たり、メモリを参照したりして任意のデバックを行う。</p></li>
+<li><p>これでブレイクしたい位置で中断されているので、レジスタを見たり、メモリを参照したりして任意のデバッグを行う。</p></li>
 <li><p>再度ブレイクさせたかったら 2. に戻る。
 ただし、同じ命令のアドレスでブレイクさせたかったら、PTRACE_SINGLESTEP で 1 命令だけ進めてから、2. に戻る。(そうでないと現在の IP 位置を INT 3 で書換えてしまい、すぐにブレイクして処理が進まなくなってしまう。)</p></li>
-<li><p>デバックが終わったら、PTRACE_DETACH でプロセスからデタッチする。</p></li>
+<li><p>デバッグが終わったら、PTRACE_DETACH でプロセスからデタッチする。</p></li>
 </ol>
 
 
 <h2>具体例</h2>
 
-<p>上述のような方法でブレイクポイントを設定してデバックするデバッカ・プログラムを作成する。</p>
+<p>上述のような方法でブレイクポイントを設定してデバッグする簡易的なデバッガを作成する。</p>
 
-<h3>デバッカ・プログラム</h3>
+<h3>簡易デバッガ</h3>
 
-<p>引数としてアタッチしたいプロセスの PID と、ブレイクするアドレスを指定して、ブレイクポイントでレジスタ RDI の値を表示するデバッカ・プログラム。</p>
+<p>引数としてアタッチしたいプロセスの PID と、ブレイクするアドレスを指定して、ブレイクポイントでレジスタ RDI の値を表示する簡易的なデバッガ。</p>
 
-<p>ブレイクするアドレスとして関数の先頭アドレスを指定すれば、レジスタ RDI には第 1 引数が入っているはずなので、このプログラムを使って第 1 引数を表示するデバックができる。</p>
+<p>ブレイクするアドレスとして関数の先頭アドレスを指定すれば、レジスタ RDI には第 1 引数が入っているはずなので、このプログラムを使って対象の関数が実行される度に第 1 引数を表示することができる。</p>
 
 <p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -441,16 +441,16 @@ ptrace を使用したデバッカ・プログラムを作成することで、G
 </span><span class='line'>  <span class="n">ptrace</span><span class="p">(</span><span class="n">PTRACE_SETREGS</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">regs</span><span class="p">);</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>あと、デバックを止めるときはカレントディレクトリに <code>quit</code> というファイルを置くことにした。(<code>$ touch ./quit</code> とかで作ればよい。)</p>
+<p>あと、デバッグを止めるときはカレントディレクトリに <code>quit</code> というファイルを置くことにした。(<code>$ touch ./quit</code> とかで作ればよい。)</p>
 
 <p>コンパイルしておく。</p>
 
 <pre><code>$ gcc -o ptrace_demo ptrace_demo.c
 </code></pre>
 
-<h3>デバックするプログラム</h3>
+<h3>デバッグ対象プログラム</h3>
 
-<p>デバック対象として以下の簡単なプログラムを用意。1秒毎に func 関数が呼ばれている。</p>
+<p>デバッグ対象として以下の簡単なプログラムを用意。1秒毎に func 関数が呼ばれている。</p>
 
 <p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -513,9 +513,9 @@ ptrace を使用したデバッカ・プログラムを作成することで、G
 <pre><code>$ gcc -o sample sample.c
 </code></pre>
 
-<h2>デバック例</h2>
+<h2>デバッグ例</h2>
 
-<p>上記の func 関数が呼ばれる度に第 1 引数(レジスタ RDI) の値を出力するデバックを行う。</p>
+<p>上記の func 関数が呼ばれる度に第 1 引数(レジスタ RDI) の値を出力するデバッグを行う。</p>
 
 <p>まず、func のアドレスを確認。</p>
 
@@ -537,7 +537,7 @@ hello, world: 6
 ...&lt;略&gt;
 </code></pre>
 
-<p>PID, アドレスを指定してデバッカ・プログラムを実行してみる。</p>
+<p>PID, アドレスを指定してこの簡易デバッガを実行してみる。</p>
 
 <pre><code>$ ps -ef | grep sample
 hashi    21250 32254  0 17:33 pts/2    00:00:00 ./sample
@@ -563,14 +563,14 @@ Breakpoint.
 
 <p>func でブレイクして、第 1 引数(レジスタ RDI) の値が出力できている。</p>
 
-<p>止めるときは同じディレクトリに quit という名前のファイルを作れば、デタッチしてデバック終了する。</p>
+<p>止めるときは同じディレクトリに quit という名前のファイルを作れば、デタッチしてデバッグ終了する。</p>
 
 <pre><code>$ touch quit
 </code></pre>
 
 <h3>GDB で実行した場合</h3>
 
-<p>上述の方法で GDB で以下のようにしたときと同じようにデバックすることができた。</p>
+<p>上述の方法で GDB で以下のようにしたときと同じようにデバッグすることができた。</p>
 
 <pre><code>$ gdb ./sample 21250
 (gdb) b func
@@ -596,7 +596,7 @@ $3 = 29
 ...&lt;略&gt;
 </code></pre>
 
-<p>ptrace を使用したデバッカ・プログラムを作るとで GDB より柔軟に情報採取をすることも可能になる。</p>
+<p>ptrace を使用したデバッガを作るとで GDB より柔軟に情報採取をすることも可能になる。</p>
 
 <h2>参考</h2>
 
