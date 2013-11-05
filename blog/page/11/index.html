@@ -9,10 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Oracle Database のログ出力先を変更する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
-&ndash;> 9 診断データの管理
-& &hellip;">
+  <meta name="description" content="目的 パスワードを大文字・小文字の区別をするようにする。
+DB のパスワードについてはその他複雑なパスワードにするように強制する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +79,200 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル 管理者ガイド
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-password-management/">[Oracle] パスワードの管理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-07T22:09:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>パスワードを大文字・小文字の区別をするようにする。
+DB のパスワードについてはその他複雑なパスワードにするように強制する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li><p>管理者ガイド<br/>
+&ndash;> 1 データベース管理スタート・ガイド<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/dba007.htm#i1006789">パスワード・ファイルの作成とメンテナンス</a></p></li>
+<li><p>セキュリティ・ガイド<br/>
+&ndash;> 3 認証の構成<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#CHDJDCGI">パスワードでの大/小文字の区別の有効化または無効化</a><br/>
+<a href="http://docs.oracle.com/cd/E16338_01/network.112/b56285/authentication.htm#i1007341">パスワードの複雑度検証の規定</a></p></li>
+</ul>
+
+
+<h2>SYSDBA でのログイン時のパスワード</h2>
+
+<p>SYSDBA でのログイン(SYS ユーザで as sysdba でのログイン)時のパスワードを大文字・小文字の区別させるためにパスワードファイル(<code>$ORACLE_HOME/dbs/orapw&lt;ORACLE_SID&gt;</code>)を再作成する。</p>
+
+<p><code>orapwd</code>を引数なしで実行すると、使い方が分かる。</p>
+
+<pre><code>$ orapwd
+Usage: orapwd file=&lt;fname&gt; entries=&lt;users&gt; force=&lt;y/n&gt; ignorecase=&lt;y/n&gt; nosysdba=&lt;y/n&gt;
+
+  where
+    file - name of password file (required),
+    password - password for SYS will be prompted if not specified at command line,
+    entries - maximum number of distinct DBA (optional),
+    force - whether to overwrite existing file (optional),
+    ignorecase - passwords are case-insensitive (optional),
+    nosysdba - whether to shut out the SYSDBA logon (optional Database Vault only).
+
+  There must be no spaces around the equal-to (=) character.
+</code></pre>
+
+<p><code>ignorecase=n</code> で再作成すれば大文字・小文字が区別される。
+ちなみにパスワードファイルのファイル名は <code>orapw&lt;ORACLE_SID&gt;</code> でなければならない。</p>
+
+<pre><code>$ cd $ORACLE_HOME/dbs
+$ rm orapwPROD1
+$ orapwd file=orapwPROD1 password=oracle ignorecase=n
+</code></pre>
+
+<p>大文字・小文字が区別されるか確認。</p>
+
+<pre><code>SQL&gt; connect sys/oracle@PROD1 as sysdba
+Connected.
+SQL&gt; connect sys/ORACLE@PROD1 as sysdba
+ERROR:
+ORA-01017: invalid username/password; logon denied
+
+
+Warning: You are no longer connected to ORACLE.
+</code></pre>
+
+<h2>DB ユーザのパスワード</h2>
+
+<h3>大文字・小文字の区別</h3>
+
+<p>DB ユーザのパスワードの大文字・小文字を区別するためには初期かパラメータ <code>SEC_CASE_SENSITIVE_LOGON</code> を <code>TRUE</code> にする。(デフォルトは <code>TRUE</code>)</p>
+
+<pre><code>SQL&gt; ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE;
+
+System altered.
+</code></pre>
+
+<h3>複雑なパスワードを強制</h3>
+
+<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> を実行することで、デフォルトのプロファイルを使用するユーザがパスワード変更する際に以下がチェックされるようになる。</p>
+
+<ul>
+<li>パスワードの長さが8文字以上30文字以内であること。</li>
+<li>パスワードがユーザー名と同一でないこと。ユーザー名のスペルを逆にしたり、ユーザー名に数字を追加したパスワードでないこと。</li>
+<li>サーバー名と同一であったり、サーバー名に数字1から100を追加したパスワードでないこと。</li>
+<li>単純なパスワードでないこと(例: welcome1、database1、account1、user1234、password1、oracle、oracle123、computer1、abcdefg1、change_on_install)。</li>
+<li>パスワードに少なくとも数字が1つと英字が1つ含まれていること。</li>
+<li>以前のパスワードとの違いが3文字以上あること。</li>
+</ul>
+
+
+<p><code>$ORACLE_HOME/rdbms/admin/utlpwdmg.sql</code> の内容を確認すると分かるように、パスワード検証関数 <code>verify_function_11G</code> が作成されてデフォルトプロファイル(<code>DEFAULT</code>)が変更されている。(パスワードの存続期間等も設定される)</p>
+
+<pre><code>$ cat $ORACLE_HOME/rdbms/admin/utlpwdmg.sql
+...(*snip*)
+
+-- This script sets the default password resource parameters
+-- This script needs to be run to enable the password features.
+-- However the default resource parameters can be changed based
+-- on the need.
+-- A default password complexity function is also provided.
+-- This function makes the minimum complexity checks like
+-- the minimum length of the password, password not same as the
+-- username, etc. The user may enhance this function according to
+-- the need.
+-- This function must be created in SYS schema.
+-- connect sys/&lt;password&gt; as sysdba before running the script
+
+CREATE OR REPLACE FUNCTION verify_function_11G
+...(*snip*)
+END;
+/
+
+-- This script alters the default parameters for Password Management
+-- This means that all the users on the system have Password Management
+-- enabled and set to the following values unless another profile is
+-- created with parameter values set to different value or UNLIMITED
+-- is created and assigned to the user.
+
+ALTER PROFILE DEFAULT LIMIT
+PASSWORD_LIFE_TIME 180
+PASSWORD_GRACE_TIME 7
+PASSWORD_REUSE_TIME UNLIMITED
+PASSWORD_REUSE_MAX UNLIMITED
+FAILED_LOGIN_ATTEMPTS 10
+PASSWORD_LOCK_TIME 1
+PASSWORD_VERIFY_FUNCTION verify_function_11G;
+...(*snip*)
+</code></pre>
+
+<p>ということで、<code>utlpwdmg.sql</code> を実行する。</p>
+
+<pre><code>$ sqlplus '/as sysdba'
+SQL&gt; @?/rdbms/admin/utlpwdmg.sql
+
+Function created.
+
+
+Profile altered.
+
+
+Function created.
+</code></pre>
+
+<p>他のプロファイルも変更する場合は、<code>ALTER PROFILE</code> を実行する必要がある。</p>
+
+<pre><code>SQL&gt; ALTER PROFILE &lt;profile名&gt; LIMIT
+     PWSSWORD_VERIFY_FUNCTION verify_function_11G;
+</code></pre>
+
+<p>実際にパスワードを変更してチェックに引っかかるか確認してみる。</p>
+
+<pre><code>SQL&gt; alter user scott identified by tiger;
+alter user scott identified by tiger
+*
+ERROR at line 1:
+ORA-28003: password verification for the specified password failed
+ORA-20001: Password length less than 8
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -307,186 +500,6 @@ $ make -f ins_rdbms.mk dnfs_off
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/07/oracle-encrypting-a-tablespace/">[Oracle] 暗号化された表領域の作成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-07T17:58:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>暗号化された表領域を作成する。<br/>
-&ldquo;透過的データ暗号化&#8221;という機能で、表の列もしくは表領域全体を暗号化できるが、今回は表領域の暗号化を行う。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>2日でセキュリティ・ガイド<br/>
-&ndash;> 6 データの保護<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56296/tdpsg_securing_data.htm#CHDBHJEG">透過的データ暗号化を使用するためのデータの構成</a></p></li>
-<li><p>管理者ガイド<br/>
-&ndash;> 14 表領域の管理<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tspaces002.htm#BABBJGAF">暗号化された表領域</a></p></li>
-</ul>
-
-
-<h2>作成</h2>
-
-<p>&ldquo;透過的データ暗号化&#8221;を使用して表領域を暗号化するためには以下の手順が必要。</p>
-
-<ol>
-<li>ウォレット(マスター暗号化キーが格納される)を DB 外の OS 上のファイルとして作成</li>
-<li>ウォレットを開く(データの暗号化が開始される)</li>
-<li>表領域の作成</li>
-</ol>
-
-
-<p>以下、マニュアルの手順に従い作成する。</p>
-
-<ul>
-<li>ウォレットを格納するディレクトリを作成</li>
-</ul>
-
-
-<p>OS 上でディレクトリ作成</p>
-
-<pre><code>$ mkdir /home/oracle/ORA_WALLETS
-</code></pre>
-
-<ul>
-<li>sqlnet.ora ファイルにウォレットを格納するディレクトリを指定</li>
-</ul>
-
-
-<p>sqlnet.ora ファイルを編集</p>
-
-<pre><code>$ vi $ORACLE_HOME/network/admin/sqlnet.ora
-$ cat $ORACLE_HOME/network/admin/sqlnet.ora
-ENCRYPTION_WALLET_LOCATION=
- (SOURCE=
-  (METHOD=file)
-   (METHOD_DATA=
-    (DIRECTORY=/home/oracle/ORA_WALLETS)))
-</code></pre>
-
-<ul>
-<li><p>(ここで compatible 初期化バラメータの値が 10.2 より小さい場合は DB 再起動が必要)</p></li>
-<li><p>ウォレットを作成</p></li>
-</ul>
-
-
-<p>パスワード(以下の例では <code>"oracle"</code>)を指定する。このとき、パスワードは二重引用府(&ldquo;)で囲む必要がある。
-これでウォレット格納ディレクトリにウォレットの OS ファイルができる。</p>
-
-<pre><code>$ sqlplus '/as sysdba'
-SQL&gt; ALTER SYSTEM SET ENCRYPTION KEY IDENTIFIED BY "oracle";
-
-System altered.
-
-$ ls /home/oracle/ORA_WALLETS
-ewallet.p12
-</code></pre>
-
-<ul>
-<li>ウォレットを開く</li>
-</ul>
-
-
-<p>以下の <code>ALTER SYSTEM</code> によりウォレットを開く。この場合もパスワードは二重引用符で囲む必要がある。
-ちなみにウォレット作成直後は開かれた状態となっている。</p>
-
-<pre><code>SQL&gt; ALTER SYSTEM SET ENCRYPTION WALLET OPEN IDENTIFIED BY "oracle";
-
-System altered.
-</code></pre>
-
-<ul>
-<li>暗号化された表領域の作成</li>
-</ul>
-
-
-<p>以下のように、デフォルトの暗号化アルゴリズムを使用して暗号化された表領域を作成。暗号化アルゴリズムを指定する場合は <code>ENCRYPTION USING 'AES256'</code> などとする。</p>
-
-<pre><code>SQL&gt; CREATE TABLESPACE securespace
-     DATAFILE '/u01/app/oracle/oradata/PROD1/secure01.dbf' SIZE 100M
-     ENCRYPTION
-     DEFAULT STORAGE(ENCRYPT);
-
-Tablespace created.
-</code></pre>
-
-<h2>確認方法</h2>
-
-<ul>
-<li>ウォレットが開いているか閉じているかのチェック</li>
-</ul>
-
-
-<p><code>V$ENCRYPTION_VIEW</code> ビューを問い合わせる。</p>
-
-<pre><code>SQL&gt; SELECT * FROM V$ENCRYPTION_WALLET;
-
-WRL_TYPE   WRL_PARAMETER                  STATUS
----------- ------------------------------ ----------
-file       /home/oracle/ORA_WALLETS       OPEN
-</code></pre>
-
-<ul>
-<li>表領域が暗号化されているかのチェック</li>
-</ul>
-
-
-<p><code>DBA_TABLESPACES.ENCRYPTED</code> 列を確認する。</p>
-
-<pre><code>SQL&gt; SELECT TABLESPACE_NAME, ENCRYPTED FROM DBA_TABLESPACES;
-
-TABLESPACE_NAME      ENCRYPTED
--------------------- ----------
-SYSTEM               NO
-SYSAUX               NO
-UNDOTBS1             NO
-TEMP                 NO
-USERS                NO
-EXAMPLE              NO
-SECURESPACE          YES
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/12/">&larr; Older</a>
@@ -504,6 +517,10 @@ SECURESPACE          YES
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/">[Oracle] v$session, v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバッグ</a>
       </li>
     
@@ -517,10 +534,6 @@ SECURESPACE          YES
     
       <li class="post">
         <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
       </li>
     
   </ul>

@@ -9,9 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 時間隔パーティション表を作成する。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパーティショニング・ガイド
-&ndash;> 4 パーティションの管理 &hellip;">
+  <meta name="description" content="目的 フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +78,125 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル VLDBおよびパー
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>アドバンスト・アプリケーション開発者ガイド<br/>
+&ndash;> 12 Oracle Flashback Technologyの使用<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56259/adfns_flashback.htm#BJFFDCEH">フラッシュバック・データ・アーカイブの使用(Oracle Total Recall)</a></li>
+</ul>
+
+
+<h2>フラッシュバック・データ・アーカイブの使用</h2>
+
+<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存できる。例えば、コンプライアンス上変更履歴を年単位で長時間保存しておく必要がある場合などに有効。</p>
+
+<ul>
+<li>フラッシュバック・データ・アーカイブの作成</li>
+</ul>
+
+
+<p><code>CREATE FLASHBACK ARCHIVE</code> 文を使用してフラッシュバック・データ・アーカイブを作成する。
+データを1年間保持するデフォルトのフラッシュバック・データ・アーカイブ <code>fla1</code> を <code>USERS</code> 表領域に作成。
+作成するには <code>FLASHBACK ARCHIVE ADMINISTER</code> システム権限を持つユーザか、SYSDBA として接続する必要がある。</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+Connected.
+SQL&gt; CREATE FLASHBACK ARCHIVE DEFAULT fla1 TABLESPACE users
+     RETENTION 1 YEAR;
+
+Flashback archive created.
+</code></pre>
+
+<ul>
+<li>表のフラッシュバック・アーカイブの有効化</li>
+</ul>
+
+
+<p><code>scott.emp</code> 表のフラッシュバック・アーカイブを有効にして、フラッシュバック・データ・アーカイブ <code>fla1</code> に履歴データを格納するようにする。
+<code>scott</code> スキーマに <code>fla1</code> に対する <code>FLASHBACK ARCHIVE</code> オブジェクト権限を与えて、<code>ALTER TABLE</code> 文を発行する。</p>
+
+<pre><code>SQL&gt; connect /as sysdba
+Connected.
+SQL&gt; GRANT FLASHBACK ARCHIVE ON fla1 TO scott;
+
+Grant succeeded.
+
+SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; ALTER TABLE scott.emp FLASHBACK ARCHIVE fla1;
+
+Table altered.
+</code></pre>
+
+<ul>
+<li>フラッシュバック・データ・アーカイブが有効になっていることの確認</li>
+</ul>
+
+
+<p><code>scott</code> スキーマで <code>emp</code> 表のフラッシュバック・データ・アーカイブが有効になっていることの確認</p>
+
+<pre><code>SQL&gt; connect scott/tiger
+Connected.
+SQL&gt; col table_name for a30
+     col owner_name for a30
+     col flashback_archive_name for a30
+     col archive_table_name for a30
+     col status for a10
+     set lines 200
+SQL&gt; SELECT * FROM USER_FLASHBACK_ARCHIVE_TABLES;
+
+TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_NAME         ARCHIVE_TABLE_NAME             STATUS
+------------------------------ ------------------------------ ------------------------------ ------------------------------ ----------
+EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -327,294 +445,6 @@ ORDER_ITEMS                    Q4_2005
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-securefiles-lob/">[Oracle] BasicFiles LOB から SecureFiles LOB への移行</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T14:15:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>従来型の LOB (BasicFiles LOB) から、Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB へ移行する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li><p>SecureFilesおよびラージ・オブジェクト開発者ガイド<br/>
-&ndash;> 4 Oracle SecureFiles LOBの使用<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABDIEGE">BasicFiles LOBからSecureFiles LOBへの列の移行</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#BABJFEBB">SecureFiles LOBの初期化パラメータdb_securefile</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHGHEFA">SecureFiles LOBを含んだCREATE TABLEの使用</a><br/>
-   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56263/adlob_smart.htm#CIHJJBIJ">SecureFiles LOBを含んだALTER TABLEの使用</a></p></li>
-<li><p>管理者ガイド<br/>
-&ndash;> 20 表の管理<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/server.112/b56301/tables007.htm#i1006754">表のオンライン再定義</a></p></li>
-</ul>
-
-
-<h2>BasicFiles LOB から SecureFiles LOB への移行</h2>
-
-<p>Oracle Database 11g からの新しい LOB アーキテクチャである SecureFiles を使用した LOB を使用すると、以下のようなことが可能になる。</p>
-
-<ul>
-<li>圧縮(LOB データの圧縮)</li>
-<li>重複除外(列内で重複する LOB データのコピーを1つのみ格納)</li>
-<li>暗号化(透過的データ暗号化により LOB データを暗号化)</li>
-</ul>
-
-
-<p>従来型の LOB は、BasicFiles と呼ばれる。BasicFiles を使用した既存の LOB 列を SecureFiles に移行する。<code>ALTER TABLE</code> での BasicFiles から SecureFiles への変更はできないため、変更するためには表の再作成を行うか、オンライン再定義を行う必要がある。今回は、マニュアルに例があるように、オンライン再定義により行う。</p>
-
-<ul>
-<li>検証用に BasicFiles LOB 列を持つ表、データを準備</li>
-</ul>
-
-
-<p>BasicFiles LOB 列を持つ <code>cust</code> 表を作成してデータを insert。今回この表を SecureFiles LOB に移行してみる。</p>
-
-<pre><code>SQL&gt; connect scott/tiger
-SQL&gt; CREATE TABLE cust
-     (
-       c_id  NUMBER PRIMARY KEY,
-       c_zip NUMBER,
-       c_name VARCHAR(30) DEFAULT NULL,
-       c_lob CLOB
-     );
-
-Table created.
-
-SQL&gt; INSERT INTO cust VALUES(1, 94065, 'hhh', 'ttt');
-
-1 row created.
-
-SQL&gt; COMMIT;
-
-Commit complete.
-</code></pre>
-
-<ul>
-<li>オンライン再定義に必要な権限の付与</li>
-</ul>
-
-
-<p>オンライン再定義に必要な権限を与える</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-SQL&gt; -- Grant privileges required for online redefinition.
-SQL&gt; GRANT EXECUTE ON DBMS_REDEFINITION TO scott;
-SQL&gt; GRANT ALTER ANY TABLE TO scott;
-SQL&gt; GRANT DROP ANY TABLE TO scott;
-SQL&gt; GRANT LOCK ANY TABLE TO scott;
-SQL&gt; GRANT CREATE ANY TABLE TO scott;
-SQL&gt; GRANT SELECT ANY TABLE TO scott;
-SQL&gt; -- Privileges required to perform cloning of dependent objects.
-SQL&gt; GRANT CREATE ANY TRIGGER TO scott;
-SQL&gt; GRANT CREATE ANY INDEX TO scott;
-</code></pre>
-
-<ul>
-<li>初期化パラメータ <code>db_securefile</code> パラメータの変更</li>
-</ul>
-
-
-<p>SecureFiles LOB の初期化パラメータ <code>db_securefile</code> パラメータを変更する。
-SecureFiles LOB を使用するためには <code>PERMITTED</code> (デフォルト) または <code>ALWAYS</code> である必要がある。</p>
-
-<p>例えば、<code>NEVER</code> に設定されている場合に SecureFiles LOB の列を作成しようとすると、<code>ORA-43856</code> が発生する。</p>
-
-<pre><code>SQL&gt; CREATE TABLE test_lob (c_lob CLOB) LOB(c_lob) STORE AS SECUREFILE (compress high);
-CREATE TABLE test_lob (c_lob CLOB) LOB(c_lob) STORE AS SECUREFILE (compress high)
-*
-ERROR at line 1:
-ORA-43856: Unsupported LOB type for SECUREFILE LOB operation
-</code></pre>
-
-<p><code>db_securefile</code> を <code>ALTER SYSTEM</code> で変更する。</p>
-
-<pre><code>SQL&gt; conn /as sysdba
-Connected.
-SQL&gt; ALTER SYSTEM SET db_securefile = PERMITTED SCOPE=both;
-
-System altered.
-</code></pre>
-
-<ul>
-<li>仮表を作成</li>
-</ul>
-
-
-<p>オンライン再定義のための仮表を SecureFiles LOB 列を持つようにして作成。元表からコピーされるので主キーなどの制約の指定は不要。</p>
-
-<pre><code>SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; CREATE TABLE cust_int
-     (
-       c_id  NUMBER,
-       c_zip NUMBER,
-       c_name VARCHAR(30) DEFAULT NULL,
-       c_lob CLOB
-     )
-     LOB(c_lob) STORE AS SECUREFILE;
-
-Table created.
-</code></pre>
-
-<ul>
-<li>表のオンライン再定義</li>
-</ul>
-
-
-<p>表のオンライン再定義を実行する。</p>
-
-<pre><code>SQL&gt; DECLARE
-       col_mapping VARCHAR2(1000);
-     BEGIN
-       -- map all the columns in the interim table to the original table
-       col_mapping :=
-         'c_id c_id , '||
-         'c_zip c_zip , '||
-         'c_name c_name, '||
-         'c_lob c_lob';
-       DBMS_REDEFINITION.START_REDEF_TABLE('scott', 'cust', 'cust_int', col_mapping);
-     END;
-     /
-
-PL/SQL procedure successfully completed.
-
-SQL&gt; set serveroutput on
-SQL&gt; DECLARE
-       error_count pls_integer := 0;
-     BEGIN
-       DBMS_REDEFINITION.COPY_TABLE_DEPENDENTS('scott', 'cust', 'cust_int',
-         1, TRUE,TRUE,TRUE,FALSE, error_count);
-       DBMS_OUTPUT.PUT_LINE('errors := ' || TO_CHAR(error_count));
-     END;
-     /
-errors := 0
-
-PL/SQL procedure successfully completed.
-
-SQL&gt; EXEC DBMS_REDEFINITION.FINISH_REDEF_TABLE('scott', 'cust', 'cust_int');
-
-PL/SQL procedure successfully completed.
-
-SQL&gt; DROP TABLE cust_int;
-
-Table dropped.
-</code></pre>
-
-<ul>
-<li>SecureFiles LOB に移行されたことを確認</li>
-</ul>
-
-
-<p><code>USER_LOBS.SECUREFILE</code> 列が <code>YES</code> であれば SecureFiles になっている。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-SQL&gt; col column_name for a30
-SQL&gt; SELECT table_name, column_name, securefile FROM user_lobs;
-
-TABLE_NAME                     COLUMN_NAME                    SECUREFIL
------------------------------- ------------------------------ ---------
-CUST                           C_LOB                          YES
-</code></pre>
-
-<h2>SecureFiles LOB の変更</h2>
-
-<p><code>ALTER TABLE</code> 文により既存の SecureFiles LOB 列を変更して、圧縮や重複除外の設定を行う。</p>
-
-<ul>
-<li>現在の設定の確認</li>
-</ul>
-
-
-<p><code>USER_LOBS</code> にて確認できる。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col column_name for a30
-     col encrypt for a10
-     col compression for a15
-     col deduplication for a15
-     set lines 200
-SQL&gt; SELECT table_name, column_name, encrypt, compression, deduplication FROM user_lobs;
-
-TABLE_NAME                     COLUMN_NAME                    ENCRYPT    COMPRESSION     DEDUPLICATION
------------------------------- ------------------------------ ---------- --------------- ---------------
-CUST                           C_LOB                          NO         NO              NO
-</code></pre>
-
-<ul>
-<li>設定の変更</li>
-</ul>
-
-
-<p><code>ALTER TABLE</code> により圧縮、重複除外の設定を行う。</p>
-
-<pre><code>SQL&gt; ALTER TABLE cust MODIFY LOB(c_lob) (COMPRESS HIGH);
-
-Table altered.
-
-SQL&gt; ALTER TABLE cust MODIFY LOB(c_lob) (DEDUPLICATE);
-
-Table altered.
-</code></pre>
-
-<ul>
-<li>設定変更の確認</li>
-</ul>
-
-
-<p><code>USER_LOBS</code> にて確認。</p>
-
-<pre><code>SQL&gt; col table_name for a30
-     col column_name for a30
-     col encrypt for a10
-     col compression for a15
-     col deduplication for a15
-     set lines 200
-SQL&gt; SELECT table_name, column_name, encrypt, compression, deduplication FROM user_lobs;
-
-TABLE_NAME                     COLUMN_NAME                    ENCRYPT    COMPRESSION     DEDUPLICATION
------------------------------- ------------------------------ ---------- --------------- ---------------
-CUST                           C_LOB                          NO         HIGH            LOB
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/6/">&larr; Older</a>
@@ -632,6 +462,10 @@ CUST                           C_LOB                          NO         HIGH   
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/">[Oracle] v$session, v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバッグ</a>
       </li>
     
@@ -645,10 +479,6 @@ CUST                           C_LOB                          NO         HIGH   
     
       <li class="post">
         <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
       </li>
     
   </ul>

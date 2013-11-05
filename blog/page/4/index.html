@@ -9,8 +9,9 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 相関のある複数列を列グループとして統計情報採取することでよりよい実行計画となるようにする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマンス・チューニング &hellip;">
+  <meta name="description" content="目的 カーソルを無効化せずに統計情報を取得する。 環境 OS: Oracle Enterprise Linux 5.8
+DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス
+&ndash &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +79,118 @@ DB: Oracle Database 11g Release 2 (11.2.0.3) マニュアル パフォーマン�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-does-not-invalidate-the-dependent-cursors-when-gathering-statistics/">[Oracle] カーソルを無効にしない統計情報の取得</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-16T21:34:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>マニュアル</h2>
+
+<ul>
+<li>PL/SQLパッケージ・プロシージャおよびタイプ・リファレンス<br/>
+&ndash;> 141 DBMS_STATS<br/>
+&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#i1036461">GATHER_TABLE_STATSプロシージャ</a><br/>
+   <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56262/d_stats.htm#BEIBJJHC">SET_TABLE_PREFSプロシージャ</a></li>
+</ul>
+
+
+<h2>カーソルを無効にしない統計情報の取得</h2>
+
+<p>カーソルを無効化せずに統計情報を取得する。
+方法としては、以下の2つがある。</p>
+
+<ol>
+<li><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</li>
+<li><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</li>
+</ol>
+
+
+<h2><code>DBMS_STATS.GATHER_TABLE_STATS</code> プロシージャ実行時に指定する方法</h2>
+
+<p><code>DBMS_STATS.GATHER_TABLE_STATS</code> 実行時に指定する場合は、<code>no_invalidate</code> パラメータを <code>TRUE</code> にする。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp', no_invalidate =&gt; TRUE);
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<h2><code>SET_*_PREFS</code> プロシージャによりデフォルト値を変更する方法</h2>
+
+<p>表単位でデフォルト値を変更する場合は <code>SET_TABLE_PREFS</code> プロシージャを使う。</p>
+
+<p><code>GET_PREFS</code> プロシージャで現在の設定の確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+DBMS_STATS.AUTO_INVALIDATE
+</code></pre>
+
+<p><code>SET_TABLE_PREFS</code> プロシージャにて設定の変更。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.SET_TABLE_PREFS('scott', 'emp', 'NO_INVALIDATE', 'TRUE');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+
+<p><code>GET_PREFS</code> プロシージャで設定が変更されたことを確認。</p>
+
+<pre><code>SQL&gt; SELECT DBMS_STATS.GET_PREFS('NO_INVALIDATE', 'scott', 'emp') FROM DUAL;
+
+DBMS_STATS.GET_PREFS('NO_INVALIDATE','SCOTT','EMP')
+---------------------------------------------------
+TRUE
+</code></pre>
+
+<p>あとは <code>no_invalidate</code> オプションを明示的に指定せずに統計情報を採取すると変更した内容がデフォルトとして採用される。</p>
+
+<pre><code>SQL&gt; EXEC DBMS_STATS.GATHER_TABLE_STATS('scott', 'emp');
+
+PL/SQL procedure successfully completed.
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -564,125 +677,6 @@ SELECT /*+ RESULT_CACHE */ AVG(sal) FROM scott.emp
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/16/oracle-flashback-data-archive-oracle-total-recall/">[Oracle] フラッシュバック・データ・アーカイブ(Oracle Total Recall)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-16T17:16:00+09:00" pubdate data-updated="true">Sep 16<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-</ul>
-
-
-<h2>マニュアル</h2>
-
-<ul>
-<li>アドバンスト・アプリケーション開発者ガイド<br/>
-&ndash;> 12 Oracle Flashback Technologyの使用<br/>
-&ndash;> <a href="http://docs.oracle.com/cd/E16338_01/appdev.112/b56259/adfns_flashback.htm#BJFFDCEH">フラッシュバック・データ・アーカイブの使用(Oracle Total Recall)</a></li>
-</ul>
-
-
-<h2>フラッシュバック・データ・アーカイブの使用</h2>
-
-<p>フラッシュバック・データ・アーカイブ(Oracle Total Recall) を使用して、表への更新履歴を長期間保存できる。例えば、コンプライアンス上変更履歴を年単位で長時間保存しておく必要がある場合などに有効。</p>
-
-<ul>
-<li>フラッシュバック・データ・アーカイブの作成</li>
-</ul>
-
-
-<p><code>CREATE FLASHBACK ARCHIVE</code> 文を使用してフラッシュバック・データ・アーカイブを作成する。
-データを1年間保持するデフォルトのフラッシュバック・データ・アーカイブ <code>fla1</code> を <code>USERS</code> 表領域に作成。
-作成するには <code>FLASHBACK ARCHIVE ADMINISTER</code> システム権限を持つユーザか、SYSDBA として接続する必要がある。</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-Connected.
-SQL&gt; CREATE FLASHBACK ARCHIVE DEFAULT fla1 TABLESPACE users
-     RETENTION 1 YEAR;
-
-Flashback archive created.
-</code></pre>
-
-<ul>
-<li>表のフラッシュバック・アーカイブの有効化</li>
-</ul>
-
-
-<p><code>scott.emp</code> 表のフラッシュバック・アーカイブを有効にして、フラッシュバック・データ・アーカイブ <code>fla1</code> に履歴データを格納するようにする。
-<code>scott</code> スキーマに <code>fla1</code> に対する <code>FLASHBACK ARCHIVE</code> オブジェクト権限を与えて、<code>ALTER TABLE</code> 文を発行する。</p>
-
-<pre><code>SQL&gt; connect /as sysdba
-Connected.
-SQL&gt; GRANT FLASHBACK ARCHIVE ON fla1 TO scott;
-
-Grant succeeded.
-
-SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; ALTER TABLE scott.emp FLASHBACK ARCHIVE fla1;
-
-Table altered.
-</code></pre>
-
-<ul>
-<li>フラッシュバック・データ・アーカイブが有効になっていることの確認</li>
-</ul>
-
-
-<p><code>scott</code> スキーマで <code>emp</code> 表のフラッシュバック・データ・アーカイブが有効になっていることの確認</p>
-
-<pre><code>SQL&gt; connect scott/tiger
-Connected.
-SQL&gt; col table_name for a30
-     col owner_name for a30
-     col flashback_archive_name for a30
-     col archive_table_name for a30
-     col status for a10
-     set lines 200
-SQL&gt; SELECT * FROM USER_FLASHBACK_ARCHIVE_TABLES;
-
-TABLE_NAME                     OWNER_NAME                     FLASHBACK_ARCHIVE_NAME         ARCHIVE_TABLE_NAME             STATUS
------------------------------- ------------------------------ ------------------------------ ------------------------------ ----------
-EMP                            SCOTT                          FLA1                           SYS_FBA_HIST_75335             ENABLED
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -700,6 +694,10 @@ EMP                            SCOTT                          FLA1              
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/">[Oracle] v$session, v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバッグ</a>
       </li>
     
@@ -713,10 +711,6 @@ EMP                            SCOTT                          FLA1              
     
       <li class="post">
         <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
       </li>
     
   </ul>

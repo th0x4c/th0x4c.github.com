@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>[Oracle] v$session, v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定 - th0x4c 備忘録</title>
+  <meta name="author" content="Takashi Hashizume">
+
+  
+  <meta name="description" content="目的 v$session, v$active_session_history の blocking_session 列で待機をブロックしているセッションが分かるが、階層問合せによって待機をツリー状に表示して辿ることで最終的にブロックしているセッションを特定する。 環境 OS: Oracle &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://th0x4c.github.com/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="th0x4c 備忘録" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-40023249-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+
+  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">th0x4c 備忘録</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:th0x4c.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">[Oracle] V$session, V$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-05T21:51:00+09:00" pubdate data-updated="true">Nov 5<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>目的</h2>
+
+<p>v$session, v$active_session_history の blocking_session 列で待機をブロックしているセッションが分かるが、階層問合せによって待機をツリー状に表示して辿ることで最終的にブロックしているセッションを特定する。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+</ul>
+
+
+<h2>前提知識</h2>
+
+<h3>v$session.blocking_session 列、v$active_session_history.blocking_session 列</h3>
+
+<p>v$session, v$active_session_history の blocking_session 列でそのセッションをブロックしているセッションの SID が分かる。
+(例えばそのセッションが要求しているロックを保持しているセッションの SID)</p>
+
+<h3>階層問合せ</h3>
+
+<p>階層問合せ(もしくは 再帰クエリ)によって、親子関係があるような階層構造、ツリー構造を持つデータの問合せができる。
+Oracle Database では独自の <code>CONNECT BY</code> 句を使った問合せを行う。
+(11gR2 からは業界標準 SQL99 の再帰 <code>with</code> 句での問合せも可能)</p>
+
+<p>例えば EMP 表には各従業員の EMPNO 列と、その上位マネージャの EMPNO である MGR 列があるが、以下の階層問合せでマネージャと部下の親子関係を表示できる。
+(以下は Wikipedia <a href="http://ja.wikipedia.org/wiki/%E5%86%8D%E5%B8%B0%E3%82%AF%E3%82%A8%E3%83%AA">再帰クエリ</a> から抜粋)</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">SELECT</span> <span class="k">LEVEL</span><span class="p">,</span> <span class="n">LPAD</span> <span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">ename</span> <span class="n">employee</span><span class="p">,</span> <span class="n">empno</span><span class="p">,</span> <span class="n">mgr</span>
+</span><span class='line'><span class="k">FROM</span> <span class="n">emp</span>
+</span><span class='line'><span class="k">START</span> <span class="k">WITH</span> <span class="n">mgr</span> <span class="k">IS</span> <span class="k">NULL</span>
+</span><span class='line'><span class="k">CONNECT</span> <span class="k">BY</span> <span class="k">PRIOR</span> <span class="n">empno</span> <span class="o">=</span> <span class="n">mgr</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<pre><code> LEVEL EMPLOYEE         EMPNO    MGR
+------ --------------- ------ ------
+     1 KING              7839
+     2   JONES           7566   7839
+     3     SCOTT         7788   7566
+     4       ADAMS       7876   7788
+     3     FORD          7902   7566
+     4       SMITH       7369   7902
+     2   BLAKE           7698   7839
+     3     ALLEN         7499   7698
+     3     WARD          7521   7698
+     3     MARTIN        7654   7698
+     3     TURNER        7844   7698
+     3     JAMES         7900   7698
+     2   CLARK           7782   7839
+     3     MILLER        7934   7782
+</code></pre>
+
+<h2>v$session の階層問合せによる待機のブロッキング・セッションの特定</h2>
+
+<p>実際に複数セッションで待機状態を作って試す。</p>
+
+<ul>
+<li><p>セッション1:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7369;</code></li>
+</ul>
+</li>
+<li><p>セッション2:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7499;</code></li>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7369;</code> (セッション1を待機)</li>
+</ul>
+</li>
+<li><p>セッション3:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7521;</code></li>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7499;</code> (セッション2を待機)</li>
+</ul>
+</li>
+<li><p>セッション4:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7566;</code></li>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7369;</code> (セッション1を待機)</li>
+</ul>
+</li>
+<li><p>セッション5:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7521;</code> (セッション3を待機)</li>
+</ul>
+</li>
+<li><p>セッション6:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7499;</code> (セッション2を待機)</li>
+</ul>
+</li>
+<li><p>セッション7:</p>
+
+<ul>
+<li><code>UPDATE emp SET sal = sal WHERE empno = 7566;</code> (セッション4を待機)</li>
+</ul>
+</li>
+</ul>
+
+
+<p>階層問合せを行い、待機状態を確認する。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">set</span> <span class="n">pages</span> <span class="mi">1000</span>
+</span><span class='line'><span class="k">set</span> <span class="n">lines</span> <span class="mi">200</span>
+</span><span class='line'><span class="n">col</span> <span class="k">level</span>     <span class="k">for</span> <span class="mi">9999</span>
+</span><span class='line'><span class="n">col</span> <span class="k">hierarchy</span> <span class="k">for</span> <span class="n">a20</span>
+</span><span class='line'><span class="n">col</span> <span class="n">path</span>      <span class="k">for</span> <span class="n">a20</span>
+</span><span class='line'><span class="n">col</span> <span class="n">sid</span>       <span class="k">for</span> <span class="mi">9999</span>
+</span><span class='line'><span class="n">col</span> <span class="n">event</span>     <span class="k">for</span> <span class="n">a32</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">SELECT</span> <span class="k">LEVEL</span><span class="p">,</span> <span class="n">LPAD</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">sid</span> <span class="k">hierarchy</span><span class="p">,</span> <span class="n">SYS_CONNECT_BY_PATH</span><span class="p">(</span><span class="n">sid</span><span class="p">,</span> <span class="s1">&#39;&lt;-&#39;</span><span class="p">)</span> <span class="n">path</span><span class="p">,</span> <span class="n">sid</span><span class="p">,</span> <span class="n">blocking_session</span><span class="p">,</span> <span class="n">event</span>
+</span><span class='line'><span class="k">FROM</span> <span class="n">v</span><span class="err">$</span><span class="k">session</span>
+</span><span class='line'><span class="k">START</span> <span class="k">WITH</span> <span class="n">blocking_session</span> <span class="k">IS</span> <span class="k">NULL</span>
+</span><span class='line'><span class="k">CONNECT</span> <span class="k">BY</span> <span class="k">PRIOR</span> <span class="n">sid</span> <span class="o">=</span> <span class="n">blocking_session</span>
+</span><span class='line'><span class="k">ORDER</span> <span class="n">SIBLINGS</span> <span class="k">BY</span> <span class="n">sid</span>
+</span><span class='line'><span class="o">/</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<pre><code>SQL&gt; SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy, SYS_CONNECT_BY_PATH(sid, '&lt;-') path, sid, blocking_session, event
+FROM v$session
+START WITH blocking_session IS NULL
+CONNECT BY PRIOR sid = blocking_session
+ORDER SIBLINGS BY sid
+/
+
+LEVEL HIERARCHY            PATH                   SID BLOCKING_SESSION EVENT
+----- -------------------- -------------------- ----- ---------------- --------------------------------
+    1 1                    &lt;-1                      1                  pmon timer
+    1 2                    &lt;-2                      2                  VKTM Logical Idle Wait
+    1 3                    &lt;-3                      3                  DIAG idle wait
+
+...(*snip*)
+
+    1 141                  &lt;-141                  141                  SQL*Net message from client
+    2   10                 &lt;-141&lt;-10               10              141 enq: TX - row lock contention
+    3     20               &lt;-141&lt;-10&lt;-20           20               10 enq: TX - row lock contention
+    3     136              &lt;-141&lt;-10&lt;-136         136               10 enq: TX - row lock contention
+    4       143            &lt;-141&lt;-10&lt;-136&lt;-143    143              136 enq: TX - row lock contention
+    2   19                 &lt;-141&lt;-19               19              141 enq: TX - row lock contention
+    3     142              &lt;-141&lt;-19&lt;-142         142               19 enq: TX - row lock contention
+</code></pre>
+
+<ul>
+<li>セッション1(SID=141) を セッション2(SID=10) と セッション4(SID=19) が待機して、</li>
+<li>セッション2(SID=10) を セッション3(SID=136) と セッション6(SID=20) が待機して、</li>
+<li>セッション3(SID=136) を セッション5(SID=143) が待機して、</li>
+<li>セッション4(SID=19) を セッション7(SID=142) が待機している</li>
+</ul>
+
+
+<p>つまり、セッション1(SID=141)が最終的にブロックしている起源(ルート)であることがわかる。</p>
+
+<p>なお、<code>LEVEL</code> 疑似列により階層のレベルが分かる。また、<code>SYS_CONNECT_BY_PATH</code> により階層のパスを表すことができる。</p>
+
+<h2>v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</h2>
+
+<p>v$active_session_history では、アイドル以外の待機状態もしくは CPU 使用中のセッションしか現れない。
+上述の例のように最終的に待機させていたセッション(セッション1:SID=141)がアイドル状態だと、ルートのセッションが現れないので単純には階層表示できない。
+従って、blocking_session がすべて現れるように工夫する。</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">set</span> <span class="n">pages</span> <span class="mi">1000</span>
+</span><span class='line'><span class="k">set</span> <span class="n">lines</span> <span class="mi">200</span>
+</span><span class='line'><span class="n">col</span> <span class="k">level</span>         <span class="k">for</span> <span class="mi">9999</span>
+</span><span class='line'><span class="n">col</span> <span class="k">hierarchy</span>     <span class="k">for</span> <span class="n">a20</span>
+</span><span class='line'><span class="n">col</span> <span class="n">path</span>          <span class="k">for</span> <span class="n">a20</span>
+</span><span class='line'><span class="n">col</span> <span class="n">session_id</span>    <span class="k">for</span> <span class="mi">9999</span>
+</span><span class='line'><span class="n">col</span> <span class="n">session_state</span> <span class="k">for</span> <span class="n">a13</span>
+</span><span class='line'><span class="n">col</span> <span class="n">event</span>         <span class="k">for</span> <span class="n">a32</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">SELECT</span> <span class="k">MAX</span><span class="p">(</span><span class="n">sample_id</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">v</span><span class="err">$</span><span class="n">active_session_history</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">define</span> <span class="n">sample_id</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">sample_id</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">WITH</span> <span class="n">x</span> <span class="k">AS</span>
+</span><span class='line'><span class="p">(</span>
+</span><span class='line'>  <span class="k">SELECT</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">blocking_session</span><span class="p">,</span> <span class="n">session_state</span><span class="p">,</span> <span class="n">event</span>
+</span><span class='line'>  <span class="k">FROM</span> <span class="n">v</span><span class="err">$</span><span class="n">active_session_history</span>
+</span><span class='line'>  <span class="k">WHERE</span> <span class="n">sample_id</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">sample_id</span>
+</span><span class='line'>  <span class="k">UNION</span> <span class="k">ALL</span>
+</span><span class='line'>  <span class="k">SELECT</span> <span class="n">blocking_session</span><span class="p">,</span> <span class="k">null</span><span class="p">,</span> <span class="k">null</span><span class="p">,</span> <span class="s1">&#39;IDLE?&#39;</span>
+</span><span class='line'>  <span class="k">FROM</span> <span class="n">v</span><span class="err">$</span><span class="n">active_session_history</span>
+</span><span class='line'>  <span class="k">WHERE</span> <span class="n">sample_id</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">sample_id</span>
+</span><span class='line'>  <span class="k">AND</span> <span class="n">blocking_session</span> <span class="k">NOT</span> <span class="k">IN</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">session_id</span>
+</span><span class='line'>                               <span class="k">FROM</span> <span class="n">v</span><span class="err">$</span><span class="n">active_session_history</span>
+</span><span class='line'>                               <span class="k">WHERE</span> <span class="n">sample_id</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">sample_id</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">GROUP</span> <span class="k">BY</span> <span class="n">blocking_session</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'><span class="k">SELECT</span> <span class="k">LEVEL</span><span class="p">,</span> <span class="n">LPAD</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">session_id</span> <span class="k">hierarchy</span><span class="p">,</span> <span class="n">SYS_CONNECT_BY_PATH</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="s1">&#39;&lt;-&#39;</span><span class="p">)</span> <span class="n">path</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">blocking_session</span><span class="p">,</span> <span class="n">session_state</span><span class="p">,</span> <span class="n">event</span>
+</span><span class='line'><span class="k">FROM</span> <span class="n">x</span>
+</span><span class='line'><span class="k">START</span> <span class="k">WITH</span> <span class="n">blocking_session</span> <span class="k">IS</span> <span class="k">NULL</span>
+</span><span class='line'><span class="k">CONNECT</span> <span class="k">BY</span> <span class="k">PRIOR</span> <span class="n">session_id</span> <span class="o">=</span> <span class="n">blocking_session</span>
+</span><span class='line'><span class="k">ORDER</span> <span class="n">SIBLINGS</span> <span class="k">BY</span> <span class="n">session_id</span>
+</span><span class='line'><span class="o">/</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">undefine</span> <span class="n">sample_id</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<pre><code>SQL&gt; SELECT MAX(sample_id) FROM v$active_session_history;
+
+MAX(SAMPLE_ID)
+--------------
+        244679
+
+SQL&gt; define sample_id = &amp;sample_id
+Enter value for sample_id: 244679
+
+SQL&gt; WITH x AS
+     (
+       SELECT session_id, blocking_session, session_state, event
+       FROM v$active_session_history
+       WHERE sample_id = &amp;sample_id
+       UNION ALL
+       SELECT blocking_session, null, null, 'IDLE?'
+       FROM v$active_session_history
+       WHERE sample_id = &amp;sample_id
+       AND blocking_session NOT IN (SELECT session_id
+                                    FROM v$active_session_history
+                                    WHERE sample_id = &amp;sample_id)
+       GROUP BY blocking_session
+     )
+     SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy, SYS_CONNECT_BY_PATH(session_id, '&lt;-') path, session_id, blocking_session, session_state, event
+     FROM x
+     START WITH blocking_session IS NULL
+     CONNECT BY PRIOR session_id = blocking_session
+     ORDER SIBLINGS BY session_id
+     /
+
+LEVEL HIERARCHY            PATH                 SESSION_ID BLOCKING_SESSION SESSION_STATE EVENT
+----- -------------------- -------------------- ---------- ---------------- ------------- --------------------------------
+    1 141                  &lt;-141                       141                                IDLE?
+    2   10                 &lt;-141&lt;-10                    10              141 WAITING       enq: TX - row lock contention
+    3     20               &lt;-141&lt;-10&lt;-20                20               10 WAITING       enq: TX - row lock contention
+    3     136              &lt;-141&lt;-10&lt;-136              136               10 WAITING       enq: TX - row lock contention
+    4       143            &lt;-141&lt;-10&lt;-136&lt;-143         143              136 WAITING       enq: TX - row lock contention
+    2   19                 &lt;-141&lt;-19                    19              141 WAITING       enq: TX - row lock contention
+    3     142              &lt;-141&lt;-19&lt;-142              142               19 WAITING       enq: TX - row lock contention
+</code></pre>
+
+<p>アイドル状態のために現れないセッションを <code>UNION ALL</code> で仮想的に v$active_session_history に追加したインラインビュー x を使用した。
+(もっといいやり方があるかもしれない。)</p>
+
+<h2>参考</h2>
+
+<ul>
+<li>Wikipedia <a href="http://ja.wikipedia.org/wiki/%E5%86%8D%E5%B8%B0%E3%82%AF%E3%82%A8%E3%83%AA">再帰クエリ</a></li>
+<li>Oracle Database SQL言語リファレンス 11gリリース2 (11.2) <a href="http://download.oracle.com/docs/cd/E16338_01/server.112/b56299/queries003.htm#i2053935">階層問合わせ</a></li>
+<li>図でイメージするOracle DatabaseのSQL全集 <a href="http://www.oracle.com/technetwork/jp/articles/otnj-sql-image6-1352143-ja.html">第6回 階層問い合わせ</a>, <a href="http://www.oracle.com/technetwork/jp/articles/otnj-sql-image7-1525406-ja.html">第7回 再帰with句</a></li>
+<li>Let&rsquo;s postgres <a href="http://lets.postgresql.jp/documents/technical/with_recursive">再帰SQL</a></li>
+<li>@IT <a href="http://www.atmarkit.co.jp/fnetwork/tokusyuu/01sql99/sql99_1b.html">新しい業界標準「SQL99」詳細解説</a></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takashi Hashizume</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-05T21:51:00+09:00" pubdate data-updated="true">Nov 5<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/db/'>DB</a>, <a class='category' href='/blog/categories/oracle/'>Oracle</a>, <a class='category' href='/blog/categories/performance-tuning/'>Performance Tuning</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://th0x4c.github.com/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/" data-via="" data-counturl="http://th0x4c.github.com/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/08/27/debug-debugging-with-ptrace/" title="Previous Post: [Debug] ptrace によるデバッグ">&laquo; [Debug] ptrace によるデバッグ</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/">[Oracle] v$session, v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバッグ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/06/25/debug-override-a-shared-library-function-by-ld-preload-dlsym-and-gcc-attributes/">[Debug] LD_PRELOAD, dlsym, GCC拡張機能によって共有ライブラリの関数の呼出し前後で任意の処理を実行する</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/10/gdb-calling-convention/">[GDB] Linux x86-64 の呼出規約(calling convention)を gdb で確認する</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/th0x4c">@th0x4c</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'th0x4c',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Takashi Hashizume -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

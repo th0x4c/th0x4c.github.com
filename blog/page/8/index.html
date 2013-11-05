@@ -9,8 +9,8 @@
   <meta name="author" content="Takashi Hashizume">
 
   
-  <meta name="description" content="目的 Data Guard の &ldquo;スナップショット・スタンバイ・データベース&rdquo; 機能により、スタンバイ DB を一時的に更新可能にする。 環境 OS: Oracle Enterprise Linux 5.8
-DB: Oracle Database 11g Release 2 &hellip;">
+  <meta name="description" content="目的 Data Guard の &ldquo;リアルタイム問い合わせ&rdquo; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。 環境 OS: Oracle Enterprise Linux 5.8
+DB: &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,123 @@ DB: Oracle Database 11g Release 2 &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-data-guard-real-time-query/">[Oracle] Data Guard リアルタイム問い合わせ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-09T22:28:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>目的</h2>
+
+<p>Data Guard の &ldquo;リアルタイム問い合わせ&rdquo; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンする。</p>
+
+<h2>環境</h2>
+
+<ul>
+<li>OS: Oracle Enterprise Linux 5.8</li>
+<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
+<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
+</ul>
+
+
+<h2>リアルタイム問い合わせ</h2>
+
+<p>Data Guard の &ldquo;リアルタイム問い合わせ&rdquo; 機能により、REDO 適用を中断せずプライマリの更新をリアルタイムで適用しつつ、スタンバイ DB を読み取り専用でオープンすることができる。</p>
+
+<p>今回は EM Grid Control を使用してこの機能を有効にする。</p>
+
+<ul>
+<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の Data Guard の項目から &ldquo;設定および管理&rdquo; をクリックして、Data Guard のページを開く</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
+
+<ul>
+<li>&ldquo;リアルタイム問い合わせ&rdquo; の &ldquo;無効&rdquo; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-1.png" width="720" height="450"></p>
+
+<ul>
+<li>&ldquo;リアルタイム問い合わせの有効化&rdquo; をチェックして、&#8221;適用&#8221; をクリック</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-2.png" width="720" height="450"></p>
+
+<ul>
+<li>処理中 &ndash;> 正常に適用された</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-3.png" width="720" height="450"></p>
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-4.png" width="720" height="450"></p>
+
+<ul>
+<li>Data Guard の構成画面に戻ると &ldquo;リアルタイム問い合わせ&rdquo; が &ldquo;有効&rdquo; になっている</li>
+</ul>
+
+
+<p><img src="/images/2012-09-09-oracle-data-guard-real-time-query/dgrq-5.png" width="720" height="450"></p>
+
+<p>実際にスタンバイ DB に接続すると、SELECT が実行可能でプライマリの変更が REDO 適用された時点で即時反映されることが確認できる。</p>
+
+<pre><code>SQL&gt; connect scott/tiger@PROD1 -- プライマリに接続
+Connected.
+SQL&gt; CREATE TABLE emp2 AS SELECT * FROM emp;
+
+Table created.
+
+SQL&gt; connect scott/tiger@STDBY1_DGMGRL -- スタンバイに接続
+Connected.
+SQL&gt; SELECT * FROM emp2 WHERE ROWNUM = 1; -- プライマリの更新が反映されている
+
+     EMPNO ENAME                          JOB                                MGR
+---------- ------------------------------ --------------------------- ----------
+HIREDATE        SAL       COMM     DEPTNO
+-------- ---------- ---------- ----------
+      7369 SMITH                          CLERK                             7902
+80-12-17        800                    20
+
+
+SQL&gt; UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369; -- スタンバイの更新はできない
+UPDATE emp2 SET sal = sal * 10 WHERE empno = 7369
+       *
+ERROR at line 1:
+ORA-16000: database open for read-only access
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -285,154 +402,6 @@ Table created.
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/09/09/oracle-creating-a-physical-standby-database/">[Oracle] フィジカル・スタンバイ・データベースの作成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-09T05:29:00+09:00" pubdate data-updated="true">Sep 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>目的</h2>
-
-<p>Data Guard のフィジカル・スタンバイ・データベースを作成する。</p>
-
-<h2>環境</h2>
-
-<ul>
-<li>OS: Oracle Enterprise Linux 5.8</li>
-<li>DB: Oracle Database 11g Release 2 (11.2.0.3)</li>
-<li>EM: Oracle Enterprise Manager Grid Control 11g (11.1)</li>
-</ul>
-
-
-<h2>フィジカル・スタンバイ・データベースの作成</h2>
-
-<p>EM Grid Control を使用してフィジカル・スタンバイ・データベースを作成する。</p>
-
-<ul>
-<li>プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブ内の &ldquo;スタンバイ・データベースの追加&rdquo; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-1.png" width="720" height="450"></p>
-
-<ul>
-<li>SYSDBA 権限で接続</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-2.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;スタンバイ・データベースの追加&rdquo; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-3.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;新規のフィジカル・スタンバイ・データベースの作成&rdquo; を選択し、&#8221;続行&#8221; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-4.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;Recovery Manager (RMAN)を使用してデータベース・ファイルをコピーします&rdquo; のままで &ldquo;次へ&rdquo; をクリック</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-5.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;プライマリ・ホスト資格証明&rdquo; に OS ユーザとパスワードを入力。&#8221;スタンバイREDOログ・ファイルにOracle Managed Files(OMF)を使用&#8221; のチェックを外す</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-6.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ DB の &ldquo;インスタンス名&rdquo;, &ldquo;ホスト&rdquo; を環境に合わせて変更</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-7.png" width="720" height="450"></p>
-
-<ul>
-<li>スタンバイ DB のファイルの場所として &ldquo;ファイル名と場所をプライマリ・データベースと同じ場所に保持&rdquo; を選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-8.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;続行&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-9.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;一意のデータベース名&rdquo;, &ldquo;ターゲット名&rdquo; (EM で表示されるターゲット名)を変更、スタンバイ DB の資格証明として &ldquo;SYSDBA監視資格証明の使用&rdquo; を選択</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-10.png" width="720" height="450"></p>
-
-<ul>
-<li>&ldquo;終了&rdquo;</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-11.png" width="720" height="450"></p>
-
-<ul>
-<li>処理中 &ndash;> 完了となるが、なぜか完了の画面のまま &ldquo;概要&rdquo; のページに戻らない。</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-12.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-13.png" width="720" height="450"></p>
-
-<p>alert.log を確認して処理が終わっていそうだったら、EM の画面を切り替えてしまってよい。</p>
-
-<ul>
-<li>もう一度プライマリ DB インスタンスの &ldquo;可用性&rdquo; タブに行くと Data Guard の項目が変わっているので &ldquo;設定および管理&rdquo; をクリックして、正常にスタンバイ DB が作成されていることを確認</li>
-</ul>
-
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-14.png" width="720" height="450"></p>
-
-<p><img src="/images/2012-09-09-oracle-creating-a-physical-standby-database/dg-15.png" width="720" height="450"></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/9/">&larr; Older</a>
@@ -450,6 +419,10 @@ Table created.
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/11/05/oracle-using-hierarchical-queries-to-identify-the-blocking-session/">[Oracle] v$session, v$active_session_history の階層問合せによる待機のブロッキング・セッションの特定</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/08/27/debug-debugging-with-ptrace/">[Debug] ptrace によるデバッグ</a>
       </li>
     
@@ -463,10 +436,6 @@ Table created.
     
       <li class="post">
         <a href="/blog/2013/04/09/os-bottleneck/">[OS] OS コマンドによるボトルネック調査</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/06/os-memory-leak/">[OS] メモリリークの調査方法</a>
       </li>
     
   </ul>
