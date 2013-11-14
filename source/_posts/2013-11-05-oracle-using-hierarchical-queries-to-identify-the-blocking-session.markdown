@@ -93,7 +93,13 @@ col path      for a20
 col sid       for 9999
 col event     for a32
 
-SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy, SYS_CONNECT_BY_PATH(sid, '<-') path, sid, blocking_session, event
+SELECT
+  LEVEL,
+  LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy,
+  SYS_CONNECT_BY_PATH(sid, '<-') path,
+  sid,
+  blocking_session,
+  event
 FROM v$session
 START WITH blocking_session IS NULL
 CONNECT BY PRIOR sid = blocking_session
@@ -101,12 +107,18 @@ ORDER SIBLINGS BY sid
 /
 {% endcodeblock %}
 
-    SQL> SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy, SYS_CONNECT_BY_PATH(sid, '<-') path, sid, blocking_session, event
-    FROM v$session
-    START WITH blocking_session IS NULL
-    CONNECT BY PRIOR sid = blocking_session
-    ORDER SIBLINGS BY sid
-    /
+    SQL> SELECT
+           LEVEL,
+           LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy,
+           SYS_CONNECT_BY_PATH(sid, '<-') path,
+           sid,
+           blocking_session,
+           event
+         FROM v$session
+         START WITH blocking_session IS NULL
+         CONNECT BY PRIOR sid = blocking_session
+         ORDER SIBLINGS BY sid
+         /
     
     LEVEL HIERARCHY            PATH                   SID BLOCKING_SESSION EVENT
     ----- -------------------- -------------------- ----- ---------------- --------------------------------
@@ -167,7 +179,14 @@ WITH x AS
                                WHERE sample_id = &sample_id)
   GROUP BY blocking_session
 )
-SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy, SYS_CONNECT_BY_PATH(session_id, '<-') path, session_id, blocking_session, session_state, event
+SELECT
+  LEVEL,
+  LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy,
+  SYS_CONNECT_BY_PATH(session_id, '<-') path,
+  session_id,
+  blocking_session,
+  session_state,
+  event
 FROM x
 START WITH blocking_session IS NULL
 CONNECT BY PRIOR session_id = blocking_session
@@ -200,7 +219,14 @@ undefine sample_id
                                         WHERE sample_id = &sample_id)
            GROUP BY blocking_session
          )
-         SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy, SYS_CONNECT_BY_PATH(session_id, '<-') path, session_id, blocking_session, session_state, event
+         SELECT
+           LEVEL,
+           LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy,
+           SYS_CONNECT_BY_PATH(session_id, '<-') path,
+           session_id,
+           blocking_session,
+           session_state,
+           event
          FROM x
          START WITH blocking_session IS NULL
          CONNECT BY PRIOR session_id = blocking_session
