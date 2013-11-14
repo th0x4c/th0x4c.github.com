@@ -4,7 +4,7 @@
   <title><![CDATA[Category: DB | th0x4c 備忘録]]></title>
   <link href="http://th0x4c.github.com/blog/categories/db/atom.xml" rel="self"/>
   <link href="http://th0x4c.github.com/"/>
-  <updated>2013-11-06T00:20:10+09:00</updated>
+  <updated>2013-11-14T20:57:20+09:00</updated>
   <id>http://th0x4c.github.com/</id>
   <author>
     <name><![CDATA[Takashi Hashizume]]></name>
@@ -143,6 +143,12 @@ Oracle Database では独自の <code>CONNECT BY</code> 句を使った問合せ
 <span class='line-number'>12</span>
 <span class='line-number'>13</span>
 <span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
 </pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">set</span> <span class="n">pages</span> <span class="mi">1000</span>
 </span><span class='line'><span class="k">set</span> <span class="n">lines</span> <span class="mi">200</span>
 </span><span class='line'><span class="n">col</span> <span class="k">level</span>     <span class="k">for</span> <span class="mi">9999</span>
@@ -151,7 +157,13 @@ Oracle Database では独自の <code>CONNECT BY</code> 句を使った問合せ
 </span><span class='line'><span class="n">col</span> <span class="n">sid</span>       <span class="k">for</span> <span class="mi">9999</span>
 </span><span class='line'><span class="n">col</span> <span class="n">event</span>     <span class="k">for</span> <span class="n">a32</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">SELECT</span> <span class="k">LEVEL</span><span class="p">,</span> <span class="n">LPAD</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">sid</span> <span class="k">hierarchy</span><span class="p">,</span> <span class="n">SYS_CONNECT_BY_PATH</span><span class="p">(</span><span class="n">sid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span> <span class="n">path</span><span class="p">,</span> <span class="n">sid</span><span class="p">,</span> <span class="n">blocking_session</span><span class="p">,</span> <span class="n">event</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">SELECT</span>
+</span><span class='line'>  <span class="k">LEVEL</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">LPAD</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">sid</span> <span class="k">hierarchy</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">SYS_CONNECT_BY_PATH</span><span class="p">(</span><span class="n">sid</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span> <span class="n">path</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">sid</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">blocking_session</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">event</span>
 </span><span class='line'><span class="k">FROM</span> <span class="n">v</span><span class="err">$</span><span class="k">session</span>
 </span><span class='line'><span class="k">START</span> <span class="k">WITH</span> <span class="n">blocking_session</span> <span class="k">IS</span> <span class="k">NULL</span>
 </span><span class='line'><span class="k">CONNECT</span> <span class="k">BY</span> <span class="k">PRIOR</span> <span class="n">sid</span> <span class="o">=</span> <span class="n">blocking_session</span>
@@ -159,12 +171,18 @@ Oracle Database では独自の <code>CONNECT BY</code> 句を使った問合せ
 </span><span class='line'><span class="o">/</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<pre><code>SQL&gt; SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy, SYS_CONNECT_BY_PATH(sid, '&lt;-') path, sid, blocking_session, event
-FROM v$session
-START WITH blocking_session IS NULL
-CONNECT BY PRIOR sid = blocking_session
-ORDER SIBLINGS BY sid
-/
+<pre><code>SQL&gt; SELECT
+       LEVEL,
+       LPAD(' ', 2 * (LEVEL - 1)) || sid hierarchy,
+       SYS_CONNECT_BY_PATH(sid, '&lt;-') path,
+       sid,
+       blocking_session,
+       event
+     FROM v$session
+     START WITH blocking_session IS NULL
+     CONNECT BY PRIOR sid = blocking_session
+     ORDER SIBLINGS BY sid
+     /
 
 LEVEL HIERARCHY            PATH                   SID BLOCKING_SESSION EVENT
 ----- -------------------- -------------------- ----- ---------------- --------------------------------
@@ -239,6 +257,13 @@ LEVEL HIERARCHY            PATH                   SID BLOCKING_SESSION EVENT
 <span class='line-number'>36</span>
 <span class='line-number'>37</span>
 <span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
 </pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">set</span> <span class="n">pages</span> <span class="mi">1000</span>
 </span><span class='line'><span class="k">set</span> <span class="n">lines</span> <span class="mi">200</span>
 </span><span class='line'><span class="n">col</span> <span class="k">level</span>         <span class="k">for</span> <span class="mi">9999</span>
@@ -269,7 +294,14 @@ LEVEL HIERARCHY            PATH                   SID BLOCKING_SESSION EVENT
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">GROUP</span> <span class="k">BY</span> <span class="n">blocking_session</span>
 </span><span class='line'><span class="p">)</span>
-</span><span class='line'><span class="k">SELECT</span> <span class="k">LEVEL</span><span class="p">,</span> <span class="n">LPAD</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">session_id</span> <span class="k">hierarchy</span><span class="p">,</span> <span class="n">SYS_CONNECT_BY_PATH</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span> <span class="n">path</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">blocking_session</span><span class="p">,</span> <span class="n">session_state</span><span class="p">,</span> <span class="n">event</span>
+</span><span class='line'><span class="k">SELECT</span>
+</span><span class='line'>  <span class="k">LEVEL</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">LPAD</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="k">LEVEL</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span> <span class="mi">1</span><span class="p">))</span> <span class="o">||</span> <span class="n">session_id</span> <span class="k">hierarchy</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">SYS_CONNECT_BY_PATH</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span> <span class="n">path</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">session_id</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">blocking_session</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">session_state</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">event</span>
 </span><span class='line'><span class="k">FROM</span> <span class="n">x</span>
 </span><span class='line'><span class="k">START</span> <span class="k">WITH</span> <span class="n">blocking_session</span> <span class="k">IS</span> <span class="k">NULL</span>
 </span><span class='line'><span class="k">CONNECT</span> <span class="k">BY</span> <span class="k">PRIOR</span> <span class="n">session_id</span> <span class="o">=</span> <span class="n">blocking_session</span>
@@ -302,7 +334,14 @@ SQL&gt; WITH x AS
                                     WHERE sample_id = &amp;sample_id)
        GROUP BY blocking_session
      )
-     SELECT LEVEL, LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy, SYS_CONNECT_BY_PATH(session_id, '&lt;-') path, session_id, blocking_session, session_state, event
+     SELECT
+       LEVEL,
+       LPAD(' ', 2 * (LEVEL - 1)) || session_id hierarchy,
+       SYS_CONNECT_BY_PATH(session_id, '&lt;-') path,
+       session_id,
+       blocking_session,
+       session_state,
+       event
      FROM x
      START WITH blocking_session IS NULL
      CONNECT BY PRIOR session_id = blocking_session
