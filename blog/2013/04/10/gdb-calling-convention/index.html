@@ -366,8 +366,8 @@ mxcsr          0x1f80   [ IM DM ZM OM UM PM ]
 終わっているが、普通はここまでで引数をスタックに積んだ後、</p>
 
 <ul>
-<li><code>call &lt;function&gt;</code> : スタックに戻り先の命令アドレスを積んで関数を呼ぶ(rsp が +0x8 される)</li>
-<li><code>push %rbp</code> : ベースポインタ(rbp)の値が push され、スタックに保存される(rsp が +0x8 される)</li>
+<li><code>call &lt;function&gt;</code> : スタックに戻り先の命令アドレスを積んで関数を呼ぶ(rsp が -0x8 される)</li>
+<li><code>push %rbp</code> : ベースポインタ(rbp)の値が push され、スタックに保存される(rsp が -0x8 される)</li>
 <li><code>mov %rsp,%rbp</code> : スタックポインタ(rsp)の値をベースポインタ(rbp)に保存する</li>
 <li>(<code>sub $0xXX,%rsp</code> : ローカル変数を保持するためにスタックを上げる)</li>
 </ul>
